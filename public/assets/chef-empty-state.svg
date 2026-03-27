@@ -1,0 +1,358 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <!-- Background Glow -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF6B35" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#FF6B35" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#FF6B35" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Vignette Overlay -->
+    <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+      <stop offset="50%" stop-color="#FFF8F0" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#FFB347" stop-opacity="0.15"/>
+    </radialGradient>
+
+    <!-- Gradients for Chef -->
+    <linearGradient id="hatGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EAE0D5"/>
+    </linearGradient>
+
+    <linearGradient id="coatGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EAE0D5"/>
+    </linearGradient>
+
+    <linearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE0C8"/>
+      <stop offset="100%" stop-color="#FFC8A2"/>
+    </linearGradient>
+
+    <linearGradient id="bowlGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFB347"/>
+      <stop offset="100%" stop-color="#FF6B35"/>
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="steamGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur1"/>
+      <feGaussianBlur stdDeviation="8" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="cheekBlur">
+      <feGaussianBlur stdDeviation="2.5"/>
+    </filter>
+
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#D95A2B" flood-opacity="0.15"/>
+    </filter>
+
+    <!-- Reusable Symbols -->
+    <g id="star">
+      <path d="M 0 -10 Q 0 0 10 0 Q 0 0 0 10 Q 0 0 -10 0 Q 0 0 0 -10" fill="#FFB347"/>
+    </g>
+    
+    <g id="leaf">
+      <path d="M 0 0 C 8 -8, 18 -4, 20 4 C 12 12, 2 8, 0 0 Z" fill="#FFB347"/>
+    </g>
+  </defs>
+
+  <style><![CDATA[
+/* CSS Animations */
+    @keyframes bob {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-12px); }
+    }
+    
+    @keyframes shadow-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.2; }
+      50% { transform: scale(0.95); opacity: 0.15; }
+    }
+
+    @keyframes steam-rise {
+      0% { transform: translateY(15px) scale(0.9); opacity: 0; }
+      20% { opacity: 0.8; }
+      70% { opacity: 0.8; }
+      100% { transform: translateY(-55px) scale(1.15); opacity: 0; }
+    }
+
+    @keyframes float-bg {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(4deg); }
+    }
+
+    @keyframes float-bg-reverse {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-12px) rotate(-4deg); }
+    }
+
+    /* Animation Assignments */
+    .chef-bob {
+      animation: bob 4s ease-in-out infinite;
+      transform-origin: center bottom;
+    }
+    
+    .floor-shadow {
+      animation: shadow-pulse 4s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .steam-1 { animation: steam-rise 3.2s ease-in-out infinite; transform-origin: center; }
+    .steam-2 { animation: steam-rise 3.8s ease-in-out infinite 1.1s; transform-origin: center; }
+    .steam-3 { animation: steam-rise 3.5s ease-in-out infinite 2.3s; transform-origin: center; }
+
+    .bg-float-1 { animation: float-bg 6s ease-in-out infinite; }
+    .bg-float-2 { animation: float-bg-reverse 7s ease-in-out infinite 1s; }
+    .bg-float-3 { animation: float-bg 5.5s ease-in-out infinite 2s; }
+    .bg-float-4 { animation: float-bg-reverse 6.5s ease-in-out infinite 0.5s; }
+]]></style>
+
+  <!-- Base Background -->
+  <rect width="800" height="600" fill="#FFF8F0"/>
+  
+  <!-- Radial Glow -->
+  <circle cx="400" cy="300" r="400" fill="url(#bgGlow)"/>
+
+  <!-- Floating Background Elements (Kitchen Atmosphere) -->
+  <g opacity="0.4">
+    <!-- Whisk -->
+    <g class="bg-float-1" transform="translate(160, 220) rotate(-25) scale(0.8)" stroke="#FFB347" stroke-width="4" fill="none" stroke-linecap="round">
+      <line x1="0" y1="0" x2="0" y2="45" stroke-width="7"/>
+      <path d="M -12 45 C -25 80, 25 80, 12 45" />
+      <path d="M -5 45 C -10 80, 10 80, 5 45" />
+      <path d="M 0 45 L 0 75" />
+    </g>
+
+    <!-- Spatula -->
+    <g class="bg-float-2" transform="translate(640, 240) rotate(35) scale(0.8)" stroke="#FFB347" stroke-width="4" fill="none" stroke-linecap="round">
+      <line x1="0" y1="0" x2="0" y2="55" stroke-width="7"/>
+      <rect x="-14" y="55" width="28" height="40" rx="6"/>
+      <line x1="-5" y1="65" x2="-5" y2="85"/>
+      <line x1="5" y1="65" x2="5" y2="85"/>
+    </g>
+
+    <!-- Stars & Sparkles -->
+    <use href="#star" x="220" y="120" class="bg-float-3" opacity="0.6" transform="scale(0.8)"/>
+    <use href="#star" x="580" y="140" class="bg-float-4" opacity="0.8"/>
+    <use href="#star" x="150" y="400" class="bg-float-2" opacity="0.5" transform="scale(0.6)"/>
+    <use href="#star" x="660" y="420" class="bg-float-1" opacity="0.7" transform="scale(0.9)"/>
+
+    <!-- Floating Leaves -->
+    <use href="#leaf" x="250" y="320" class="bg-float-4" transform="rotate(15 250 320)"/>
+    <use href="#leaf" x="550" y="350" class="bg-float-3" transform="rotate(-45 550 350) scale(0.8)"/>
+    <use href="#leaf" x="180" y="480" class="bg-float-1" transform="rotate(60 180 480) scale(1.2)"/>
+
+    <!-- Ambient Dots -->
+    <circle cx="280" cy="180" r="4" fill="#FFB347" class="bg-float-2"/>
+    <circle cx="520" cy="160" r="5" fill="#FFB347" class="bg-float-1"/>
+    <circle cx="610" cy="320" r="3" fill="#FFB347" class="bg-float-4"/>
+    <circle cx="200" cy="300" r="6" fill="#FFB347" class="bg-float-3"/>
+  </g>
+
+  <!-- Ground Shadow -->
+  <ellipse cx="400" cy="590" rx="160" ry="15" fill="#FFB347" class="floor-shadow"/>
+
+  <!-- Main Chef Character -->
+  <g class="chef-bob">
+    
+    <!-- CHEF BODY & COAT -->
+    <g id="coat" filter="url(#dropShadow)">
+      <!-- Main Torso -->
+      <path d="M 300 360 C 300 320, 340 310, 400 310 C 460 310, 500 320, 500 360 L 530 600 L 270 600 Z" fill="url(#coatGrad)"/>
+      
+      <!-- Coat Flap Seam -->
+      <path d="M 440 340 C 440 400, 430 600, 430 600" fill="none" stroke="#EAE0D5" stroke-width="3" stroke-linecap="round"/>
+      
+      <!-- Left Collar -->
+      <path d="M 340 310 L 400 365 L 375 390 L 305 340 Z" fill="#FFFFFF" stroke="#EAE0D5" stroke-width="2" stroke-linejoin="round"/>
+      
+      <!-- Right Collar -->
+      <path d="M 460 310 L 400 365 L 425 390 L 495 340 Z" fill="#FFFFFF" stroke="#EAE0D5" stroke-width="2" stroke-linejoin="round"/>
+
+      <!-- Pocket -->
+      <path d="M 460 410 L 490 410 L 490 440 Q 475 450 460 440 Z" fill="none" stroke="#EAE0D5" stroke-width="2" stroke-linejoin="round"/>
+      <!-- Thermometer in pocket -->
+      <line x1="470" y1="410" x2="470" y2="390" stroke="#FF6B35" stroke-width="4" stroke-linecap="round"/>
+      <line x1="480" y1="410" x2="480" y2="395" stroke="#4A2B1D" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- Orange Accent Buttons -->
+      <g fill="#FF6B35">
+        <circle cx="380" cy="430" r="7"/>
+        <circle cx="420" cy="430" r="7"/>
+        <circle cx="380" cy="480" r="7"/>
+        <circle cx="420" cy="480" r="7"/>
+        <circle cx="380" cy="530" r="7"/>
+        <circle cx="420" cy="530" r="7"/>
+      </g>
+      <!-- Button Highlights -->
+      <g fill="#FFFFFF" opacity="0.5">
+        <circle cx="378" cy="428" r="2.5"/>
+        <circle cx="418" cy="428" r="2.5"/>
+        <circle cx="378" cy="478" r="2.5"/>
+        <circle cx="418" cy="478" r="2.5"/>
+        <circle cx="378" cy="528" r="2.5"/>
+        <circle cx="418" cy="528" r="2.5"/>
+      </g>
+    </g>
+
+    <!-- NECK & SCARF -->
+    <g id="neck">
+      <!-- Neck -->
+      <rect x="380" y="280" width="40" height="35" fill="url(#skinGrad)"/>
+      <!-- Neck Shadow -->
+      <rect x="380" y="280" width="40" height="15" fill="#E5B394" opacity="0.6"/>
+      
+      <!-- Orange Scarf -->
+      <path d="M 375 295 Q 400 305 425 295 L 420 315 Q 400 325 380 315 Z" fill="#FF6B35"/>
+      <path d="M 400 315 L 385 350 L 405 345 L 415 355 L 410 315 Z" fill="#D95A2B"/>
+      <circle cx="400" cy="310" r="7" fill="#C24914"/>
+    </g>
+
+    <!-- HEAD & FACE -->
+    <g id="head">
+      <!-- Ears -->
+      <circle cx="342" cy="255" r="14" fill="url(#skinGrad)"/>
+      <circle cx="458" cy="255" r="14" fill="url(#skinGrad)"/>
+      <!-- Ear details -->
+      <path d="M 338 250 Q 345 255 338 260" fill="none" stroke="#E5B394" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 462 250 Q 455 255 462 260" fill="none" stroke="#E5B394" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- Hair peeking out -->
+      <path d="M 340 240 Q 360 200 400 200 Q 440 200 460 240 Q 470 210 440 180 Q 400 170 360 180 Q 330 210 340 240 Z" fill="#4A2B1D"/>
+
+      <!-- Face Base -->
+      <circle cx="400" cy="245" r="58" fill="url(#skinGrad)"/>
+      
+      <!-- Hat Shadow on Forehead -->
+      <path d="M 348 215 Q 400 235 452 215 A 58 58 0 0 1 348 215 Z" fill="#E5B394" opacity="0.4"/>
+
+      <!-- Rosy Cheeks -->
+      <circle cx="362" cy="265" r="14" fill="#FF6B35" opacity="0.35" filter="url(#cheekBlur)"/>
+      <circle cx="438" cy="265" r="14" fill="#FF6B35" opacity="0.35" filter="url(#cheekBlur)"/>
+
+      <!-- Eyes -->
+      <g fill="#4A2B1D">
+        <circle cx="372" cy="242" r="7.5"/>
+        <circle cx="428" cy="242" r="7.5"/>
+      </g>
+      <!-- Eye Catchlights -->
+      <g fill="#FFFFFF">
+        <circle cx="370" cy="239" r="2.5"/>
+        <circle cx="426" cy="239" r="2.5"/>
+      </g>
+
+      <!-- Eyebrows -->
+      <path d="M 360 225 Q 372 218 384 225" fill="none" stroke="#4A2B1D" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 416 225 Q 428 218 440 225" fill="none" stroke="#4A2B1D" stroke-width="3.5" stroke-linecap="round"/>
+
+      <!-- Nose -->
+      <path d="M 395 255 Q 400 262 405 255" fill="none" stroke="#D98A6C" stroke-width="3.5" stroke-linecap="round"/>
+
+      <!-- Warm Smile -->
+      <path d="M 378 270 C 378 292, 422 292, 422 270" fill="none" stroke="#4A2B1D" stroke-width="4" stroke-linecap="round"/>
+      <!-- Smile Dimples -->
+      <path d="M 370 265 Q 374 270 378 270" fill="none" stroke="#4A2B1D" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M 430 265 Q 426 270 422 270" fill="none" stroke="#4A2B1D" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- TALL TOQUE HAT -->
+    <g id="hat" filter="url(#dropShadow)">
+      <!-- Hat Puffs (Overlapping Circles for classic vector look) -->
+      <g fill="url(#hatGrad)">
+        <circle cx="345" cy="110" r="45"/>
+        <circle cx="400" cy="65" r="60"/>
+        <circle cx="455" cy="110" r="45"/>
+        <!-- Fill the gaps -->
+        <path d="M 310 120 L 490 120 L 460 190 L 340 190 Z"/>
+      </g>
+      
+      <!-- Hat Folds / Creases -->
+      <path d="M 365 190 Q 370 130 355 95" fill="none" stroke="#EAE0D5" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 400 190 Q 405 120 395 65" fill="none" stroke="#EAE0D5" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 435 190 Q 430 130 445 95" fill="none" stroke="#EAE0D5" stroke-width="3.5" stroke-linecap="round"/>
+
+      <!-- Hat Band -->
+      <rect x="350" y="185" width="100" height="28" rx="6" fill="#FFFFFF" stroke="#EAE0D5" stroke-width="2"/>
+    </g>
+
+    <!-- ARMS (Behind Bowl) -->
+    <g id="arms">
+      <!-- Left Arm Outline & Fill -->
+      <path d="M 310 360 C 240 430, 270 500, 340 460" fill="none" stroke="#EAE0D5" stroke-width="44" stroke-linecap="round"/>
+      <path d="M 310 360 C 240 430, 270 500, 340 460" fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round"/>
+      
+      <!-- Right Arm Outline & Fill -->
+      <path d="M 490 360 C 560 430, 530 500, 460 460" fill="none" stroke="#EAE0D5" stroke-width="44" stroke-linecap="round"/>
+      <path d="M 490 360 C 560 430, 530 500, 460 460" fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round"/>
+    </g>
+
+    <!-- STEAMING BOWL -->
+    <g id="bowl-group">
+      <!-- Bowl Drop Shadow on Coat -->
+      <ellipse cx="400" cy="485" rx="55" ry="12" fill="#EAE0D5" opacity="0.9"/>
+      
+      <!-- Bowl Inner Back -->
+      <ellipse cx="400" cy="450" rx="75" ry="20" fill="#C24914"/>
+      
+      <!-- Soup Liquid -->
+      <ellipse cx="400" cy="452" rx="68" ry="16" fill="#FFF8F0"/>
+      <!-- Soup Ripples -->
+      <ellipse cx="400" cy="452" rx="50" ry="10" fill="none" stroke="#FFD2B5" stroke-width="2.5" opacity="0.6"/>
+      <ellipse cx="400" cy="452" rx="30" ry="5" fill="none" stroke="#FFD2B5" stroke-width="2" opacity="0.4"/>
+
+      <!-- Bowl Front -->
+      <path d="M 325 450 C 325 510, 360 535, 400 535 C 440 535, 475 510, 475 450 Z" fill="url(#bowlGrad)"/>
+      
+      <!-- Bowl Rim -->
+      <ellipse cx="400" cy="450" rx="75" ry="20" fill="none" stroke="#FFF8F0" stroke-width="4"/>
+      
+      <!-- Bowl Highlight -->
+      <path d="M 345 465 A 45 35 0 0 0 380 515" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.35"/>
+    </g>
+
+    <!-- HANDS (Overlapping Bowl) -->
+    <g id="hands">
+      <!-- Left Hand -->
+      <circle cx="335" cy="465" r="18" fill="url(#skinGrad)"/>
+      <circle cx="348" cy="452" r="8" fill="url(#skinGrad)"/> <!-- Thumb -->
+      <!-- Right Hand -->
+      <circle cx="465" cy="465" r="18" fill="url(#skinGrad)"/>
+      <circle cx="452" cy="452" r="8" fill="url(#skinGrad)"/> <!-- Thumb -->
+    </g>
+
+    <!-- ANIMATED STEAM WISPS -->
+    <g id="steam" filter="url(#steamGlow)">
+      <!-- Steam Path 1 -->
+      <g class="steam-1">
+        <path d="M 365 440 Q 340 390 365 340 T 365 250" fill="none" stroke="#FFF8F0" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+        <path d="M 365 440 Q 340 390 365 340 T 365 250" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
+        <circle cx="355" cy="320" r="4" fill="#FFFFFF" opacity="0.7"/>
+      </g>
+      
+      <!-- Steam Path 2 (Center) -->
+      <g class="steam-2">
+        <path d="M 400 445 Q 430 395 400 345 T 400 240" fill="none" stroke="#FFF8F0" stroke-width="12" stroke-linecap="round" opacity="0.5"/>
+        <path d="M 400 445 Q 430 395 400 345 T 400 240" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+        <circle cx="415" cy="300" r="5" fill="#FFFFFF" opacity="0.7"/>
+      </g>
+      
+      <!-- Steam Path 3 -->
+      <g class="steam-3">
+        <path d="M 435 440 Q 410 390 435 340 T 435 250" fill="none" stroke="#FFF8F0" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+        <path d="M 435 440 Q 410 390 435 340 T 435 250" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
+        <circle cx="425" cy="350" r="3" fill="#FFFFFF" opacity="0.7"/>
+      </g>
+    </g>
+
+  </g>
+
+  <!-- Foreground Vignette Overlay (Adds depth and focus) -->
+  <rect width="800" height="600" fill="url(#vignette)" pointer-events="none"/>
+
+</svg>
