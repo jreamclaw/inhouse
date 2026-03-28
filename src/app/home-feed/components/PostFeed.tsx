@@ -823,7 +823,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
   };
 
   const localPosts = dbPosts;
-  const explorePosts = [...dbPosts.filter((p) => !p.isLocal), ...MOCK_POSTS.filter((p) => !p.isLocal)];
+  const explorePosts = dbPosts.filter((p) => !p.isLocal);
 
   // Filter posts based on mode
   const modePosts = mode === 'local' ? localPosts : explorePosts;
@@ -893,7 +893,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
       {mode === 'explore' &&
       <div className="px-4 py-4 bg-gradient-to-r from-primary/5 to-amber-500/5 border-b border-border/40">
           <p className="text-sm font-700 text-foreground tracking-snug">🌎 Trending Globally</p>
-          <p className="text-[12px] text-muted-foreground mt-0.5">Discover top chefs from cities across the country</p>
+          <p className="text-[12px] text-muted-foreground mt-0.5">Discover real chefs from cities across the country</p>
         </div>
       }
 
@@ -942,7 +942,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
               </div>
               <h3 className="text-base font-700 text-foreground mb-2">Your local feed is empty</h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-                No chefs you follow have posted yet. Browse nearby chefs and come back once real posts are live.
+                No real posts yet. Browse nearby chefs and come back once posts are live.
               </p>
               <div className="w-full max-w-xs space-y-2.5">
                 <Link href="/nearby" className="block">

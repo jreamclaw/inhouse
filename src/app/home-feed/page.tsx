@@ -9,7 +9,7 @@ import LocationHeader from './components/LocationHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 
-const DEFAULT_LOCATION = 'Washington, DC';
+const DEFAULT_LOCATION = 'Set your location';
 
 export default function HomeFeedPage() {
   const [mode, setMode] = useState<'local' | 'explore'>('local');
