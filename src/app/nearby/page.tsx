@@ -91,6 +91,10 @@ interface DbVendorRow {
   avatar_url: string | null;
 }
 
+const VENDOR_CARD_FALLBACK = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80';
+const VENDOR_DISH_FALLBACK = 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80';
+const VENDOR_AVATAR_FALLBACK = '/assets/images/no_image.png';
+
 const MOCK_VENDORS: Vendor[] = [
 {
   id: 'chef-marco',
@@ -482,7 +486,7 @@ function VendorCard({ vendor }: {vendor: Vendor;}) {
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2.5 flex-wrap">
           <span className="flex items-center gap-1">
             <MapPin className="w-3 h-3 text-primary" />
-            <span className="font-600 text-foreground">{vendor.location || userLocation}</span>
+            <span className="font-600 text-foreground">{vendor.location || 'Location unavailable'}</span>
           </span>
           <span className="opacity-30">·</span>
           <span className="flex items-center gap-1">
@@ -570,9 +574,9 @@ export default function NearbyPage() {
         name: row.full_name || 'Chef',
         cuisine: row.bio?.split('.')[0] || 'Local chef',
         category: 'all',
-        image: row.avatar_url || '/assets/images/no_image.png',
-        imageAlt: `${row.full_name || 'Chef'} profile image`,
-        avatar: row.avatar_url || '/assets/images/no_image.png',
+        image: VENDOR_CARD_FALLBACK,
+        imageAlt: `${row.full_name || 'Chef'} featured kitchen preview`,
+        avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
         rating: 0,
         reviewCount: 0,
         distance: 0,
@@ -582,13 +586,14 @@ export default function NearbyPage() {
         isOpen: true,
         tags: row.location ? [row.location, 'Local Chef'] : ['Local Chef'],
         popularDish: {
-          label: 'Profile',
-          name: 'View menu',
-          image: row.avatar_url || '/assets/images/no_image.png',
-          imageAlt: `${row.full_name || 'Chef'} menu preview`,
+          label: 'Chef Preview',
+          name: "See what's cooking",
+          image: VENDOR_DISH_FALLBACK,
+          imageAlt: `${row.full_name || 'Chef'} featured dish preview`,
         },
         previewImages: [
-          { src: row.avatar_url || '/assets/images/no_image.png', alt: `${row.full_name || 'Chef'} preview` },
+          { src: VENDOR_CARD_FALLBACK, alt: `${row.full_name || 'Chef'} kitchen preview` },
+          { src: VENDOR_DISH_FALLBACK, alt: `${row.full_name || 'Chef'} featured dish preview` },
         ],
       })) || [];
 
