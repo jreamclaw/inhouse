@@ -1949,7 +1949,8 @@ function VendorProfileContent() {
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [editingCartItem, setEditingCartItem] = useState<CartItemCustomization | null>(null);
   const [showCart, setShowCart] = useState(false);
-  const [activeTab, setActiveTab] = useState<'menu' | 'orders' | 'reviews'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'posts' | 'orders' | 'reviews'>('menu');
+  const [vendorPosts, setVendorPosts] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
@@ -2102,6 +2103,27 @@ function VendorProfileContent() {
     if (!menuItem) return;
     setShowCart(false);
     openCustomization(menuItem, cartItem);
+  };
+
+  const loadVendorPosts = async () => {
+    try {
+      const isUuid = /^[0-9a-fA-F-]{36}$/.test(vendorId);
+      if (!isUuid) {
+        setVendorPosts([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, caption, media_url, media_type, created_at, location, likes_count, comments_count')
+        .eq('user_id', vendorId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setVendorPosts(data || []);
+    } catch {
+      setVendorPosts([]);
+    }
   };
 
   const loadFollowState = async () => {
@@ -2324,7 +2346,39 @@ function VendorProfileContent() {
           </div>
         </div>
 
-        {activeTab === 'orders' ? (
+        {activeTab === 'posts' ? (
+          <div className="px-4 py-4 space-y-4">
+            {vendorPosts.length === 0 ? (
+              <div className="py-12 text-center">
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                  <Share2 className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-sm font-700 text-foreground mb-1">No posts yet</h3>
+                <p className="text-sm text-muted-foreground">This chef has not posted anything yet.</p>
+              </div>
+            ) : (
+              vendorPosts.map((post) => (
+                <article key={post.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="aspect-square bg-muted">
+                    {post.media_type === 'video' ? (
+                      <video src={post.media_url} className="w-full h-full object-cover" controls />
+                    ) : (
+                      <img src={post.media_url} alt={post.caption || 'Chef post'} className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{post.caption || 'No caption'}</p>
+                    <div className="mt-2 text-xs text-muted-foreground flex items-center gap-3">
+                      <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                      <span>{post.likes_count || 0} likes</span>
+                      <span>{post.comments_count || 0} comments</span>
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        ) : activeTab === 'orders' ? (
           <OrdersTab />
         ) : activeTab === 'reviews' ? (
           vendor.reviewCount > 0 ? (
