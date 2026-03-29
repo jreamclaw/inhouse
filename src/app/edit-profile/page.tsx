@@ -139,7 +139,7 @@ export default function EditProfilePage() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto xl:max-w-screen-lg xl:mx-0 xl:px-6 2xl:px-10">
+      <div className="max-w-2xl mx-auto xl:max-w-screen-lg xl:mx-0 xl:px-6 2xl:px-10 min-h-[calc(100vh-3.5rem)] pb-[max(2.5rem,env(safe-area-inset-bottom))]">
         {/* Header */}
         <div className="sticky top-14 z-30 bg-card/95 backdrop-blur-md border-b border-border/60 px-4 py-3 flex items-center justify-between">
           <button
@@ -246,7 +246,7 @@ export default function EditProfilePage() {
         </div>
 
         {/* Form Fields */}
-        <div className="px-4 pb-10 space-y-5">
+        <div className="px-4 pb-[max(7rem,calc(5rem+env(safe-area-inset-bottom)))] space-y-5">
           {/* Full Name */}
           <div>
             <label className="flex items-center gap-2 text-xs font-600 text-muted-foreground uppercase tracking-wide mb-2">

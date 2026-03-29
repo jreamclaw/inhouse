@@ -29,59 +29,22 @@ import { toast } from 'sonner';
 import ReviewModal from './ReviewModal';
 import { CheckoutCartSkeleton, CheckoutDeliverySkeleton, CheckoutPaymentSkeleton } from '@/components/ui/SkeletonLoaders';
 
-// Backend integration: GET /api/cart — fetch current user's cart
-const INITIAL_CART = [
-{
-  id: 'm1',
-  mealId: 'meal-truffle-tag',
-  title: 'Truffle Tagliatelle',
-  description: 'Handmade tagliatelle with black truffle cream sauce',
-  price: 38,
-  qty: 1,
-  image: "https://images.unsplash.com/photo-1547036286-4f2fc1fb7c11",
-  imageAlt: 'Handmade tagliatelle pasta with truffle cream sauce in a bowl',
+type CartItem = {
+  id: string;
+  mealId: string;
+  title: string;
+  description: string;
+  price: number;
+  qty: number;
+  image: string;
+  imageAlt: string;
   chef: {
-    id: 'chef-marco',
-    name: 'Marco Valentini',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=face',
-    rating: 4.9
-  }
-},
-{
-  id: 'm3',
-  mealId: 'meal-burrata',
-  title: 'Burrata & Heirloom Tomato',
-  description: 'Creamy burrata with Sonoma heirloom tomatoes and basil oil',
-  price: 22,
-  qty: 1,
-  image: "https://img.rocket.new/generatedImages/rocket_gen_img_11b9f9a5e-1772072806488.png",
-  imageAlt: 'Fresh burrata with colorful heirloom tomatoes and basil',
-  chef: {
-    id: 'chef-marco',
-    name: 'Marco Valentini',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=face',
-    rating: 4.9
-  }
-},
-{
-  id: 'm5',
-  mealId: 'meal-tiramisu',
-  title: 'Tiramisu Classico',
-  description: 'Traditional Venetian tiramisu with Illy espresso',
-  price: 16,
-  qty: 2,
-  image: "https://img.rocket.new/generatedImages/rocket_gen_img_12d6730d9-1773176609800.png",
-  imageAlt: 'Classic tiramisu dessert with cocoa powder dusting',
-  chef: {
-    id: 'chef-marco',
-    name: 'Marco Valentini',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=face',
-    rating: 4.9
-  }
-}];
-
-
-type CartItem = typeof INITIAL_CART[0];
+    id: string;
+    name: string;
+    avatar: string;
+    rating: number;
+  };
+};
 
 type PersistedCheckoutCartItem = {
   id: string;
@@ -146,7 +109,7 @@ export default function CheckoutFlow() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1); // 1=Cart, 2=Delivery, 3=Payment, 4=Confirmation
   const [cart, setCart] = useState<CartItem[]>([]);
   const [fulfillment, setFulfillment] = useState<'pickup' | 'delivery'>('delivery');
-  const [selectedSavedAddress, setSelectedSavedAddress] = useState<string>('home');
+  const [selectedSavedAddress, setSelectedSavedAddress] = useState<string>('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isStepTransitioning, setIsStepTransitioning] = useState(false);
   const [orderId, setOrderId] = useState(`INH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
