@@ -59,10 +59,10 @@ export default function LocationHeader({ mode, onModeChange, location, onLocatio
           <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${showLocationPicker ? 'rotate-180' : ''}`} />
         </button>
 
-        {mode === 'local' && (
+        {mode === 'local' && location !== 'Set your location' && (
           <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-500">
             <Navigation className="w-3 h-3" />
-            <span>Live location</span>
+            <span>Saved location</span>
           </div>
         )}
       </div>

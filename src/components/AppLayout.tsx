@@ -30,7 +30,7 @@ export default function AppLayout({ children, currentUser }: AppLayoutProps) {
   const pathname = usePathname();
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [notifCount] = useState(3);
+  const notifCount = 0;
   const { profile, user } = useAuth();
 
   const avatarUrl = profile?.avatar_url || null;
