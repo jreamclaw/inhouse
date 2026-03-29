@@ -63,7 +63,7 @@ export default function HomeFeedPage() {
             onLocationChange={handleLocationChange}
           />
           <StoriesBar />
-          <PostFeed mode={mode} location={location} />
+          <PostFeed mode={mode} />
         </div>
         {/* Right Sidebar — desktop only */}
         <aside className="hidden xl:block w-80 shrink-0">

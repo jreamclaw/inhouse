@@ -713,10 +713,9 @@ function CommentInput({ comment, setComment, handleComment }: CommentInputProps)
 
 interface PostFeedProps {
   mode: 'local' | 'explore';
-  location: string;
 }
 
-export default function PostFeed({ mode, location }: PostFeedProps) {
+export default function PostFeed({ mode }: PostFeedProps) {
   const [dbPosts, setDbPosts] = useState<MockPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [followedUserIds, setFollowedUserIds] = useState<Set<string>>(new Set());
@@ -823,15 +822,8 @@ export default function PostFeed({ mode, location }: PostFeedProps) {
     }
   };
 
-  const normalizedLocation = location.trim().toLowerCase();
-  const hasChosenLocation = normalizedLocation.length > 0 && normalizedLocation !== 'set your location';
-  const localPosts = hasChosenLocation
-    ? dbPosts.filter((p) => (p.location || '').toLowerCase().includes(normalizedLocation))
-    : [];
-  const explorePosts = dbPosts.filter((p) => {
-    const postLocation = (p.location || '').toLowerCase();
-    return !hasChosenLocation || !postLocation.includes(normalizedLocation);
-  });
+  const localPosts = dbPosts;
+  const explorePosts = dbPosts.filter((p) => !p.isLocal);
 
   // Filter posts based on mode
   const modePosts = mode === 'local' ? localPosts : explorePosts;
@@ -950,7 +942,7 @@ export default function PostFeed({ mode, location }: PostFeedProps) {
               </div>
               <h3 className="text-base font-700 text-foreground mb-2">Your local feed is empty</h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-                No real posts match this location yet. Browse nearby chefs or explore other areas.
+                No real posts yet. Browse nearby chefs and come back once posts are live.
               </p>
               <div className="w-full max-w-xs space-y-2.5">
                 <Link href="/nearby" className="block">
