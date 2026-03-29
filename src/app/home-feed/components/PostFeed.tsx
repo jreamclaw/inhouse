@@ -921,7 +921,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
                 <ChefHat className="w-10 h-10 text-primary/60" />
               </div>
               <h3 className="text-base font-700 text-foreground mb-2">No posts from people you follow</h3>
-              <p className="text-sm text-muted-foreground mb-4">The chefs you follow haven't posted in this area yet.</p>
+              <p className="text-sm text-muted-foreground mb-4">The chefs you follow haven't posted in this location yet.</p>
               <button
                 onClick={() => setFeedFilter('all')}
                 className="flex items-center gap-2 bg-primary text-white text-sm font-600 px-5 py-2.5 rounded-full hover:bg-primary/90 active:scale-95 transition-all duration-150"
@@ -942,7 +942,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
               </div>
               <h3 className="text-base font-700 text-foreground mb-2">Your local feed is empty</h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-                No real posts yet. Browse nearby chefs and come back once posts are live.
+                No real posts yet. Try another city or browse explore while chefs in this area start posting.
               </p>
               <div className="w-full max-w-xs space-y-2.5">
                 <Link href="/nearby" className="block">
