@@ -140,7 +140,7 @@ export default function VendorOnboardingPage() {
           disabled={saving}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          Skip for now
+          Finish later
         </button>
       </div>
 
