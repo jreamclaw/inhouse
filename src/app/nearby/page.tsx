@@ -573,6 +573,8 @@ export default function NearbyPage() {
       const hasChosenLocation = normalizedUserLocation.length > 0 && normalizedUserLocation !== 'set your location';
       const mapped: Vendor[] = ((data as DbVendorRow[] | null) ?? [])
         .filter((row) => {
+          const hasEnoughProfileData = Boolean(row.full_name && row.location && row.avatar_url);
+          if (!hasEnoughProfileData) return false;
           if (!hasChosenLocation) return true;
           const normalizedRowLocation = (row.location || '').toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
           if (!normalizedRowLocation) return false;
@@ -595,9 +597,9 @@ export default function NearbyPage() {
         .map((row, index) => ({
         id: row.id,
         name: row.full_name || 'Chef',
-        cuisine: row.bio?.split('.')[0] || 'Local chef',
+        cuisine: row.bio?.split('.')[0] || 'Chef',
         category: 'all',
-        image: VENDOR_CARD_FALLBACK,
+        image: row.avatar_url || VENDOR_AVATAR_FALLBACK,
         imageAlt: `${row.full_name || 'Chef'} featured kitchen preview`,
         avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
         rating: 0,
@@ -610,13 +612,12 @@ export default function NearbyPage() {
         tags: row.location ? [row.location, 'Local Chef'] : ['Local Chef'],
         popularDish: {
           label: 'Chef Preview',
-          name: "See what's cooking",
-          image: VENDOR_DISH_FALLBACK,
+          name: row.full_name || 'Chef',
+          image: row.avatar_url || VENDOR_AVATAR_FALLBACK,
           imageAlt: `${row.full_name || 'Chef'} featured dish preview`,
         },
         previewImages: [
-          { src: VENDOR_CARD_FALLBACK, alt: `${row.full_name || 'Chef'} kitchen preview` },
-          { src: VENDOR_DISH_FALLBACK, alt: `${row.full_name || 'Chef'} featured dish preview` },
+          { src: row.avatar_url || VENDOR_AVATAR_FALLBACK, alt: `${row.full_name || 'Chef'} profile preview` },
         ],
       }));
 
