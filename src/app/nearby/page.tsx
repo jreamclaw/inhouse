@@ -576,7 +576,21 @@ export default function NearbyPage() {
           if (!hasChosenLocation) return true;
           const normalizedRowLocation = (row.location || '').toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
           if (!normalizedRowLocation) return false;
-          return normalizedRowLocation.includes(normalizedUserLocation) || normalizedUserLocation.includes(normalizedRowLocation);
+
+          const wantedParts = normalizedUserLocation.split(',').map((part) => part.trim()).filter(Boolean);
+          const rowParts = normalizedRowLocation.split(',').map((part) => part.trim()).filter(Boolean);
+
+          if (wantedParts.length === 0 || rowParts.length === 0) return false;
+
+          const wantedCity = wantedParts[0] || '';
+          const wantedState = wantedParts[1] || '';
+          const rowCity = rowParts[0] || '';
+          const rowState = rowParts[1] || '';
+
+          const cityMatches = wantedCity.length > 0 && rowCity === wantedCity;
+          const stateMatches = wantedState.length === 0 || rowState === wantedState;
+
+          return cityMatches && stateMatches;
         })
         .map((row, index) => ({
         id: row.id,
@@ -658,7 +672,7 @@ export default function NearbyPage() {
     return 0;
   });
 
-  const openCount = vendors.filter((v) => v.isOpen).length;
+  const openCount = filteredVendors.filter((v) => v.isOpen).length;
   const activeSortLabel = SORT_OPTIONS.find((s) => s.id === sortBy);
 
   return (
