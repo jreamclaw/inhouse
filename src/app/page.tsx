@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AppLogo from '@/components/AppLogo';
+import AppLogo from '@/components/ui/AppLogo';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function RootPage() {
@@ -71,3 +71,4 @@ export default function RootPage() {
     </main>
   );
 }
+
