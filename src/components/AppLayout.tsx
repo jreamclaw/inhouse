@@ -144,10 +144,7 @@ export default function AppLayout({ children, currentUser }: AppLayoutProps) {
                     size={18}
                     variant={isActive ? 'solid' : 'outline'}
                     className={isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'} />
-                  <span className="tracking-snug">{item.label}</span>
-                  {item.label === 'Orders' &&
-                  <span className="ml-auto bg-primary text-white text-[9px] font-700 px-1.5 py-0.5 rounded-full">2</span>
-                  }
+                  <span className="tracking-snug">{item.label}</span>
                 </Link>);
             })}
           </nav>
@@ -210,10 +207,7 @@ export default function AppLayout({ children, currentUser }: AppLayoutProps) {
                     name={item.icon as any}
                     size={20}
                     variant={isActive ? 'solid' : 'outline'}
-                    className={isActive ? 'text-primary' : 'text-muted-foreground'} />
-                  {item.label === 'Orders' &&
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary rounded-full text-[8px] font-700 text-white flex items-center justify-center">2</span>
-                  }
+                    className={isActive ? 'text-primary' : 'text-muted-foreground'} />
                 </div>
                 <span className={`text-[10px] font-500 tracking-tight ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
                   {item.label}
