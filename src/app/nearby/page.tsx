@@ -569,7 +569,16 @@ export default function NearbyPage() {
 
       if (error) throw error;
 
-      const mapped: Vendor[] = (data as DbVendorRow[] | null)?.map((row) => ({
+      const normalizedUserLocation = (userLocation || '').toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
+      const hasChosenLocation = normalizedUserLocation.length > 0 && normalizedUserLocation !== 'set your location';
+      const mapped: Vendor[] = ((data as DbVendorRow[] | null) ?? [])
+        .filter((row) => {
+          if (!hasChosenLocation) return true;
+          const normalizedRowLocation = (row.location || '').toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
+          if (!normalizedRowLocation) return false;
+          return normalizedRowLocation.includes(normalizedUserLocation) || normalizedUserLocation.includes(normalizedRowLocation);
+        })
+        .map((row, index) => ({
         id: row.id,
         name: row.full_name || 'Chef',
         cuisine: row.bio?.split('.')[0] || 'Local chef',
@@ -579,7 +588,7 @@ export default function NearbyPage() {
         avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
         rating: 0,
         reviewCount: 0,
-        distance: 0,
+        distance: index + 1,
         deliveryTime: 'Details unavailable',
         deliveryFee: 0,
         priceRange: '$$',
@@ -595,7 +604,7 @@ export default function NearbyPage() {
           { src: VENDOR_CARD_FALLBACK, alt: `${row.full_name || 'Chef'} kitchen preview` },
           { src: VENDOR_DISH_FALLBACK, alt: `${row.full_name || 'Chef'} featured dish preview` },
         ],
-      })) || [];
+      }));
 
       setVendors(mapped);
     } catch {
