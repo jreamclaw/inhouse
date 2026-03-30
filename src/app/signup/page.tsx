@@ -91,7 +91,7 @@ export default function SignUpPage() {
     setOauthLoading(provider);
     try {
       // Use NEXT_PUBLIC_SITE_URL env var so redirect works on both preview and published domains
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const siteUrl = window.location.origin;
       const next = 'role-based';
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
