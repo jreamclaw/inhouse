@@ -87,7 +87,7 @@ export default function LoginPage() {
     setError('');
     setOauthLoading(provider);
     try {
-      const siteUrl = window.location.origin;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
