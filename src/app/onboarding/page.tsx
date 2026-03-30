@@ -43,16 +43,6 @@ export default function OnboardingPage() {
     }
   }, [user, profile?.role, step]);
 
-  useEffect(() => {
-    if (step === 'location' && locationGranted && !saving && !autoFinishing) {
-      setAutoFinishing(true);
-      const timer = setTimeout(() => {
-        handleFinish().finally(() => setAutoFinishing(false));
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [step, locationGranted, saving, autoFinishing]);
-
   const handleRequestLocation = () => {
     setLocationLoading(true);
     if (!navigator.geolocation) {
@@ -262,7 +252,7 @@ export default function OnboardingPage() {
         {locationGranted ? (
           <div className="w-full mb-4 flex items-center justify-center gap-2 bg-emerald-900/40 border border-emerald-500/30 rounded-2xl py-4 text-emerald-400 font-semibold">
             <CheckCircle className="w-5 h-5" />
-            Location access granted! Finishing setup...
+            Location access granted!
           </div>
         ) : (
           <button
@@ -283,10 +273,10 @@ export default function OnboardingPage() {
 
         <button
           onClick={handleFinish}
-          disabled={saving || autoFinishing}
+          disabled={saving}
           className="w-full h-14 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-base border border-white/10"
         >
-          {saving || autoFinishing ? (
+          {saving ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
@@ -310,4 +300,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
 
