@@ -344,6 +344,12 @@ export default function ChefMenuPage() {
   const [savingDelivery, setSavingDelivery] = useState(false);
   const [deliverySaved, setDeliverySaved] = useState(false);
   const [orderStats, setOrderStats] = useState(SAMPLE_VENDOR_STATS);
+  const [stripeStatus, setStripeStatus] = useState({
+    connected: false,
+    onboardingComplete: false,
+    chargesEnabled: false,
+    payoutsEnabled: false,
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -355,7 +361,7 @@ export default function ChefMenuPage() {
     try {
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('role, delivery_enabled, delivery_fee')
+.select('role, delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled')
         .eq('id', user.id)
         .single();
 
