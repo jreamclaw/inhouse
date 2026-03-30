@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/home-feed';
-  const role = searchParams.get('role');
+  const requestedRole = searchParams.get('role');
 
   if (code) {
     const supabase = await createClient();
@@ -63,6 +63,10 @@ export async function GET(request: NextRequest) {
 
     if (!error && authData?.user) {
       const userId = authData.user.id;
+      const metadataRole = authData.user.user_metadata?.role;
+      const role = (requestedRole === 'chef' || requestedRole === 'customer')
+        ? requestedRole
+        : (metadataRole === 'chef' || metadataRole === 'customer' ? metadataRole : null);
       console.log('[Auth Callback] Session exchanged successfully for user:', userId);
 
       // Fetch the user profile
