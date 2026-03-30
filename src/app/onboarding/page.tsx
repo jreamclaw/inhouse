@@ -33,6 +33,7 @@ export default function OnboardingPage() {
   const [locationGranted, setLocationGranted] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [autoFinishing, setAutoFinishing] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -309,3 +310,4 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
