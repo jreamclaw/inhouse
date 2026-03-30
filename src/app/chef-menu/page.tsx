@@ -356,6 +356,19 @@ export default function ChefMenuPage() {
     checkChefAndLoadMeals();
   }, [user]);
 
+  const handleStripeConnect = async () => {
+    try {
+      const response = await fetch('/api/stripe/connect', { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok || !payload?.url) {
+        throw new Error(payload?.error || 'Unable to start Stripe setup.');
+      }
+      window.location.href = payload.url;
+    } catch (err: any) {
+      toast.error(err?.message || 'Unable to start Stripe setup right now.');
+    }
+  };
+
   const checkChefAndLoadMeals = async () => {
     if (!user) return;
     try {
@@ -1032,3 +1045,4 @@ export default function ChefMenuPage() {
     </AppLayout>
   );
 }
+
