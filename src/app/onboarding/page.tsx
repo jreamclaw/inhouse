@@ -55,11 +55,11 @@ export default function OnboardingPage() {
         setLocationGranted(true);
         try {
           const coordsLabel = `${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)}`;
-          if (user) {
+          if (resolvedUserId) {
             await supabase
               .from('user_profiles')
               .update({ location: coordsLabel, updated_at: new Date().toISOString() })
-              .eq('id', user.id);
+              .eq('id', resolvedUserId);
           }
         } catch {
           // location text update is best-effort; permission state still matters most
@@ -94,7 +94,7 @@ export default function OnboardingPage() {
           location_permission_granted: locationGranted,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq('id', resolvedUserId);
       if (updateError) throw updateError;
 
       if (existingRole === 'chef') {
