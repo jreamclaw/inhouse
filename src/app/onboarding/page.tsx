@@ -232,6 +232,7 @@ export default function OnboardingPage() {
         </div>
 
         <h1 className="text-3xl font-bold text-white mb-3">Find chefs near you</h1>
+        <p className="text-xs text-amber-300 mb-3">Chef accounts continue to vendor setup directly.</p>
         <p className="text-white/60 text-base leading-relaxed mb-8">
           Allow InHouse to access your location to show you home chefs and fresh meals available in your neighborhood.
         </p>
