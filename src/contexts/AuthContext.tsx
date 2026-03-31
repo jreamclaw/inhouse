@@ -208,16 +208,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     if (role === 'chef') {
-    if (!vendor_onboarding_complete)
-    {
-    console.log('[Auth]
-    getPostLoginRoute: chef vendor
-    onboarding incomplete -> /vendor-
-    onboarding');
-    return '/vendor-onboarding';
-    }
-    console.log('[Auth] getPostLoginRoute: chef done -> /chef-menu');
-    return '/chef-menu';
+      if (!vendor_onboarding_complete) {
+        console.log('[Auth] getPostLoginRoute: chef vendor onboarding incomplete -> /vendor-onboarding');
+        return '/vendor-onboarding';
+      }
+      console.log('[Auth] getPostLoginRoute: chef done -> /chef-menu');
+      return '/chef-menu';
     }
 
     console.log('[Auth] getPostLoginRoute: fallback → /home-feed');
@@ -241,3 +237,4 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+

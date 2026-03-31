@@ -35,13 +35,12 @@ function resolveRoute(profile: {
   }
 
   if (role === 'chef') {
-  if (!vendor_onboarding_complete)
-  {
-  console.log('[Auth Callback] Chef -> /vendor-onboarding');
-  return '/vendor-onboarding';
-  }
-  console.log('[Auth Callback] Chef -> /chef-menu');
-  return '/chef-menu';
+    if (!vendor_onboarding_complete) {
+      console.log('[Auth Callback] Chef -> /vendor-onboarding');
+      return '/vendor-onboarding';
+    }
+    console.log('[Auth Callback] Chef -> /chef-menu');
+    return '/chef-menu';
   }
 
   console.log('[Auth Callback] Fallback → /home-feed');
@@ -123,3 +122,4 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(`${origin}/login`);
 }
+
