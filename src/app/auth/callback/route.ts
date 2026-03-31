@@ -1,11 +1,12 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { authDebug } from '@/lib/auth/debug';
 import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
 import { NextResponse } from 'next/server';
 import { type NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin, pathname } = new URL(request.url);
+  const url = new URL(request.url);
+  const { searchParams, origin, pathname } = url;
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/home-feed';
   const requestedRole = searchParams.get('role');
@@ -22,117 +23,60 @@ export async function GET(request: NextRequest) {
     hasCode: !!code,
   });
 
-  if (code) {
-    const supabase = await createClient();
-    const { data: authData, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (!code) {
+    authDebug('auth-callback.exit-no-code', {
+      pathname,
+      sessionExists: false,
+      userId: null,
+      profileRole: null,
+      onboardingComplete: null,
+      vendorOnboardingComplete: null,
+      redirectTarget: '/login',
+      reason: 'missing-code',
+    });
+    return NextResponse.redirect(`${origin}/login`);
+  }
 
-    if (!error && authData?.user) {
-      const userId = authData.user.id;
-      const metadataRole = authData.user.user_metadata?.role;
-      const role = (requestedRole === 'chef' || requestedRole === 'customer')
-        ? requestedRole
-        : (metadataRole === 'chef' || metadataRole === 'customer' ? metadataRole : null);
-
-      authDebug('auth-callback.session-exchanged', {
-        pathname,
-        sessionExists: true,
-        userId,
-        profileRole: role,
-        onboardingComplete: null,
-        vendorOnboardingComplete: null,
-        redirectTarget: next,
-      });
-
-      let { data: profile } = await supabase
-        .from('user_profiles')
-        .select('role, onboarding_complete, vendor_onboarding_complete')
-        .eq('id', userId)
-        .single();
-
-      authDebug('auth-callback.profile-fetch', {
-        pathname,
-        sessionExists: true,
-        userId,
-        profileRole: profile?.role ?? null,
-        onboardingComplete: profile?.onboarding_complete ?? null,
-        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
-        redirectTarget: null,
-        foundProfile: !!profile,
-      });
-
-      if (!profile) {
-        const userEmail = authData.user.email ?? '';
-        const userMeta = authData.user.user_metadata ?? {};
-        const { data: newProfile } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: userId,
-            email: userEmail,
-            full_name: userMeta.full_name || userMeta.name || userEmail.split('@')[0],
-            avatar_url: userMeta.avatar_url || userMeta.picture || '',
-            username: userMeta.username || userEmail.split('@')[0],
-            role: (role === 'chef' || role === 'customer') ? role : null,
-            onboarding_complete: false,
-            vendor_onboarding_complete: false,
-          })
-          .select('role, onboarding_complete, vendor_onboarding_complete')
-          .single();
-        profile = newProfile;
-
-        authDebug('auth-callback.profile-created', {
-          pathname,
-          sessionExists: true,
-          userId,
-          profileRole: profile?.role ?? null,
-          onboardingComplete: profile?.onboarding_complete ?? null,
-          vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
-          redirectTarget: null,
-        });
-      }
-
-      if (role && (role === 'chef' || role === 'customer') && profile?.role !== role) {
-        await supabase.from('user_profiles').update({ role }).eq('id', userId);
-        if (profile) profile = { ...profile, role };
-
-        authDebug('auth-callback.profile-role-updated', {
-          pathname,
-          sessionExists: true,
-          userId,
-          profileRole: role,
-          onboardingComplete: profile?.onboarding_complete ?? null,
-          vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
-          redirectTarget: null,
-        });
-      }
-
-      if (next === 'role-based') {
-        const { destination, reason } = resolvePostLoginRoute(profile);
-        authDebug('auth-callback.final-redirect', {
-          pathname,
-          sessionExists: true,
-          userId,
-          profileRole: profile?.role ?? null,
-          onboardingComplete: profile?.onboarding_complete ?? null,
-          vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
-          redirectTarget: destination,
-          reason,
-        });
-        return NextResponse.redirect(`${origin}${destination}`);
-      }
-
-      authDebug('auth-callback.final-redirect', {
-        pathname,
-        sessionExists: true,
-        userId,
-        profileRole: profile?.role ?? null,
-        onboardingComplete: profile?.onboarding_complete ?? null,
-        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
-        redirectTarget: next,
-        reason: 'explicit-next',
-      });
-      return NextResponse.redirect(`${origin}${next}`);
+  const response = NextResponse.next({ request });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, {
+              ...options,
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production',
+              httpOnly: true,
+            });
+          });
+        },
+      },
     }
+  );
 
+  const { data: authData, error } = await supabase.auth.exchangeCodeForSession(code);
+  const exchangedSession = authData?.session ?? null;
+  const exchangedUser = authData?.user ?? exchangedSession?.user ?? null;
+
+  authDebug('callback.session-result', {
+    pathname,
+    sessionExists: !!exchangedSession,
+    userId: exchangedUser?.id ?? null,
+    profileRole: null,
+    onboardingComplete: null,
+    vendorOnboardingComplete: null,
+    redirectTarget: null,
+    reason: error?.message ?? null,
+  });
+
+  if (error || !exchangedUser) {
     authDebug('auth-callback.code-exchange-failed', {
       pathname,
       sessionExists: false,
@@ -141,19 +85,107 @@ export async function GET(request: NextRequest) {
       onboardingComplete: null,
       vendorOnboardingComplete: null,
       redirectTarget: '/login',
-      reason: error?.message ?? 'unknown',
+      reason: error?.message ?? 'missing-session-after-exchange',
+    });
+    return NextResponse.redirect(`${origin}/login`);
+  }
+
+  const userId = exchangedUser.id;
+  const metadataRole = exchangedUser.user_metadata?.role;
+  const role = (requestedRole === 'chef' || requestedRole === 'customer')
+    ? requestedRole
+    : (metadataRole === 'chef' || metadataRole === 'customer' ? metadataRole : null);
+
+  authDebug('auth-callback.session-exchanged', {
+    pathname,
+    sessionExists: !!exchangedSession,
+    userId,
+    profileRole: role,
+    onboardingComplete: null,
+    vendorOnboardingComplete: null,
+    redirectTarget: next,
+  });
+
+  let { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role, onboarding_complete, vendor_onboarding_complete')
+    .eq('id', userId)
+    .single();
+
+  authDebug('auth-callback.profile-fetch', {
+    pathname,
+    sessionExists: !!exchangedSession,
+    userId,
+    profileRole: profile?.role ?? null,
+    onboardingComplete: profile?.onboarding_complete ?? null,
+    vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+    redirectTarget: null,
+    foundProfile: !!profile,
+  });
+
+  if (!profile) {
+    const userEmail = exchangedUser.email ?? '';
+    const userMeta = exchangedUser.user_metadata ?? {};
+    const { data: newProfile } = await supabase
+      .from('user_profiles')
+      .insert({
+        id: userId,
+        email: userEmail,
+        full_name: userMeta.full_name || userMeta.name || userEmail.split('@')[0],
+        avatar_url: userMeta.avatar_url || userMeta.picture || '',
+        username: userMeta.username || userEmail.split('@')[0],
+        role: (role === 'chef' || role === 'customer') ? role : null,
+        onboarding_complete: false,
+        vendor_onboarding_complete: false,
+      })
+      .select('role, onboarding_complete, vendor_onboarding_complete')
+      .single();
+    profile = newProfile;
+
+    authDebug('auth-callback.profile-created', {
+      pathname,
+      sessionExists: !!exchangedSession,
+      userId,
+      profileRole: profile?.role ?? null,
+      onboardingComplete: profile?.onboarding_complete ?? null,
+      vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+      redirectTarget: null,
     });
   }
 
-  authDebug('auth-callback.exit-no-code', {
+  if (role && (role === 'chef' || role === 'customer') && profile?.role !== role) {
+    await supabase.from('user_profiles').update({ role }).eq('id', userId);
+    if (profile) profile = { ...profile, role };
+
+    authDebug('auth-callback.profile-role-updated', {
+      pathname,
+      sessionExists: !!exchangedSession,
+      userId,
+      profileRole: role,
+      onboardingComplete: profile?.onboarding_complete ?? null,
+      vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+      redirectTarget: null,
+    });
+  }
+
+  const { destination, reason } = next === 'role-based'
+    ? resolvePostLoginRoute(profile)
+    : { destination: next, reason: 'explicit-next' };
+
+  authDebug('auth-callback.final-redirect', {
     pathname,
-    sessionExists: false,
-    userId: null,
-    profileRole: null,
-    onboardingComplete: null,
-    vendorOnboardingComplete: null,
-    redirectTarget: '/login',
-    reason: 'missing-code',
+    sessionExists: !!exchangedSession,
+    userId,
+    profileRole: profile?.role ?? null,
+    onboardingComplete: profile?.onboarding_complete ?? null,
+    vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+    redirectTarget: destination,
+    reason,
   });
-  return NextResponse.redirect(`${origin}/login`);
+
+  const redirectResponse = NextResponse.redirect(`${origin}${destination}`);
+  response.cookies.getAll().forEach((cookie) => {
+    redirectResponse.cookies.set(cookie);
+  });
+  return redirectResponse;
 }
