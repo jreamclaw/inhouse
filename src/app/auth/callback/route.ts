@@ -35,16 +35,13 @@ function resolveRoute(profile: {
   }
 
   if (role === 'chef') {
-    if (!onboarding_complete) {
-      console.log('[Auth Callback] Chef onboarding incomplete → /onboarding');
-      return '/onboarding';
-    }
-    if (!vendor_onboarding_complete) {
-      console.log('[Auth Callback] Chef vendor onboarding incomplete → /vendor-onboarding');
-      return '/vendor-onboarding';
-    }
-    console.log('[Auth Callback] Chef fully onboarded → /chef-menu');
-    return '/chef-menu';
+  if (!vendor_onboarding_complete)
+  {
+  console.log('[Auth Callback] Chef -> /vendor-onboarding');
+  return '/vendor-onboarding';
+  }
+  console.log('[Auth Callback] Chef -> /chef-menu');
+  return '/chef-menu';
   }
 
   console.log('[Auth Callback] Fallback → /home-feed');
