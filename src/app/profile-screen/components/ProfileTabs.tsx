@@ -155,7 +155,7 @@ export default function ProfileTabs() {
                 <span className="text-sm font-medium text-foreground">Orders Received</span>
               </button>
             </Link>
-            <Link href="/vendor-onboarding">
+            <Link href="/edit-profile">
               <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-violet-500/5 hover:bg-violet-500/10 border border-violet-500/20 transition-colors text-left">
                 <Settings className="w-4 h-4 text-violet-500 flex-shrink-0" />
                 <span className="text-sm font-medium text-foreground">Edit Vendor Profile</span>
