@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { authDebug } from '@/lib/auth/debug';
+import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
 
 export interface UserProfile {
   id: string;
@@ -41,20 +43,55 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchProfile = async (userId: string) => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : 'unknown';
+      authDebug('auth-context.profile-fetch.start', {
+        pathname,
+        sessionExists: !!session,
+        userId,
+        profileRole: profile?.role ?? null,
+        onboardingComplete: profile?.onboarding_complete ?? null,
+        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+        redirectTarget: null,
+      });
+      const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).single();
       if (!error && data) {
         setProfile(data as UserProfile);
+        authDebug('auth-context.profile-fetch.success', {
+          pathname,
+          sessionExists: !!session,
+          userId,
+          profileRole: data.role ?? null,
+          onboardingComplete: data.onboarding_complete ?? null,
+          vendorOnboardingComplete: data.vendor_onboarding_complete ?? null,
+          redirectTarget: null,
+        });
         return data as UserProfile;
-      } else {
-        setProfile(null);
-        return null;
       }
-    } catch {
+
       setProfile(null);
+      authDebug('auth-context.profile-fetch.miss', {
+        pathname,
+        sessionExists: !!session,
+        userId,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+        reason: error?.message ?? 'missing-profile',
+      });
+      return null;
+    } catch (error: any) {
+      setProfile(null);
+      authDebug('auth-context.profile-fetch.error', {
+        pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+        sessionExists: !!session,
+        userId,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+        reason: error?.message ?? 'unknown',
+      });
       return null;
     }
   };
@@ -62,9 +99,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const supabase = createClient();
 
-    // Initialize: get session first (fast, local), then verify user server-side
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      console.log('[Auth] Initial session check:', initialSession ? 'session found' : 'no session');
+      authDebug('auth-context.session-init', {
+        pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+        sessionExists: !!initialSession,
+        userId: initialSession?.user?.id ?? null,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+      });
       if (initialSession?.user) {
         setSession(initialSession);
         setUser(initialSession.user);
@@ -76,11 +120,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    // Listen for auth state changes — use the session/user from the event directly
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange((event, newSession) => {
-      console.log('[Auth] onAuthStateChange event:', event, 'user:', newSession?.user?.id ?? 'none');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      authDebug('auth-context.auth-state-change', {
+        pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+        sessionExists: !!newSession,
+        userId: newSession?.user?.id ?? null,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+        reason: event,
+      });
       setSession(newSession);
 
       if (newSession?.user) {
@@ -96,7 +146,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Email/Password Sign Up — accepts role in metadata
   const signUp = async (email: string, password: string, metadata: any = {}) => {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -115,24 +164,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return data;
   };
 
-  // Email/Password Sign In
   const signIn = async (email: string, password: string) => {
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    console.log('[Auth] signIn success, user:', data.session?.user?.id);
-    // Immediately update context state so it's ready before redirect
     if (data.session?.user) {
       setSession(data.session);
       setUser(data.session.user);
+      authDebug('auth-context.sign-in.success', {
+        pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+        sessionExists: true,
+        userId: data.session.user.id,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+      });
     }
     return data;
   };
 
-  // Sign Out
   const signOut = async () => {
     const supabase = createClient();
     const { error } = await supabase.auth.signOut();
@@ -142,7 +193,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setProfile(null);
   };
 
-  // Get Current User
   const getCurrentUser = async () => {
     const supabase = createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -150,20 +200,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return user;
   };
 
-  // Check if Email is Verified
-  const isEmailVerified = () => {
-    return user?.email_confirmed_at !== null;
-  };
+  const isEmailVerified = () => user?.email_confirmed_at !== null;
 
-  // Get User Profile from Database
   const getUserProfile = async () => {
     if (!user) return null;
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    const { data, error } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
     if (error) throw error;
     return data;
   };
@@ -172,69 +214,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (user) await fetchProfile(user.id);
   };
 
-  /**
-   * Determine the correct post-login route based on user profile state.
-   * Routing rules:
-   *  - No role set              → /role-selection
-   *  - customer, onboarding incomplete → /onboarding
-   *  - chef, onboarding incomplete     → /onboarding
-   *  - customer, onboarding complete   → /home-feed
-   *  - chef, onboarding complete, vendor onboarding incomplete → /vendor-onboarding
-   *  - chef, both complete             → /chef-menu
-   */
   const getPostLoginRoute = (userProfile: UserProfile | null): string => {
-    if (!userProfile) {
-      console.log('[Auth] getPostLoginRoute: no profile → /role-selection');
-      return '/role-selection';
-    }
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : 'unknown';
+    const { destination, reason } = resolvePostLoginRoute(userProfile);
 
-    const { role, onboarding_complete, vendor_onboarding_complete } = userProfile;
+    authDebug('auth-context.get-post-login-route', {
+      pathname,
+      sessionExists: !!session,
+      userId: user?.id ?? null,
+      profileRole: userProfile?.role ?? null,
+      onboardingComplete: userProfile?.onboarding_complete ?? null,
+      vendorOnboardingComplete: userProfile?.vendor_onboarding_complete ?? null,
+      redirectTarget: destination,
+      reason,
+    });
 
-    console.log('[Auth] getPostLoginRoute: role=', role, 'onboarding_complete=', onboarding_complete, 'vendor_onboarding_complete=', vendor_onboarding_complete);
-
-    // No role selected yet
-    if (!role) {
-      console.log('[Auth] getPostLoginRoute: no role → /role-selection');
-      return '/role-selection';
-    }
-
-    if (role === 'customer') {
-      if (!onboarding_complete) {
-        console.log('[Auth] getPostLoginRoute: customer onboarding incomplete → /onboarding');
-        return '/onboarding';
-      }
-      console.log('[Auth] getPostLoginRoute: customer done → /home-feed');
-      return '/home-feed';
-    }
-
-    if (role === 'chef') {
-      if (!vendor_onboarding_complete) {
-        console.log('[Auth] getPostLoginRoute: chef vendor onboarding incomplete -> /vendor-onboarding');
-        return '/vendor-onboarding';
-      }
-      console.log('[Auth] getPostLoginRoute: chef done -> /chef-menu');
-      return '/chef-menu';
-    }
-
-    console.log('[Auth] getPostLoginRoute: fallback → /home-feed');
-    return '/home-feed';
+    return destination;
   };
 
-  const value = {
-    user,
-    session,
-    loading,
-    profile,
-    signUp,
-    signIn,
-    signOut,
-    getCurrentUser,
-    isEmailVerified,
-    getUserProfile,
-    refreshProfile,
-    getPostLoginRoute,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
+      profile,
+      signUp,
+      signIn,
+      signOut,
+      getCurrentUser,
+      isEmailVerified,
+      getUserProfile,
+      refreshProfile,
+      getPostLoginRoute,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
-

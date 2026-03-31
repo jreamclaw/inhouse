@@ -1,43 +1,56 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import { useAuth } from '@/contexts/AuthContext';
+import { authDebug } from '@/lib/auth/debug';
 
 export default function RootPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, profile, loading } = useAuth();
 
   useEffect(() => {
     if (loading) return;
 
     const timeout = setTimeout(() => {
+      let redirectTarget: string;
+      let reason: string;
+
       if (!user) {
-        router.replace('/login');
-        return;
+        redirectTarget = '/login';
+        reason = 'missing-session';
+      } else if (!profile?.role) {
+        redirectTarget = '/role-selection';
+        reason = 'missing-role';
+      } else if (profile.role === 'chef') {
+        redirectTarget = profile.vendor_onboarding_complete ? '/chef-menu' : '/vendor-onboarding';
+        reason = profile.vendor_onboarding_complete ? 'chef-ready' : 'chef-vendor-onboarding-incomplete';
+      } else if (!profile.onboarding_complete) {
+        redirectTarget = '/onboarding';
+        reason = 'customer-onboarding-incomplete';
+      } else {
+        redirectTarget = '/home-feed';
+        reason = 'customer-ready';
       }
 
-      if (!profile?.role) {
-        router.replace('/role-selection');
-        return;
-      }
+      authDebug('root-page.redirect-decision', {
+        pathname,
+        sessionExists: !!user,
+        userId: user?.id ?? null,
+        profileRole: profile?.role ?? null,
+        onboardingComplete: profile?.onboarding_complete ?? null,
+        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+        redirectTarget,
+        reason,
+      });
 
-      if (!profile?.onboarding_complete) {
-        router.replace('/onboarding');
-        return;
-      }
-
-      if (profile.role === 'chef') {
-        router.replace(profile.vendor_onboarding_complete ? '/chef-menu' : '/vendor-onboarding');
-        return;
-      }
-
-      router.replace('/home-feed');
+      router.replace(redirectTarget);
     }, 1400);
 
     return () => clearTimeout(timeout);
-  }, [loading, user, profile, router]);
+  }, [loading, user, profile, router, pathname]);
 
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">

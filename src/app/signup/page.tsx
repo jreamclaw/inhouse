@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { authDebug } from '@/lib/auth/debug';
 import AppLogo from '@/components/ui/AppLogo';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2, ChefHat, ShoppingBag, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ type AccountType = 'customer' | 'chef';
 
 export default function SignUpPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { signUp, getPostLoginRoute } = useAuth();
   const supabase = createClient();
 
@@ -68,12 +70,33 @@ export default function SignUpPage() {
         .eq('id', signedUpUser.id)
         .single();
 
+      authDebug('signup.profile-fetch', {
+        pathname,
+        sessionExists: hasImmediateSession,
+        userId: signedUpUser.id,
+        profileRole: profile?.role ?? null,
+        onboardingComplete: profile?.onboarding_complete ?? null,
+        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+        redirectTarget: null,
+        reason: profile ? 'found-profile' : 'using-fallback-profile-shape',
+      });
+
       const destination = getPostLoginRoute(profile ?? {
         role: accountType,
         onboarding_complete: false,
         vendor_onboarding_complete: false,
       });
 
+      authDebug('signup.final-redirect', {
+        pathname,
+        sessionExists: hasImmediateSession,
+        userId: signedUpUser.id,
+        profileRole: profile?.role ?? accountType,
+        onboardingComplete: profile?.onboarding_complete ?? false,
+        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? false,
+        redirectTarget: destination,
+        reason: 'post-signup-route',
+      });
       router.replace(destination);
     } catch (err: any) {
       setError(err?.message || 'Failed to create account. Please try again.');

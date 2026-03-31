@@ -2,15 +2,17 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { authDebug } from '@/lib/auth/debug';
 import Image from 'next/image';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { signIn, getPostLoginRoute } = useAuth();
   const supabase = createClient();
 
@@ -47,6 +49,17 @@ export default function LoginPage() {
         .eq('id', userId)
         .single();
 
+      authDebug('login.profile-fetch', {
+        pathname,
+        sessionExists: true,
+        userId,
+        profileRole: profileData?.role ?? null,
+        onboardingComplete: profileData?.onboarding_complete ?? null,
+        vendorOnboardingComplete: profileData?.vendor_onboarding_complete ?? null,
+        redirectTarget: null,
+        reason: profileData ? 'found-profile' : 'missing-profile',
+      });
+
       if (!profileData) {
         const { data: newProfile } = await supabase
           .from('user_profiles')
@@ -63,9 +76,28 @@ export default function LoginPage() {
           .select('role, onboarding_complete, vendor_onboarding_complete')
           .single();
         profileData = newProfile;
+        authDebug('login.profile-created', {
+          pathname,
+          sessionExists: true,
+          userId,
+          profileRole: profileData?.role ?? null,
+          onboardingComplete: profileData?.onboarding_complete ?? null,
+          vendorOnboardingComplete: profileData?.vendor_onboarding_complete ?? null,
+          redirectTarget: null,
+        });
       }
 
       const destination = getPostLoginRoute(profileData ?? null);
+      authDebug('login.final-redirect', {
+        pathname,
+        sessionExists: true,
+        userId,
+        profileRole: profileData?.role ?? null,
+        onboardingComplete: profileData?.onboarding_complete ?? null,
+        vendorOnboardingComplete: profileData?.vendor_onboarding_complete ?? null,
+        redirectTarget: destination,
+        reason: 'post-login-route',
+      });
       setRoutingStatus('Redirecting...');
 
       toast.success('Welcome back!', {
