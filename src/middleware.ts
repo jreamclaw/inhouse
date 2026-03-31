@@ -96,9 +96,7 @@ export async function middleware(request: NextRequest) {
         } else if (role === 'customer') {
           destination = onboarding_complete ? '/home-feed' : '/onboarding';
         } else if (role === 'chef') {
-          if (!onboarding_complete) {
-            destination = '/onboarding';
-          } else if (!vendor_onboarding_complete) {
+          if (!vendor_onboarding_complete) {
             destination = '/vendor-onboarding';
           } else {
             destination = '/chef-menu';
@@ -138,3 +136,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|assets/).*)',
   ],
 };
+
