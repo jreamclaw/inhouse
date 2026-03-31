@@ -102,7 +102,7 @@ export default function VendorOnboardingPage() {
       if (updateError) throw updateError;
 
       await refreshProfile();
-      router.replace('/chef-menu');
+      window.location.href = '/chef-menu';
     } catch (err: any) {
       setError(err?.message || 'Failed to save your profile. Please try again.');
     } finally {
@@ -119,9 +119,9 @@ export default function VendorOnboardingPage() {
         .update({ vendor_onboarding_complete: true })
         .eq('id', user.id);
       await refreshProfile();
-      router.replace('/chef-menu');
+      window.location.href = '/chef-menu';
     } catch {
-      router.replace('/chef-menu');
+      window.location.href = '/chef-menu';
     } finally {
       setSaving(false);
     }
@@ -419,3 +419,4 @@ export default function VendorOnboardingPage() {
     </div>
   );
 }
+
