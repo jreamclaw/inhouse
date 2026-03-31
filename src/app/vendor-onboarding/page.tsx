@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -50,6 +50,7 @@ export default function VendorOnboardingPage() {
 
   // Step 5 — Profile image URL (simple URL input for now)
   const [avatarUrl, setAvatarUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -67,6 +68,14 @@ export default function VendorOnboardingPage() {
     setDaysOpen((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
+  };
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    setAvatarUrl(objectUrl);
   };
 
   const canProceed = () => {
@@ -405,7 +414,10 @@ export default function VendorOnboardingPage() {
               className="flex-1 h-12 bg-primary hover:bg-primary/90 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/25"
             >
               {saving ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Launching your vendor page...</span>
+                </>
               ) : (
                 <>
                   Launch My Vendor Profile
@@ -419,4 +431,6 @@ export default function VendorOnboardingPage() {
     </div>
   );
 }
+
+
 
