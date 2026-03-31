@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Icon from '@/components/ui/AppIcon';
-import { Bell, Search, Sun, Moon } from 'lucide-react';
+import { Bell, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProfileCompletionBanner from '@/components/ProfileCompletionBanner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  currentUser?: { name: string; avatar: string; role: 'chef' | 'customer'; };
+  currentUser?: { name: string; avatar: string; role: 'chef' | 'customer' };
 }
 
 const NAV_ITEMS = [
@@ -27,7 +27,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const notifCount = 0;
   const { profile, user, loading } = useAuth();
 
   useEffect(() => {
@@ -40,9 +39,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
+    if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
 
   const toggleTheme = () => {
@@ -58,7 +55,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-background flex items-center justify-center px-4"><div className="flex items-center gap-3 text-muted-foreground"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /><span className="text-sm">Loading app...</span></div></div>;
+    return <div className="min-h-screen bg-background flex items-center justify-center px-4"><div className="flex items-center gap-3 text-[#777777]"><div className="w-5 h-5 border-2 border-[#F97316] border-t-transparent rounded-full animate-spin" /><span className="text-sm font-semibold text-[#555555]">Loading app...</span></div></div>;
   }
 
   const avatarUrl = profile?.avatar_url || null;
@@ -67,25 +64,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-40 bg-card/96 border-b border-border/50 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 bg-card/96 border-b border-[#E5E5E5] backdrop-blur-xl">
         <div className="max-w-screen-2xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 shrink-0"><Image src="/assets/images/Untitled-1773907427735.jpeg" alt="InHouse" width={22} height={22} className="object-contain rounded-md" /></div>
-          <div className="absolute left-0 right-0 flex justify-center pointer-events-none"><span className="font-script text-[32px] leading-none text-white tracking-wide pointer-events-none select-none">InHouse</span></div>
+          <div className="absolute left-0 right-0 flex justify-center pointer-events-none"><span className="font-script text-[32px] leading-none text-[#111111] tracking-wide pointer-events-none select-none">InHouse</span></div>
           <div className="flex items-center gap-1">
-            <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors" aria-label="Toggle theme">{mounted && (isDark ? <Sun className="w-[18px] h-[18px] text-muted-foreground" /> : <Moon className="w-[18px] h-[18px] text-muted-foreground" />)}</button>
-            <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"><Bell className="w-[18px] h-[18px] text-muted-foreground" /></Link>
-            <Link href="/profile-screen"><div className="w-8 h-8 rounded-full overflow-hidden border border-border/60 hover:border-primary/50 transition-colors ml-0.5 bg-muted flex items-center justify-center">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-xs font-700 text-muted-foreground">{displayName.charAt(0).toUpperCase()}</span>}</div></Link>
+            <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] transition-colors" aria-label="Toggle theme">{mounted && (isDark ? <Sun className="w-[18px] h-[18px] text-[#666666]" /> : <Moon className="w-[18px] h-[18px] text-[#666666]" />)}</button>
+            <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666]" /></Link>
+            <Link href="/profile-screen"><div className="w-8 h-8 rounded-full overflow-hidden border border-[#E5E5E5] hover:border-[#F97316] transition-colors ml-0.5 bg-[#F7F7F7] flex items-center justify-center">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-xs font-700 text-[#555555]">{displayName.charAt(0).toUpperCase()}</span>}</div></Link>
           </div>
         </div>
       </header>
       <div className="flex flex-1 max-w-screen-2xl mx-auto w-full">
-        <aside className="hidden lg:flex flex-col w-56 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] border-r border-border/50 py-5 px-3">
-          <nav className="flex flex-col gap-0.5 flex-1">{NAV_ITEMS.map((item) => { const isActive = pathname === item.href; return <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-500 transition-all duration-200 group ${isActive ? 'bg-primary/8 text-primary font-600' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}`}><Icon name={item.icon as any} size={18} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'} /><span className="tracking-snug">{item.label}</span></Link>; })}</nav>
-          <div className="mt-auto pt-4 border-t border-border/50"><Link href="/profile-screen" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-muted/60 transition-all duration-200 group"><div className="w-7 h-7 rounded-full overflow-hidden border border-border/60 group-hover:border-primary/40 transition-colors bg-muted flex items-center justify-center shrink-0">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-[10px] font-700 text-muted-foreground">{displayName.charAt(0).toUpperCase()}</span>}</div><div className="flex-1 min-w-0"><p className="text-[13px] font-600 text-foreground truncate tracking-snug">{displayName}</p>{roleLabel ? <p className="text-[11px] text-muted-foreground truncate">{roleLabel}</p> : null}</div></Link></div>
+        <aside className="hidden lg:flex flex-col w-56 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] border-r border-[#E5E5E5] py-5 px-3">
+          <nav className="flex flex-col gap-0.5 flex-1">{NAV_ITEMS.map((item) => { const isActive = pathname === item.href; return <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] transition-all duration-200 group border border-transparent ${isActive ? 'bg-[#FFF4ED] text-[#F97316] font-semibold' : 'text-[#666666] font-medium hover:bg-[#F7F7F7] hover:text-[#111111]'}`}><Icon name={item.icon as any} size={18} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-[#F97316]' : 'text-[#666666] group-hover:text-[#111111]'} /><span className="tracking-snug">{item.label}</span></Link>; })}</nav>
+          <div className="mt-auto pt-4 border-t border-[#E5E5E5]"><Link href="/profile-screen" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#F7F7F7] transition-all duration-200 group border border-[#E5E5E5]"><div className="w-7 h-7 rounded-full overflow-hidden border border-[#E5E5E5] group-hover:border-[#F97316] transition-colors bg-[#F7F7F7] flex items-center justify-center shrink-0">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-[10px] font-700 text-[#555555]">{displayName.charAt(0).toUpperCase()}</span>}</div><div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-[#111111] truncate tracking-snug">{displayName}</p>{roleLabel ? <p className="text-[11px] text-[#777777] truncate">{roleLabel}</p> : null}</div></Link></div>
         </aside>
         <main className="flex-1 min-w-0 pb-20 lg:pb-6"><ProfileCompletionBanner />{children}</main>
       </div>
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/96 border-t border-border/50 backdrop-blur-xl pb-safe-bottom"><div className="flex items-center justify-around px-2 h-16">{NAV_ITEMS.map((item) => { const isActive = pathname === item.href; const isPost = item.label === 'Post'; if (isPost) return <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center"><div className="w-11 h-11 bg-primary rounded-[14px] flex items-center justify-center shadow-md shadow-primary/25 active:scale-95 transition-transform duration-150"><Icon name="PlusIcon" size={21} className="text-white" /></div></Link>; return <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center gap-1 flex-1 py-2 relative transition-transform duration-150 active:scale-95"><div className="relative"><Icon name={item.icon as any} size={20} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-primary' : 'text-muted-foreground'} /></div><span className={`text-[10px] font-500 tracking-tight ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>{item.label}</span>{isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-primary rounded-full" />}</Link>; })}</div></nav>
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/96 border-t border-[#E5E5E5] backdrop-blur-xl pb-safe-bottom"><div className="flex items-center justify-around px-2 h-16">{NAV_ITEMS.map((item) => { const isActive = pathname === item.href; const isPost = item.label === 'Post'; if (isPost) return <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center"><div className="w-11 h-11 bg-[#F97316] rounded-[14px] flex items-center justify-center shadow-md shadow-orange-200 active:scale-95 transition-transform duration-150"><Icon name="PlusIcon" size={21} className="text-white" /></div></Link>; return <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center gap-1 flex-1 py-2 relative transition-transform duration-150 active:scale-95"><div className="relative"><Icon name={item.icon as any} size={20} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-[#F97316]' : 'text-[#666666]'} /></div><span className={`text-[10px] tracking-tight ${isActive ? 'text-[#F97316] font-semibold' : 'text-[#666666] font-medium'}`}>{item.label}</span>{isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-[#F97316] rounded-full" />}</Link>; })}</div></nav>
     </div>
   );
 }

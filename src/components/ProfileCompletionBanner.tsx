@@ -5,17 +5,12 @@ import Link from 'next/link';
 import { X, User, MapPin, FileText, Image as ImageIcon, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface MissingField {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-}
-
+interface MissingField { key: string; label: string; icon: React.ReactNode; }
 const DISMISS_KEY = 'inhouse-profile-reminder-dismissed';
 
 export default function ProfileCompletionBanner() {
   const { profile } = useAuth();
-  const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
+  const [dismissed, setDismissed] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -24,116 +19,23 @@ export default function ProfileCompletionBanner() {
     setDismissed(wasDismissed);
   }, []);
 
-  // Only show if onboarding is complete
-  if (!mounted || !profile || !profile.onboarding_complete || dismissed) {
-    return null;
-  }
+  if (!mounted || !profile || !profile.onboarding_complete || dismissed) return null;
 
   const missingFields: MissingField[] = [];
-
-  if (!profile.avatar_url) {
-    missingFields.push({
-      key: 'avatar',
-      label: 'Profile photo',
-      icon: <User className="w-3.5 h-3.5" />,
-    });
-  }
-  if (!profile.bio) {
-    missingFields.push({
-      key: 'bio',
-      label: 'Bio',
-      icon: <FileText className="w-3.5 h-3.5" />,
-    });
-  }
-  if (!profile.location) {
-    missingFields.push({
-      key: 'location',
-      label: 'Location',
-      icon: <MapPin className="w-3.5 h-3.5" />,
-    });
-  }
-  if (!profile.cover_url) {
-    missingFields.push({
-      key: 'cover',
-      label: 'Cover photo',
-      icon: <ImageIcon className="w-3.5 h-3.5" />,
-    });
-  }
-
-  // Profile is complete — nothing to show
-  if (missingFields.length === 0) {
-    return null;
-  }
+  if (!profile.avatar_url) missingFields.push({ key: 'avatar', label: 'Profile photo', icon: <User className="w-3.5 h-3.5" /> });
+  if (!profile.bio) missingFields.push({ key: 'bio', label: 'Bio', icon: <FileText className="w-3.5 h-3.5" /> });
+  if (!profile.location) missingFields.push({ key: 'location', label: 'Location', icon: <MapPin className="w-3.5 h-3.5" /> });
+  if (!profile.cover_url) missingFields.push({ key: 'cover', label: 'Cover photo', icon: <ImageIcon className="w-3.5 h-3.5" /> });
+  if (missingFields.length === 0) return null;
 
   const completionPercent = Math.round(((4 - missingFields.length) / 4) * 100);
-
-  const handleDismiss = () => {
-    sessionStorage.setItem(DISMISS_KEY, 'true');
-    setDismissed(true);
-  };
+  const handleDismiss = () => { sessionStorage.setItem(DISMISS_KEY, 'true'); setDismissed(true); };
 
   return (
-    <div className="mx-4 mt-3 mb-1 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-start gap-3">
-      {/* Progress ring */}
-      <div className="shrink-0 mt-0.5">
-        <div className="relative w-10 h-10">
-          <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
-            <circle
-              cx="18" cy="18" r="15"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              className="text-border"
-            />
-            <circle
-              cx="18" cy="18" r="15"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeDasharray={`${completionPercent * 0.942} 94.2`}
-              strokeLinecap="round"
-              className="text-primary transition-all duration-500"
-            />
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-700 text-primary">
-            {completionPercent}%
-          </span>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-600 text-foreground mb-1">Complete your profile</p>
-        <p className="text-[12px] text-muted-foreground mb-2">
-          Add the missing details to help others discover you.
-        </p>
-        <div className="flex flex-wrap gap-1.5 mb-2.5">
-          {missingFields.map((field) => (
-            <span
-              key={field.key}
-              className="inline-flex items-center gap-1 text-[11px] font-500 bg-background border border-border/60 text-muted-foreground px-2 py-0.5 rounded-full"
-            >
-              {field.icon}
-              {field.label}
-            </span>
-          ))}
-        </div>
-        <Link href="/edit-profile">
-          <button className="inline-flex items-center gap-1 text-[12px] font-600 text-primary hover:text-primary/80 transition-colors">
-            Update profile
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </Link>
-      </div>
-
-      {/* Dismiss */}
-      <button
-        onClick={handleDismiss}
-        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-muted transition-colors mt-0.5"
-        aria-label="Dismiss reminder"
-      >
-        <X className="w-3.5 h-3.5 text-muted-foreground" />
-      </button>
+    <div className="mx-4 mt-3 mb-1 rounded-2xl border border-[#E5E5E5] bg-[#FFF7ED] px-4 py-3 flex items-start gap-3">
+      <div className="shrink-0 mt-0.5"><div className="relative w-10 h-10"><svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-[#E5E5E5]" /><circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray={`${completionPercent * 0.942} 94.2`} strokeLinecap="round" className="text-[#F97316] transition-all duration-500" /></svg><span className="absolute inset-0 flex items-center justify-center text-[10px] font-700 text-[#F97316]">{completionPercent}%</span></div></div>
+      <div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-[#111111] mb-1">Complete your profile</p><p className="text-[12px] text-[#555555] mb-2">Add the missing details to help others discover you.</p><div className="flex flex-wrap gap-1.5 mb-2.5">{missingFields.map((field) => <span key={field.key} className="inline-flex items-center gap-1 text-[11px] font-medium bg-white border border-[#E5E5E5] text-[#555555] px-2 py-0.5 rounded-full">{field.icon}{field.label}</span>)}</div><Link href="/edit-profile"><button className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#F97316] hover:text-[#C2410C] transition-colors">Update profile<ChevronRight className="w-3.5 h-3.5" /></button></Link></div>
+      <button onClick={handleDismiss} className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white transition-colors mt-0.5" aria-label="Dismiss reminder"><X className="w-3.5 h-3.5 text-[#777777]" /></button>
     </div>
   );
 }
