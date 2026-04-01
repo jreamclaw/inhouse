@@ -1,25 +1,38 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2 } from 'lucide-react';
+import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2, Loader2, ImagePlus, X } from 'lucide-react';
 import { getChefReadiness } from '@/lib/chef/readiness';
+import { toast } from 'sonner';
 
 type Meal = { id: string; title: string; description: string | null; price: number; category: string; available: boolean; image_url: string | null };
+const CATEGORIES = ['Starters', 'Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Drinks', 'Sides'];
 
 export default function ChefMenuPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
   const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [loading, setLoading] = useState(true);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [stripeState, setStripeState] = useState<any>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('');
+  const [showMealForm, setShowMealForm] = useState(false);
+  const [savingMeal, setSavingMeal] = useState(false);
+  const [mealTitle, setMealTitle] = useState('');
+  const [mealDescription, setMealDescription] = useState('');
+  const [mealPrice, setMealPrice] = useState('');
+  const [mealCategory, setMealCategory] = useState('Dinner');
+  const [mealAvailable, setMealAvailable] = useState(true);
+  const [mealImageFile, setMealImageFile] = useState<File | null>(null);
+  const [mealImagePreview, setMealImagePreview] = useState<string | null>(null);
 
   const isChef = profile?.role === 'chef';
   const vendorReady = !!profile?.vendor_onboarding_complete;
@@ -27,7 +40,9 @@ export default function ChefMenuPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      setActiveSection(params.get('section') || '');
+      const section = params.get('section') || '';
+      setActiveSection(section);
+      if (section === 'menu-manager') setShowMealForm(true);
     }
   }, []);
 
@@ -70,15 +85,77 @@ export default function ChefMenuPage() {
       const payload = await response.json();
       if (!response.ok || !payload?.url) throw new Error(payload?.error || 'Unable to start Stripe setup.');
       window.location.href = payload.url;
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      toast.error(error?.message || 'Unable to connect Stripe right now.');
       setStripeLoading(false);
     }
   };
 
   const handleDeleteMeal = async (mealId: string) => {
     const { error } = await supabase.from('meals').delete().eq('id', mealId);
-    if (!error) setMeals((prev) => prev.filter((meal) => meal.id !== mealId));
+    if (!error) {
+      setMeals((prev) => prev.filter((meal) => meal.id !== mealId));
+      toast.success('Meal removed');
+    }
+  };
+
+  const handleMealImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMealImageFile(file);
+    setMealImagePreview(URL.createObjectURL(file));
+  };
+
+  const resetMealForm = () => {
+    setMealTitle('');
+    setMealDescription('');
+    setMealPrice('');
+    setMealCategory('Dinner');
+    setMealAvailable(true);
+    setMealImageFile(null);
+    setMealImagePreview(null);
+    setShowMealForm(false);
+  };
+
+  const handleCreateMeal = async () => {
+    if (!user) return;
+    if (!mealTitle.trim()) return toast.error('Meal title is required');
+    if (!mealPrice.trim()) return toast.error('Meal price is required');
+
+    setSavingMeal(true);
+    try {
+      let imageUrl: string | null = null;
+      if (mealImageFile) {
+        const ext = mealImageFile.name.split('.').pop();
+        const path = `${user.id}/meal-${Date.now()}.${ext}`;
+        const upload = await supabase.storage.from('meals').upload(path, mealImageFile, { upsert: false });
+        if (upload.error) throw upload.error;
+        imageUrl = supabase.storage.from('meals').getPublicUrl(path).data.publicUrl;
+      }
+
+      const { data, error } = await supabase
+        .from('meals')
+        .insert({
+          chef_id: user.id,
+          title: mealTitle.trim(),
+          description: mealDescription.trim() || null,
+          price: Number(mealPrice),
+          category: mealCategory,
+          available: mealAvailable,
+          image_url: imageUrl,
+        })
+        .select('id, title, description, price, category, available, image_url')
+        .single();
+
+      if (error) throw error;
+      setMeals((prev) => [data as Meal, ...prev]);
+      toast.success('Meal added to your menu');
+      resetMealForm();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to add meal');
+    } finally {
+      setSavingMeal(false);
+    }
   };
 
   if (authLoading || !user || loading) {
@@ -122,27 +199,36 @@ export default function ChefMenuPage() {
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-4 mb-3"><div><p className="text-sm font-700 text-foreground">Chef readiness</p><p className="text-xs text-muted-foreground">{readiness.completedCount} of {readiness.totalCount} setup areas complete</p></div><div className="text-right"><p className="text-2xl font-700 text-foreground">{readiness.percent}%</p><p className="text-xs text-muted-foreground capitalize">{readiness.status.replace('-', ' ')}</p></div></div>
           <div className="w-full h-2 rounded-full bg-muted overflow-hidden mb-4"><div className="h-full bg-primary rounded-full" style={{ width: `${readiness.percent}%` }} /></div>
-          <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{!item.complete && <Link href={item.ctaHref} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</Link>}</div>)}</div>
+          <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{!item.complete && <button onClick={() => item.key === 'menu' ? setShowMealForm(true) : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <p className="text-sm font-700 text-foreground">Menu manager</p>
-              <p className="text-xs text-muted-foreground">Add and manage the dishes customers will see.</p>
-            </div>
-            <Link href="/profile-screen?tab=menu" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />Open menu tab</Link>
+            <div><p className="text-sm font-700 text-foreground">Menu manager</p><p className="text-xs text-muted-foreground">Add and manage the dishes customers will see.</p></div>
+            <button onClick={() => setShowMealForm((prev) => !prev)} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />{showMealForm ? 'Close form' : 'Add meal'}</button>
           </div>
-          {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Tap the button below to start building your menu.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} ? {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
-          <div className="mt-4">
-            <Link href="/create-post" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">
-              <Plus className="w-4 h-4" />
-              Add your first meal
-            </Link>
-          </div>
-        </div>
 
-        {activeSection === 'menu-manager' && <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5"><p className="text-sm font-700 text-foreground mb-2">Menu manager</p><p className="text-xs text-muted-foreground mb-3">Use this section to build your food catalog. For now, the quick add flow routes into content creation while we finish the dedicated meal composer.</p><Link href="/create-post" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />Add your first meal</Link></div>}
+          {showMealForm && (
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 mb-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input value={mealTitle} onChange={(e) => setMealTitle(e.target.value)} placeholder="Meal title" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                <input value={mealPrice} onChange={(e) => setMealPrice(e.target.value)} placeholder="Price" inputMode="decimal" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+              </div>
+              <textarea value={mealDescription} onChange={(e) => setMealDescription(e.target.value)} placeholder="Describe the dish" rows={3} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background resize-none" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <select value={mealCategory} onChange={(e) => setMealCategory(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background">{CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}</select>
+                <label className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background"><input type="checkbox" checked={mealAvailable} onChange={(e) => setMealAvailable(e.target.checked)} />Available for orders</label>
+              </div>
+              <div className="rounded-xl border border-dashed border-border p-4 bg-background">
+                {!mealImagePreview ? <button onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 text-sm font-600 text-primary"><ImagePlus className="w-4 h-4" />Upload meal photo</button> : <div className="relative w-32 h-32 rounded-xl overflow-hidden"><img src={mealImagePreview} alt="Meal preview" className="w-full h-full object-cover" /><button onClick={() => { setMealImageFile(null); setMealImagePreview(null); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center"><X className="w-4 h-4 text-white" /></button></div>}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleMealImageSelect} className="hidden" />
+              </div>
+              <div className="flex gap-3"><button onClick={handleCreateMeal} disabled={savingMeal} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingMeal ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}{savingMeal ? 'Saving meal...' : 'Save meal'}</button><button onClick={resetMealForm} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">Cancel</button></div>
+            </div>
+          )}
+
+          {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Use the Add meal button above to create your first dish.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} ? {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
+        </div>
 
         {activeSection === 'payouts' && <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5"><div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div><p className="text-xs text-muted-foreground mb-3">Connect Stripe so you can receive payouts from customer orders.</p><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeLoading ? 'Connecting...' : 'Connect Stripe'}</button></div>}
 
