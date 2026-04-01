@@ -21,6 +21,7 @@ import {
 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { milesBetween } from '@/lib/location/distance';
 
 interface Vendor {
   id: string;
@@ -89,6 +90,9 @@ interface DbVendorRow {
   bio: string | null;
   location: string | null;
   avatar_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  service_radius_miles: number | null;
 }
 
 const VENDOR_CARD_FALLBACK = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80';
@@ -486,7 +490,7 @@ function VendorCard({ vendor }: {vendor: Vendor;}) {
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2.5 flex-wrap">
           <span className="flex items-center gap-1">
             <MapPin className="w-3 h-3 text-primary" />
-            <span className="font-600 text-foreground">{vendor.location || 'Location unavailable'}</span>
+            <span className="font-600 text-foreground">{vendor.distance ? `${vendor.distance} miles away` : vendor.location || 'Location unavailable'}</span>
           </span>
           <span className="opacity-30">·</span>
           <span className="flex items-center gap-1">
@@ -562,39 +566,49 @@ export default function NearbyPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, bio, location, avatar_url')
+        .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles')
         .eq('role', 'chef')
         .eq('vendor_onboarding_complete', true)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
+      const customerLat = profile?.latitude ?? null;
+      const customerLng = profile?.longitude ?? null;
+      const hasCoordinates = typeof customerLat === 'number' && typeof customerLng === 'number';
       const normalizedUserLocation = (userLocation || '').toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
       const hasChosenLocation = normalizedUserLocation.length > 0 && normalizedUserLocation !== 'set your location';
       const mapped: Vendor[] = ((data as DbVendorRow[] | null) ?? [])
         .filter((row) => {
           const hasEnoughProfileData = Boolean(row.full_name && row.location && row.avatar_url);
           if (!hasEnoughProfileData) return false;
+
+          if (hasCoordinates && typeof row.latitude === 'number' && typeof row.longitude === 'number') {
+            const distance = milesBetween(customerLat, customerLng, row.latitude, row.longitude);
+            const radius = row.service_radius_miles || 10;
+            return distance <= radius;
+          }
+
           if (!hasChosenLocation) return true;
           const normalizedRowLocation = (row.location || '').toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ').trim();
           if (!normalizedRowLocation) return false;
 
           const wantedParts = normalizedUserLocation.split(',').map((part) => part.trim()).filter(Boolean);
           const rowParts = normalizedRowLocation.split(',').map((part) => part.trim()).filter(Boolean);
-
           if (wantedParts.length === 0 || rowParts.length === 0) return false;
-
           const wantedCity = wantedParts[0] || '';
           const wantedState = wantedParts[1] || '';
           const rowCity = rowParts[0] || '';
           const rowState = rowParts[1] || '';
-
           const cityMatches = wantedCity.length > 0 && rowCity === wantedCity;
           const stateMatches = wantedState.length === 0 || rowState === wantedState;
-
           return cityMatches && stateMatches;
         })
-        .map((row, index) => ({
+        .map((row, index) => {
+          const computedDistance = hasCoordinates && typeof row.latitude === 'number' && typeof row.longitude === 'number'
+            ? milesBetween(customerLat, customerLng, row.latitude, row.longitude)
+            : index + 1;
+          return ({
         id: row.id,
         name: row.full_name || 'Chef',
         cuisine: row.bio?.split('.')[0] || 'Chef',
@@ -604,7 +618,7 @@ export default function NearbyPage() {
         avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
         rating: 0,
         reviewCount: 0,
-        distance: index + 1,
+        distance: Number(computedDistance.toFixed(1)),
         deliveryTime: 'Details unavailable',
         deliveryFee: 0,
         priceRange: '$$',
@@ -619,7 +633,8 @@ export default function NearbyPage() {
         previewImages: [
           { src: row.avatar_url || VENDOR_AVATAR_FALLBACK, alt: `${row.full_name || 'Chef'} profile preview` },
         ],
-      }));
+      });})
+        .sort((a, b) => a.distance - b.distance);
 
       setVendors(mapped);
     } catch {
@@ -912,14 +927,14 @@ export default function NearbyPage() {
             <p className="text-sm text-muted-foreground max-w-xs">
               {vendors.length === 0
                 ? 'No chefs have completed onboarding yet. Once chefs join, they will appear here.'
-                : 'Try adjusting your filters or search for something different.'}
+                : hasChosenLocation ? 'No chefs found near your saved location yet. Try Explore or update your location.' : 'Try adjusting your filters or search for something different.'}
             </p>
             <button
             onClick={() => {setSelectedCategory('all');setSearchQuery('');setShowOpenOnly(false);}}
             className="mt-4 text-sm font-600 text-primary hover:underline"
             suppressHydrationWarning>
             
-              Clear all filters
+Clear filters / switch to Explore
             </button>
           </div>
         }

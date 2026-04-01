@@ -34,7 +34,7 @@ export default function OnboardingPage() {
       setLocationGranted(true);
       try {
         const coordsLabel = `${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)}`;
-        if (resolvedUserId) await supabase.from('user_profiles').update({ location: coordsLabel, updated_at: new Date().toISOString() }).eq('id', resolvedUserId);
+        if (resolvedUserId) await supabase.from('user_profiles').update({ location: coordsLabel, latitude: position.coords.latitude, longitude: position.coords.longitude, updated_at: new Date().toISOString() }).eq('id', resolvedUserId);
       } catch {}
       setLocationLoading(false);
     }, () => { setLocationGranted(false); setLocationLoading(false); });
