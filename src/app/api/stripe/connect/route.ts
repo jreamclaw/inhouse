@@ -62,14 +62,23 @@ export async function POST() {
     }
 
     if (!stripeAccountId) {
-      const account = await stripe.accounts.create({
-        type: 'express',
-        email: profile.email || user.email || undefined,
-        business_type: 'individual',
-        business_profile: {
-          name: profile.full_name || 'InHouse Chef',
-        },
-      });
+      let account;
+      try {
+        account = await stripe.accounts.create({
+          type: 'express',
+          email: profile.email || user.email || undefined,
+          business_type: 'individual',
+          business_profile: {
+            name: profile.full_name || 'InHouse Chef',
+          },
+        });
+      } catch (createError: any) {
+        return NextResponse.json({
+          error: createError?.message || 'Unable to create Stripe Connect account.',
+          code: createError?.code || null,
+          type: createError?.type || null,
+        }, { status: 500 });
+      }
 
       stripeAccountId = account.id;
 

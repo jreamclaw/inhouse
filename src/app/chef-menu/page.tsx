@@ -137,7 +137,7 @@ export default function ChefMenuPage() {
         imageUrl = supabase.storage.from('meals').getPublicUrl(path).data.publicUrl;
       }
 
-      const { data, error } = await supabase
+      let insertResult = await supabase
         .from('meals')
         .insert({
           chef_id: user.id,
@@ -152,6 +152,23 @@ export default function ChefMenuPage() {
         .select('id, title, description, price, category, available, image_url, modifier_groups')
         .single();
 
+      if (insertResult.error && String(insertResult.error.message || '').includes('modifier_groups')) {
+        insertResult = await supabase
+          .from('meals')
+          .insert({
+            chef_id: user.id,
+            title: mealTitle.trim(),
+            description: mealDescription.trim() || null,
+            price: Number(mealPrice),
+            category: mealCategory,
+            available: mealAvailable,
+            image_url: imageUrl,
+          })
+          .select('id, title, description, price, category, available, image_url')
+          .single();
+      }
+
+      const { data, error } = insertResult;
       if (error) throw error;
       setMeals((prev) => [data as Meal, ...prev]);
       toast.success('Meal added to your menu');
