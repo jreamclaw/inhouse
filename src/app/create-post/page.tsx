@@ -70,7 +70,9 @@ export default function CreatePostPage() {
 
     setUploading(true);
     try {
-      for (const item of mediaItems) {
+      const uploadedMedia: { media_url: string; media_type: 'image' | 'video'; sort_order: number }[] = [];
+
+      for (const [index, item] of mediaItems.entries()) {
         const fileExt = item.file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
 
@@ -80,31 +82,55 @@ export default function CreatePostPage() {
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage.from('posts').getPublicUrl(uploadData.path);
-
-        let insertError = null;
-        const withMediaType = await supabase.from('posts').insert({
-          user_id: user.id,
-          caption: caption.trim(),
-          media_url: publicUrl,
-          media_type: item.type,
-          location: location.trim() || null,
-        });
-        insertError = withMediaType.error;
-
-        if (insertError && String(insertError.message || '').includes('media_type')) {
-          const fallbackInsert = await supabase.from('posts').insert({
-            user_id: user.id,
-            caption: caption.trim(),
-            media_url: publicUrl,
-            location: location.trim() || null,
-          });
-          insertError = fallbackInsert.error;
-        }
-
-        if (insertError) throw insertError;
+        uploadedMedia.push({ media_url: publicUrl, media_type: item.type, sort_order: index });
       }
 
-      toast.success(mediaItems.length > 1 ? 'Posts shared successfully!' : 'Post shared successfully!');
+      const coverMedia = uploadedMedia[0];
+      let createdPostId: string | null = null;
+
+      let postInsert = await supabase
+        .from('posts')
+        .insert({
+          user_id: user.id,
+          caption: caption.trim(),
+          media_url: coverMedia.media_url,
+          media_type: coverMedia.media_type,
+          location: location.trim() || null,
+        })
+        .select('id')
+        .single();
+
+      if (postInsert.error && String(postInsert.error.message || '').includes('media_type')) {
+        postInsert = await supabase
+          .from('posts')
+          .insert({
+            user_id: user.id,
+            caption: caption.trim(),
+            media_url: coverMedia.media_url,
+            location: location.trim() || null,
+          })
+          .select('id')
+          .single();
+      }
+
+      if (postInsert.error) throw postInsert.error;
+      createdPostId = postInsert.data?.id || null;
+      if (!createdPostId) throw new Error('Failed to create post');
+
+      const mediaInsert = await supabase.from('post_media').insert(
+        uploadedMedia.map((media) => ({
+          post_id: createdPostId,
+          media_url: media.media_url,
+          media_type: media.media_type,
+          sort_order: media.sort_order,
+        }))
+      );
+
+      if (mediaInsert.error && !String(mediaInsert.error.message || '').includes('post_media')) {
+        throw mediaInsert.error;
+      }
+
+      toast.success(mediaItems.length > 1 ? 'Carousel post shared successfully!' : 'Post shared successfully!');
       router.push('/home-feed');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create post');

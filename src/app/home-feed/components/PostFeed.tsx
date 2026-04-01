@@ -257,6 +257,12 @@ const MOCK_POSTS = [
 
 type MockPost = (typeof MOCK_POSTS)[0];
 
+interface DbPostMedia {
+  media_url: string;
+  media_type: 'image' | 'video';
+  sort_order: number;
+}
+
 interface DbPost {
   id: string;
   user_id: string;
@@ -268,6 +274,7 @@ interface DbPost {
   comments_count: number;
   created_at: string;
   viewer_has_liked?: { user_id: string }[];
+  post_media?: DbPostMedia[];
   user_profiles: {
     id: string;
     full_name: string;
@@ -287,6 +294,7 @@ function timeAgoFromDate(dateStr: string): string {
 }
 
 function dbPostToMockShape(p: DbPost): MockPost {
+  const orderedMedia = (p.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
   return {
     id: p.id,
     user: {
@@ -297,7 +305,7 @@ function dbPostToMockShape(p: DbPost): MockPost {
       role: (p.user_profiles?.role || 'customer') as 'chef' | 'customer',
       verified: p.user_profiles?.role === 'chef'
     },
-    image: p.media_url,
+    image: orderedMedia[0]?.media_url || p.media_url,
     imageAlt: p.caption || 'Food post',
     caption: p.caption || '',
     likes: p.likes_count,
@@ -311,6 +319,7 @@ function dbPostToMockShape(p: DbPost): MockPost {
     type: 'food' as const,
     availability: null,
     isLocal: true,
+    mediaItems: orderedMedia.length > 0 ? orderedMedia : [{ media_url: p.media_url, media_type: p.media_type, sort_order: 0 }],
     ...(p.media_type === 'video' ? { isVideo: true } : {})
   };
 }
@@ -346,6 +355,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
   const [isHeartAnimating, setIsHeartAnimating] = useState(false);
   const [isSaveAnimating, setIsSaveAnimating] = useState(false);
   const [isCartAnimating, setIsCartAnimating] = useState(false);
+  const [mediaIndex, setMediaIndex] = useState(0);
 
   const handleLike = useCallback(async () => {
     if (!user?.id) {
@@ -544,10 +554,11 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
 
       {/* Post Image */}
       <div className="relative aspect-square overflow-hidden bg-muted mx-0">
-        {(post as any).isVideo ?
-        <video src={post.image} className="w-full h-full object-cover" muted loop playsInline /> :
-        <img src={post.image} alt={post.imageAlt} className="w-full h-full object-cover" loading="lazy" />
+        {((post as any).mediaItems?.[mediaIndex]?.media_type === 'video') ?
+        <video src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} className="w-full h-full object-cover" muted loop playsInline controls /> :
+        <img src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} alt={post.imageAlt} className="w-full h-full object-cover" loading="lazy" />
         }
+        {((post as any).mediaItems?.length || 0) > 1 && <><button onClick={() => setMediaIndex((i) => Math.max(0, i - 1))} disabled={mediaIndex === 0} className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white disabled:opacity-30">?</button><button onClick={() => setMediaIndex((i) => Math.min(((post as any).mediaItems?.length || 1) - 1, i + 1))} disabled={mediaIndex === ((post as any).mediaItems?.length || 1) - 1} className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white disabled:opacity-30">?</button><div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-600 px-2 py-1 rounded-full">{mediaIndex + 1}/{(post as any).mediaItems?.length}</div></>}
 
         {/* Meal tag overlay */}
         {post.mealTag &&
@@ -744,6 +755,11 @@ export default function PostFeed({ mode }: PostFeedProps) {
             username,
             avatar_url,
             role
+          ),
+          post_media (
+            media_url,
+            media_type,
+            sort_order
           )
         `
       ).
