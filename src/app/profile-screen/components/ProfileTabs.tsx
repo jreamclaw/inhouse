@@ -186,18 +186,24 @@ export default function ProfileTabs() {
         <div className="p-4 border-b border-border">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Quick Access</p>
           <div className="grid grid-cols-2 gap-2">
-            <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
-              <Package className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground">My Orders</span>
-            </button>
-            <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left">
-              <Bookmark className="w-4 h-4 text-amber-500 flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground">Saved Vendors</span>
-            </button>
-            <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-muted hover:bg-muted/80 border border-border transition-colors text-left">
-              <Settings className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground">Account Settings</span>
-            </button>
+            <Link href="/order-checkout-screen">
+              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
+                <Package className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium text-foreground">My Orders</span>
+              </button>
+            </Link>
+            <Link href="/nearby">
+              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left">
+                <Bookmark className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-foreground">Saved Vendors</span>
+              </button>
+            </Link>
+            <Link href="/settings">
+              <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-muted hover:bg-muted/80 border border-border transition-colors text-left">
+                <Settings className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm font-medium text-foreground">Account Settings</span>
+              </button>
+            </Link>
           </div>
         </div>
       )}
@@ -389,13 +395,14 @@ export default function ProfileTabs() {
                         <span className="text-xs text-muted-foreground">{meal.category}</span>
                       </div>
                       {isOwnProfile && (
-                        <button
-                          onClick={() => addToCart(meal)}
-                          disabled={!meal.available}
-                          className="mt-2 text-xs font-600 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
-                        >
-                          + Add to cart
-                        </button>
+                        <Link href="/chef-menu?section=menu-manager">
+                          <button
+                            disabled={!meal.available}
+                            className="mt-2 text-xs font-600 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                          >
+                            Edit in menu manager
+                          </button>
+                        </Link>
                       )}
                     </div>
                   </div>

@@ -357,6 +357,10 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
   const [isCartAnimating, setIsCartAnimating] = useState(false);
   const [mediaIndex, setMediaIndex] = useState(0);
 
+  useEffect(() => {
+    setMediaIndex(0);
+  }, [post.id]);
+
   const handleLike = useCallback(async () => {
     if (!user?.id) {
       toast.error('Please sign in to like posts.');

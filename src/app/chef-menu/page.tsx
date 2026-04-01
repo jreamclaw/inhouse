@@ -14,6 +14,7 @@ type ModifierOption = { id: string; label: string; priceAdd: number };
 type ModifierGroup = { id: string; name: string; required: boolean; multiSelect: boolean; minSelect?: number; maxSelect?: number; options: ModifierOption[] };
 type Meal = { id: string; title: string; description: string | null; price: number; category: string; available: boolean; image_url: string | null; modifier_groups?: ModifierGroup[] };
 const CATEGORIES = ['Starters', 'Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Drinks', 'Sides'];
+const makeId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? makeId() : `id-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
 export default function ChefMenuPage() {
   const router = useRouter();
@@ -268,7 +269,7 @@ export default function ChefMenuPage() {
               <div className="rounded-xl border border-border bg-background p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-700 text-foreground">Sides / drinks / extras</p>
-                  <button onClick={() => setModifierGroups((prev) => [...prev, { id: crypto.randomUUID(), name: '', required: false, multiSelect: false, options: [{ id: crypto.randomUUID(), label: '', priceAdd: 0 }] }])} className="text-xs font-700 text-primary">+ Add option group</button>
+                  <button onClick={() => setModifierGroups((prev) => [...prev, { id: makeId(), name: '', required: false, multiSelect: false, options: [{ id: makeId(), label: '', priceAdd: 0 }] }])} className="text-xs font-700 text-primary">+ Add option group</button>
                 </div>
                 {modifierGroups.length === 0 ? <p className="text-xs text-muted-foreground">Add modifier groups for sides, drinks, and extras.</p> : modifierGroups.map((group, groupIndex) => (
                   <div key={group.id} className="rounded-xl border border-border/70 p-3 space-y-3">
@@ -287,7 +288,7 @@ export default function ChefMenuPage() {
                       </div>
                     ))}</div>
                     <div className="flex items-center justify-between">
-                      <button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: [...item.options, { id: crypto.randomUUID(), label: '', priceAdd: 0 }] } : item))} className="text-xs font-700 text-primary">+ Add option</button>
+                      <button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: [...item.options, { id: makeId(), label: '', priceAdd: 0 }] } : item))} className="text-xs font-700 text-primary">+ Add option</button>
                       <button onClick={() => setModifierGroups((prev) => prev.filter((_, idx) => idx !== groupIndex))} className="text-xs font-700 text-red-500">Delete group</button>
                     </div>
                   </div>
