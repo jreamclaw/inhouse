@@ -25,6 +25,7 @@ export default function ChefMenuPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [stripeState, setStripeState] = useState<any>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeSyncing, setStripeSyncing] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('');
   const [showMealForm, setShowMealForm] = useState(false);
   const [savingMeal, setSavingMeal] = useState(false);
@@ -46,6 +47,7 @@ export default function ChefMenuPage() {
       const section = params.get('section') || '';
       setActiveSection(section);
       if (section === 'menu-manager') setShowMealForm(true);
+      if (section === 'payouts') syncStripeStatus();
     }
   }, []);
 
@@ -78,6 +80,27 @@ export default function ChefMenuPage() {
       setMeals(mealRows || []);
     } finally {
       setLoading(false);
+    }
+  };
+
+
+  const syncStripeStatus = async () => {
+    try {
+      setStripeSyncing(true);
+      const response = await fetch('/api/stripe/status', { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'Unable to check payout status.');
+      setStripeState((prev: any) => ({
+        ...prev,
+        stripe_account_id: payload?.stripe_account_id ?? prev?.stripe_account_id ?? null,
+        stripe_onboarding_complete: !!payload?.onboarding_complete,
+        stripe_charges_enabled: !!payload?.charges_enabled,
+        stripe_payouts_enabled: !!payload?.payouts_enabled,
+      }));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setStripeSyncing(false);
     }
   };
 
@@ -221,7 +244,7 @@ export default function ChefMenuPage() {
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-4 mb-3"><div><p className="text-sm font-700 text-foreground">Chef readiness</p><p className="text-xs text-muted-foreground">{readiness.completedCount} of {readiness.totalCount} setup areas complete</p></div><div className="text-right"><p className="text-2xl font-700 text-foreground">{readiness.percent}%</p><p className="text-xs text-muted-foreground capitalize">{readiness.status.replace('-', ' ')}</p></div></div>
           <div className="w-full h-2 rounded-full bg-muted overflow-hidden mb-4"><div className="h-full bg-primary rounded-full" style={{ width: `${readiness.percent}%` }} /></div>
-          <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{item.key === 'payouts' && item.complete ? <span className="text-xs font-700 text-green-600">Payouts connected</span> : !item.complete && <button onClick={() => item.key === 'menu' ? setShowMealForm(true) : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
+          <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{item.key === 'payouts' && stripeSyncing ? <span className="text-xs font-700 text-amber-600">Checking payout setup...</span> : item.key === 'payouts' && item.complete ? <span className="text-xs font-700 text-green-600">Payouts connected</span> : !item.complete && <button onClick={() => item.key === 'menu' ? setShowMealForm(true) : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5">
@@ -282,7 +305,7 @@ export default function ChefMenuPage() {
           {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Use the Add meal button above to create your first dish.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} ? {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
         </div>
 
-        {activeSection === 'payouts' && <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5"><div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div><p className="text-xs text-muted-foreground mb-3">{stripeState?.stripe_account_id ? 'Your Stripe account is connected. You can reopen onboarding if needed.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeState?.stripe_account_id ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : 'Connect Stripe'}</button></div>}
+        {activeSection === 'payouts' && <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5"><div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div><p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeState?.stripe_onboarding_complete ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeState?.stripe_account_id ? 'Your Stripe account exists, but onboarding is not complete yet.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p><div className="flex gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeState?.stripe_onboarding_complete ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeState?.stripe_account_id ? 'Resume payout setup' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div></div>}
 
         {activeSection === 'orders' && <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5"><div className="flex items-center gap-3 mb-2"><Package className="w-5 h-5 text-amber-600" /><p className="text-sm font-700 text-foreground">Orders received</p></div><p className="text-xs text-muted-foreground">This is now the correct route entry for chef order tools.</p></div>}
       </div>
