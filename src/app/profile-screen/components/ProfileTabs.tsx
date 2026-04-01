@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark } from 'lucide-react';
 import { toast } from 'sonner';
@@ -32,11 +33,12 @@ type CartItem = { id: string; title: string; price: number; qty: number };
 export default function ProfileTabs() {
   const { user, profile } = useAuth();
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const isVendor = profile?.role === 'chef';
   const isOwnProfile = true;
 
-  const [activeTab, setActiveTab] = useState<string>(isVendor ? 'posts' : 'posts');
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get('tab') || (isVendor ? 'posts' : 'posts'));
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const [dbPosts, setDbPosts] = useState<DbPost[]>([]);
@@ -46,11 +48,13 @@ export default function ProfileTabs() {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab) setActiveTab(requestedTab);
     if (user?.id) {
       loadPosts();
       if (isVendor) loadMeals();
     }
-  }, [user?.id, isVendor]);
+  }, [user?.id, isVendor, searchParams]);
 
   const loadPosts = async () => {
     if (!user?.id) return;

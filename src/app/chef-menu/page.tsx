@@ -150,7 +150,7 @@ export default function ChefMenuPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Link href="/edit-profile" className="rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">Complete vendor profile</p><p className="text-xs text-muted-foreground mt-1">Edit business name, bio, photos, and location.</p></Link>
           <Link href="/profile-screen" className="rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">Open vendor hub</p><p className="text-xs text-muted-foreground mt-1">Manage menu, profile, and vendor tools.</p></Link>
-          <button className="rounded-2xl border border-border bg-card p-4 text-left"><p className="text-sm font-700 text-foreground">Connect payout</p><p className="text-xs text-muted-foreground mt-1">Stripe setup will live here for chef payouts.</p></button>
+          <Link href="/chef-menu?section=payouts" className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">Connect payout</p><p className="text-xs text-muted-foreground mt-1">Open payout setup and connect Stripe.</p></Link>
         </div>
       </div>
     </AppLayout>
