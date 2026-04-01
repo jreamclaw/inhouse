@@ -28,6 +28,7 @@ export default function ChefMenuPage() {
   const [stripeSyncing, setStripeSyncing] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('');
   const [showMealForm, setShowMealForm] = useState(false);
+  const [autoRedirectingOrders, setAutoRedirectingOrders] = useState(false);
   const [savingMeal, setSavingMeal] = useState(false);
   const [mealTitle, setMealTitle] = useState('');
   const [mealDescription, setMealDescription] = useState('');
@@ -230,6 +231,21 @@ export default function ChefMenuPage() {
 
   const missingItems = readiness.items.filter((item) => !item.complete);
 
+  useEffect(() => {
+    if (!loading && readiness.status === 'ready' && activeSection !== 'orders' && !autoRedirectingOrders) {
+      setAutoRedirectingOrders(true);
+      const timer = setTimeout(() => {
+        try {
+          router.replace('/chef-menu?section=orders');
+        } catch {
+          setAutoRedirectingOrders(false);
+        }
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [loading, activeSection, autoRedirectingOrders, router]);
+
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 py-4 space-y-5">
@@ -237,6 +253,7 @@ export default function ChefMenuPage() {
           <div>
             <h1 className="text-[22px] font-700 text-foreground leading-tight">Chef Dashboard</h1>
             <p className="text-sm text-muted-foreground">Finish your setup, manage your menu, and get your kitchen ready for orders.</p>
+            {autoRedirectingOrders && activeSection !== 'orders' ? <p className="text-xs text-primary mt-1">Chef setup complete ? opening your orders view?</p> : null}
           </div>
           <Link href="/edit-profile" className="flex items-center gap-1.5 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Settings className="w-4 h-4" />Edit Vendor Profile</Link>
         </div>
