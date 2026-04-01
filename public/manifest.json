@@ -1,24 +1,24 @@
 {
-    "name": "InHouse",
-    "short_name": "InHouse",
-    "description": "Connect with personal chefs, browse menus, order home-cooked meals.",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#0a0a0a",
-    "theme_color": "#ff6400",
-    "orientation": "portrait",
-    "icons": [
-        {
-            "src": "/assets/images/Untitled-1773906134100.jpeg",
-            "sizes": "192x192",
-            "type": "image/jpeg",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "/assets/images/Untitled-1773906134100.jpeg",
-            "sizes": "512x512",
-            "type": "image/jpeg",
-            "purpose": "any maskable"
-        }
-    ]
+  "name": "InHouse",
+  "short_name": "InHouse",
+  "description": "Connect with personal chefs, browse menus, order home-cooked meals.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ff6400",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
