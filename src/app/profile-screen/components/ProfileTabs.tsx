@@ -147,13 +147,13 @@ export default function ProfileTabs() {
         <div className="p-4 border-b border-border">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Vendor Tools</p>
           <div className="grid grid-cols-2 gap-2">
-            <Link href="/chef-menu">
+            <Link href="/profile-screen?tab=menu">
               <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
                 <UtensilsCrossed className="w-4 h-4 text-primary flex-shrink-0" />
                 <span className="text-sm font-medium text-foreground">Manage Menu</span>
               </button>
             </Link>
-            <Link href="/chef-menu?tab=orders">
+            <Link href="/chef-menu?section=orders">
               <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left">
                 <Package className="w-4 h-4 text-amber-500 flex-shrink-0" />
                 <span className="text-sm font-medium text-foreground">Orders Received</span>
@@ -165,14 +165,18 @@ export default function ProfileTabs() {
                 <span className="text-sm font-medium text-foreground">Edit Vendor Profile</span>
               </button>
             </Link>
-            <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-green-500/5 hover:bg-green-500/10 border border-green-500/20 transition-colors text-left">
-              <DollarSign className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground">Payout / Earnings</span>
-            </button>
-            <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 transition-colors text-left">
-              <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground">Business Hours</span>
-            </button>
+            <Link href="/chef-menu?section=payouts">
+              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-green-500/5 hover:bg-green-500/10 border border-green-500/20 transition-colors text-left">
+                <DollarSign className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-foreground">Payout / Earnings</span>
+              </button>
+            </Link>
+            <Link href="/edit-profile">
+              <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 transition-colors text-left">
+                <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-foreground">Business Hours</span>
+              </button>
+            </Link>
           </div>
         </div>
       )}
@@ -288,7 +292,7 @@ export default function ProfileTabs() {
       {activeTab === 'menu' && isVendor && (
         <div className="p-4 space-y-3">
           {isOwnProfile && (
-            <Link href="/chef-menu">
+            <Link href="/profile-screen?tab=menu">
               <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-600 hover:bg-primary/5 transition-colors mb-2">
                 <Pencil className="w-4 h-4" />
                 Manage Menu
@@ -325,7 +329,7 @@ export default function ProfileTabs() {
               </p>
               {isOwnProfile && (
                 <>
-                  <Link href="/chef-menu">
+                  <Link href="/profile-screen?tab=menu">
                     <button className="flex items-center gap-2 bg-primary text-white text-sm font-700 px-5 py-2.5 rounded-full hover:bg-primary/90 hover:shadow-md hover:shadow-primary/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-150 shadow-sm shadow-primary/20">
                       <Plus className="w-4 h-4" />
                       Add your first meal
@@ -419,7 +423,7 @@ export default function ProfileTabs() {
               </div>
             )}
           </div>
-          <Link href="/chef-menu">
+          <Link href="/profile-screen?tab=menu">
             <button className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25">
               <UtensilsCrossed className="w-4 h-4" />
               View Full Menu

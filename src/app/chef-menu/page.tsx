@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, ChefHat, CheckCircle2, Circle, Settings } from 'lucide-react';
+import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package } from 'lucide-react';
 import { getChefReadiness } from '@/lib/chef/readiness';
 
 export default function ChefMenuPage() {
@@ -16,6 +16,8 @@ export default function ChefMenuPage() {
   const [loading, setLoading] = useState(true);
   const [mealCount, setMealCount] = useState(0);
   const [stripeState, setStripeState] = useState<any>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>('');
 
   const isChef = profile?.role === 'chef';
   const vendorReady = !!profile?.vendor_onboarding_complete;
@@ -40,6 +42,27 @@ export default function ChefMenuPage() {
       loadChefReadinessData();
     }
   }, [authLoading, user, profile, router]);
+
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setActiveSection(params.get('section') || '');
+    }
+  }, []);
+
+  const handleStripeConnect = async () => {
+    try {
+      setStripeLoading(true);
+      const response = await fetch('/api/stripe/connect', { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok || !payload?.url) throw new Error(payload?.error || 'Unable to start Stripe setup.');
+      window.location.href = payload.url;
+    } catch (error) {
+      console.error(error);
+      setStripeLoading(false);
+    }
+  };
 
   const loadChefReadinessData = async () => {
     if (!user) return;
@@ -149,9 +172,32 @@ export default function ChefMenuPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Link href="/edit-profile" className="rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">Complete vendor profile</p><p className="text-xs text-muted-foreground mt-1">Edit business name, bio, photos, and location.</p></Link>
-          <Link href="/profile-screen" className="rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">Open vendor hub</p><p className="text-xs text-muted-foreground mt-1">Manage menu, profile, and vendor tools.</p></Link>
-          <Link href="/chef-menu?section=payouts" className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">Connect payout</p><p className="text-xs text-muted-foreground mt-1">Open payout setup and connect Stripe.</p></Link>
+          <Link href="/profile-screen?tab=menu" className="rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">Manage menu</p><p className="text-xs text-muted-foreground mt-1">Open your live menu tab and manage dishes.</p></Link>
+          <button onClick={handleStripeConnect} className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/30 transition-colors"><p className="text-sm font-700 text-foreground">{stripeLoading ? 'Connecting...' : 'Connect payout'}</p><p className="text-xs text-muted-foreground mt-1">Open Stripe Connect and finish payout setup.</p></button>
         </div>
+        {activeSection === 'payouts' && (
+          <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <Wallet className="w-5 h-5 text-green-600" />
+              <p className="text-sm font-700 text-foreground">Payout setup</p>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">Connect Stripe so you can receive payouts from customer orders.</p>
+            <button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">
+              <Wallet className="w-4 h-4" />
+              {stripeLoading ? 'Connecting...' : 'Connect Stripe'}
+            </button>
+          </div>
+        )}
+
+        {activeSection === 'orders' && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <Package className="w-5 h-5 text-amber-600" />
+              <p className="text-sm font-700 text-foreground">Orders received</p>
+            </div>
+            <p className="text-xs text-muted-foreground">Order management is being routed here next. For now, this section is the correct entry point for chef order tools.</p>
+          </div>
+        )}
       </div>
     </AppLayout>
   );
