@@ -37,7 +37,7 @@ export async function POST() {
 
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('id, email, full_name, stripe_account_id')
+      .select('id, email, full_name')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -49,7 +49,17 @@ export async function POST() {
       return NextResponse.json({ error: `Profile not found for user ${user.id}` }, { status: 404 });
     }
 
-    let stripeAccountId = profile.stripe_account_id;
+    let stripeAccountId: string | null = null;
+
+    const stripeFieldLookup = await supabase
+      .from('user_profiles')
+      .select('stripe_account_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!stripeFieldLookup.error) {
+      stripeAccountId = stripeFieldLookup.data?.stripe_account_id ?? null;
+    }
 
     if (!stripeAccountId) {
       const account = await stripe.accounts.create({
@@ -68,7 +78,7 @@ export async function POST() {
         .update({ stripe_account_id: stripeAccountId })
         .eq('id', user.id);
 
-      if (updateError) {
+      if (updateError && !String(updateError.message || '').includes('stripe_account_id')) {
         return NextResponse.json({ error: updateError.message || 'Failed to save Stripe account' }, { status: 500 });
       }
     }
