@@ -92,12 +92,12 @@ export async function POST() {
       }
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://inhouseapp.net';
+    const productionPayoutUrl = 'https://inhouseapp.net/chef-menu?section=payouts';
 
     const link = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${siteUrl}/chef-menu?section=payouts`,
-      return_url: `${siteUrl}/chef-menu?section=payouts`,
+      refresh_url: productionPayoutUrl,
+      return_url: productionPayoutUrl,
       type: 'account_onboarding',
     });
 
