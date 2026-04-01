@@ -292,7 +292,7 @@ export default function ProfileTabs() {
       {activeTab === 'menu' && isVendor && (
         <div className="p-4 space-y-3">
           {isOwnProfile && (
-            <Link href="/profile-screen?tab=menu">
+            <Link href="/chef-menu?section=menu-manager">
               <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-600 hover:bg-primary/5 transition-colors mb-2">
                 <Pencil className="w-4 h-4" />
                 Manage Menu
@@ -329,7 +329,7 @@ export default function ProfileTabs() {
               </p>
               {isOwnProfile && (
                 <>
-                  <Link href="/profile-screen?tab=menu">
+                  <Link href="/chef-menu?section=menu-manager">
                     <button className="flex items-center gap-2 bg-primary text-white text-sm font-700 px-5 py-2.5 rounded-full hover:bg-primary/90 hover:shadow-md hover:shadow-primary/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-150 shadow-sm shadow-primary/20">
                       <Plus className="w-4 h-4" />
                       Add your first meal

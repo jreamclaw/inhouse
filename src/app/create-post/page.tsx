@@ -124,7 +124,7 @@ export default function CreatePostPage() {
 
         <div onClick={() => fileInputRef.current?.click()} className="relative rounded-2xl border-2 border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 mb-6 p-6">
           <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center"><ImagePlus className="w-7 h-7 text-primary" /></div>
-          <div className="text-center"><p className="text-base font-600 text-foreground">Add photos or video</p><p className="text-sm text-muted-foreground mt-1">Upload up to 5 files like Instagram</p><p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, GIF, MP4 ? Max 50MB each</p></div>
+          <div className="text-center"><p className="text-base font-600 text-foreground">Add photos or video</p><p className="text-sm text-muted-foreground mt-1">Upload up to 5 files, just like Instagram</p><p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, GIF, MP4 ? Max 50MB each</p></div>
           <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" />
         </div>
 

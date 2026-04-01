@@ -133,8 +133,16 @@ export default function ChefMenuPage() {
             </div>
             <Link href="/profile-screen?tab=menu" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />Open menu tab</Link>
           </div>
-          {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Open your menu tab and add your first meal.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} ? {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
+          {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Tap the button below to start building your menu.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} ? {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
+          <div className="mt-4">
+            <Link href="/create-post" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">
+              <Plus className="w-4 h-4" />
+              Add your first meal
+            </Link>
+          </div>
         </div>
+
+        {activeSection === 'menu-manager' && <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5"><p className="text-sm font-700 text-foreground mb-2">Menu manager</p><p className="text-xs text-muted-foreground mb-3">Use this section to build your food catalog. For now, the quick add flow routes into content creation while we finish the dedicated meal composer.</p><Link href="/create-post" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />Add your first meal</Link></div>}
 
         {activeSection === 'payouts' && <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5"><div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div><p className="text-xs text-muted-foreground mb-3">Connect Stripe so you can receive payouts from customer orders.</p><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeLoading ? 'Connecting...' : 'Connect Stripe'}</button></div>}
 
