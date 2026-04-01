@@ -37,6 +37,7 @@ interface DbMeal {
   image_url: string | null;
   category: string;
   available: boolean;
+  modifier_groups?: ModifierGroup[] | null;
 }
 
 interface DbVendorProfile {
@@ -1979,7 +1980,7 @@ function VendorProfileContent() {
           .single(),
         supabase
           .from('meals')
-          .select('id, title, description, price, image_url, category, available')
+          .select('id, title, description, price, image_url, category, available, modifier_groups')
           .eq('chef_id', vendorId)
           .order('created_at', { ascending: false }),
       ]);
@@ -2003,6 +2004,7 @@ function VendorProfileContent() {
         imageAlt: meal.title,
         category: meal.category || 'Mains',
         availability: meal.available ? 'available' : 'sold_out',
+        modifierGroups: meal.modifier_groups ?? [],
       }));
 
       setVendorOverride({

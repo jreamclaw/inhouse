@@ -10,7 +10,9 @@ import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2,
 import { getChefReadiness } from '@/lib/chef/readiness';
 import { toast } from 'sonner';
 
-type Meal = { id: string; title: string; description: string | null; price: number; category: string; available: boolean; image_url: string | null };
+type ModifierOption = { id: string; label: string; priceAdd: number };
+type ModifierGroup = { id: string; name: string; required: boolean; multiSelect: boolean; minSelect?: number; maxSelect?: number; options: ModifierOption[] };
+type Meal = { id: string; title: string; description: string | null; price: number; category: string; available: boolean; image_url: string | null; modifier_groups?: ModifierGroup[] };
 const CATEGORIES = ['Starters', 'Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Drinks', 'Sides'];
 
 export default function ChefMenuPage() {
@@ -33,6 +35,7 @@ export default function ChefMenuPage() {
   const [mealAvailable, setMealAvailable] = useState(true);
   const [mealImageFile, setMealImageFile] = useState<File | null>(null);
   const [mealImagePreview, setMealImagePreview] = useState<string | null>(null);
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
 
   const isChef = profile?.role === 'chef';
   const vendorReady = !!profile?.vendor_onboarding_complete;
@@ -69,7 +72,7 @@ export default function ChefMenuPage() {
     try {
       const [{ data: profileRow }, { data: mealRows }] = await Promise.all([
         supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled').eq('id', user.id).single(),
-        supabase.from('meals').select('id, title, description, price, category, available, image_url').eq('chef_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('meals').select('id, title, description, price, category, available, image_url, modifier_groups').eq('chef_id', user.id).order('created_at', { ascending: false }),
       ]);
       setStripeState(profileRow || null);
       setMeals(mealRows || []);
@@ -114,6 +117,7 @@ export default function ChefMenuPage() {
     setMealAvailable(true);
     setMealImageFile(null);
     setMealImagePreview(null);
+    setModifierGroups([]);
     setShowMealForm(false);
   };
 
@@ -143,8 +147,9 @@ export default function ChefMenuPage() {
           category: mealCategory,
           available: mealAvailable,
           image_url: imageUrl,
+          modifier_groups: modifierGroups,
         })
-        .select('id, title, description, price, category, available, image_url')
+        .select('id, title, description, price, category, available, image_url, modifier_groups')
         .single();
 
       if (error) throw error;
@@ -219,6 +224,36 @@ export default function ChefMenuPage() {
                 <select value={mealCategory} onChange={(e) => setMealCategory(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background">{CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}</select>
                 <label className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background"><input type="checkbox" checked={mealAvailable} onChange={(e) => setMealAvailable(e.target.checked)} />Available for orders</label>
               </div>
+
+              <div className="rounded-xl border border-border bg-background p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-700 text-foreground">Sides / drinks / extras</p>
+                  <button onClick={() => setModifierGroups((prev) => [...prev, { id: crypto.randomUUID(), name: '', required: false, multiSelect: false, options: [{ id: crypto.randomUUID(), label: '', priceAdd: 0 }] }])} className="text-xs font-700 text-primary">+ Add option group</button>
+                </div>
+                {modifierGroups.length === 0 ? <p className="text-xs text-muted-foreground">Add modifier groups for sides, drinks, and extras.</p> : modifierGroups.map((group, groupIndex) => (
+                  <div key={group.id} className="rounded-xl border border-border/70 p-3 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input value={group.name} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, name: e.target.value } : item))} placeholder="Group name (e.g. Sides)" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                      <div className="flex gap-3">
+                        <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={group.required} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, required: e.target.checked } : item))} />Required</label>
+                        <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={group.multiSelect} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, multiSelect: e.target.checked } : item))} />Multi-select</label>
+                      </div>
+                    </div>
+                    <div className="space-y-2">{group.options.map((option, optionIndex) => (
+                      <div key={option.id} className="grid grid-cols-[1fr_110px_auto] gap-2">
+                        <input value={option.label} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.map((opt, optIdx) => optIdx === optionIndex ? { ...opt, label: e.target.value } : opt) } : item))} placeholder="Option name" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                        <input value={option.priceAdd} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.map((opt, optIdx) => optIdx === optionIndex ? { ...opt, priceAdd: Number(e.target.value || 0) } : opt) } : item))} placeholder="Price add" inputMode="decimal" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                        <button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.filter((_, optIdx) => optIdx !== optionIndex) } : item).filter((item) => item.options.length > 0))} className="text-xs font-700 text-red-500">Remove</button>
+                      </div>
+                    ))}</div>
+                    <div className="flex items-center justify-between">
+                      <button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: [...item.options, { id: crypto.randomUUID(), label: '', priceAdd: 0 }] } : item))} className="text-xs font-700 text-primary">+ Add option</button>
+                      <button onClick={() => setModifierGroups((prev) => prev.filter((_, idx) => idx !== groupIndex))} className="text-xs font-700 text-red-500">Delete group</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <div className="rounded-xl border border-dashed border-border p-4 bg-background">
                 {!mealImagePreview ? <button onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 text-sm font-600 text-primary"><ImagePlus className="w-4 h-4" />Upload meal photo</button> : <div className="relative w-32 h-32 rounded-xl overflow-hidden"><img src={mealImagePreview} alt="Meal preview" className="w-full h-full object-cover" /><button onClick={() => { setMealImageFile(null); setMealImagePreview(null); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center"><X className="w-4 h-4 text-white" /></button></div>}
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleMealImageSelect} className="hidden" />
