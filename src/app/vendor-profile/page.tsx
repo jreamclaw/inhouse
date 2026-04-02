@@ -1975,6 +1975,7 @@ function VendorProfileContent() {
   const [followLoading, setFollowLoading] = useState(false);
   const businessHours = parseBusinessHoursFromBio(vendor.bio);
   const openState = getTodayOpenState(businessHours);
+  const isOwnVendorProfile = !!user?.id && user.id === vendor.id;
 
   useEffect(() => {
     loadVendor();
@@ -2289,9 +2290,8 @@ function VendorProfileContent() {
                   followLoading ? 'opacity-70 cursor-not-allowed' : ''}`}>
                   {followLoading ?
                   <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> :
-
                   <>
-                      <Heart className="w-3.5 h-3.5" />
+                      <Heart className={`w-3.5 h-3.5 ${isFollowing ? 'fill-current' : ''}`} />
                       {isFollowing ? 'Following' : 'Follow'}
                     </>
                   }
@@ -2314,7 +2314,7 @@ function VendorProfileContent() {
                 )}
                 <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                   <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span>{vendor.followers > 0 ? `${vendor.followers >= 1000 ? `${(vendor.followers / 1000).toFixed(1)}k` : vendor.followers} followers` : 'New on InHouse'}</span>
+                  <span>{vendor.followers > 0 ? `${vendor.followers >= 1000 ? `${(vendor.followers / 1000).toFixed(1)}k` : vendor.followers} followers` : '0 followers'}</span>
                 </div>
               </div>
             </div>
@@ -2374,14 +2374,15 @@ function VendorProfileContent() {
               }>
               Reviews
             </button>
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`flex-1 py-3 text-[13px] font-600 border-b-2 transition-all tracking-snug ${
-              activeTab === 'orders' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`
-              }>
-              
-              Orders
-            </button>
+            {isOwnVendorProfile && (
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`flex-1 py-3 text-[13px] font-600 border-b-2 transition-all tracking-snug ${
+                activeTab === 'orders' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`
+                }>
+                Orders
+              </button>
+            )}
           </div>
         </div>
 
@@ -2417,7 +2418,7 @@ function VendorProfileContent() {
               ))
             )}
           </div>
-        ) : activeTab === 'orders' ? (
+        ) : activeTab === 'orders' && isOwnVendorProfile ? (
           <OrdersTab />
         ) : activeTab === 'reviews' ? (
           vendor.reviewCount > 0 ? (
