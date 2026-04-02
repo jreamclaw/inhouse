@@ -76,7 +76,7 @@ export default function ChefMenuPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const section = params.get('section') || 'overview';
-      setActiveSection(section);
+      setActiveSection(section === 'menu-manager' ? 'overview' : section);
       if (section === 'menu-manager') setShowMealForm(true);
       if (section === 'payouts') syncStripeStatus();
     }

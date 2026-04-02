@@ -2297,9 +2297,6 @@ function VendorProfileContent() {
                   <Users className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>{vendor.followers > 0 ? `${vendor.followers >= 1000 ? `${(vendor.followers / 1000).toFixed(1)}k` : vendor.followers} followers` : 'New on InHouse'}</span>
                 </div>
-                {vendor.businessHours ? <div className="mt-2 text-sm text-foreground">Hours: {vendor.businessHours}</div> : null}
-                {vendor.closedDays && vendor.closedDays.length > 0 ? <div className="mt-1 text-xs text-muted-foreground">Closed: {vendor.closedDays.join(', ')}</div> : null}
-                <div className="mt-1 text-xs font-semibold ${vendor.closedDays?.includes(new Date().toLocaleDateString('en-US', { weekday: 'short' })) ? 'text-red-500' : 'text-green-600'}">{vendor.closedDays?.includes(new Date().toLocaleDateString('en-US', { weekday: 'short' })) ? 'Currently closed' : 'Open today'}</div>
               </div>
             </div>
           </div>

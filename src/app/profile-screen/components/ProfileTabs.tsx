@@ -171,7 +171,7 @@ export default function ProfileTabs() {
         <div className="p-4 border-b border-border">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Vendor Tools</p>
           <div className="grid grid-cols-2 gap-2">
-            <Link href="/profile-screen?tab=menu">
+            <Link href="/chef-menu?section=menu-manager">
               <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
                 <UtensilsCrossed className="w-4 h-4 text-primary flex-shrink-0" />
                 <span className="text-sm font-medium text-foreground">Manage Menu</span>
