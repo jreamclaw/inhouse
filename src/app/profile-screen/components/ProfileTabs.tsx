@@ -10,12 +10,21 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PostFeedSkeleton } from '@/components/ui/SkeletonLoaders';
 
+interface DbPostMedia {
+  media_url: string;
+  media_type: 'image' | 'video';
+  sort_order: number;
+}
+
 interface DbPost {
   id: string;
+  user_id: string;
   media_url: string;
   caption: string | null;
   media_type: 'image' | 'video';
   likes_count: number;
+  created_at: string;
+  post_media?: DbPostMedia[];
 }
 
 interface DbMeal {
@@ -49,6 +58,7 @@ export default function ProfileTabs() {
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
+    const refreshKey = searchParams.get('refresh');
     if (requestedTab) setActiveTab(requestedTab);
     if (user?.id) {
       loadPosts();
@@ -62,10 +72,23 @@ export default function ProfileTabs() {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('id, media_url, caption, media_type, likes_count')
+        .select(`
+          id,
+          user_id,
+          media_url,
+          caption,
+          media_type,
+          likes_count,
+          created_at,
+          post_media (
+            media_url,
+            media_type,
+            sort_order
+          )
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      if (!error && data) setDbPosts(data);
+      if (!error && data) setDbPosts(data as DbPost[]);
     } catch {
       // no-op
     } finally {
@@ -258,17 +281,25 @@ export default function ProfileTabs() {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-0.5">
-              {dbPosts.map((post) => (
+              {dbPosts.map((post) => {
+                const orderedMedia = (post.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+                const coverMedia = orderedMedia[0] || {
+                  media_url: post.media_url,
+                  media_type: post.media_type,
+                  sort_order: 0,
+                };
+
+                return (
                 <button
                   key={post.id}
                   className="relative aspect-square overflow-hidden bg-muted group"
                   aria-label={`View post: ${post.caption || 'Post'}`}
                 >
-                  {post.media_type === 'video' ? (
-                    <video src={post.media_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" muted />
+                  {coverMedia.media_type === 'video' ? (
+                    <video src={coverMedia.media_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" muted />
                   ) : (
                     <img
-                      src={post.media_url}
+                      src={coverMedia.media_url}
                       alt={post.caption || 'Post'}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
@@ -280,15 +311,20 @@ export default function ProfileTabs() {
                       <span>{post.likes_count?.toLocaleString()}</span>
                     </div>
                   </div>
-                  {post.media_type === 'video' && (
+                  {coverMedia.media_type === 'video' && (
                     <div className="absolute top-2 right-2 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center">
                       <svg className="w-3 h-3 text-white fill-white" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>
                   )}
+                  {orderedMedia.length > 1 && (
+                    <div className="absolute top-2 left-2 min-w-[22px] h-5 px-1.5 bg-black/60 rounded-full flex items-center justify-center text-[10px] font-700 text-white">
+                      {orderedMedia.length}
+                    </div>
+                  )}
                 </button>
-              ))}
+              )})}
             </div>
           )}
         </div>
