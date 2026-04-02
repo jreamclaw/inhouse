@@ -81,6 +81,7 @@ const VENDOR_DATA: Record<string, {
   location: string;
   distance?: string;
   deliveryTime: string;
+  deliveryFee?: number;
   minOrder: number;
   menu: MenuItem[];
 }> = {
