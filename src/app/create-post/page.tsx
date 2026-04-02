@@ -130,16 +130,6 @@ export default function CreatePostPage() {
         throw mediaInsert.error;
       }
 
-      const { count: profilePostsCount } = await supabase
-        .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-
-      await supabase
-        .from('user_profiles')
-        .update({ posts_count: profilePostsCount || mediaItems.length, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
-
       toast.success(mediaItems.length > 1 ? 'Carousel post shared successfully!' : 'Post shared successfully!');
       router.push('/profile-screen?tab=posts&refresh=' + Date.now());
       router.refresh();
