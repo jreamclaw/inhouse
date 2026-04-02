@@ -76,7 +76,7 @@ export default function ChefMenuPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const section = params.get('section') || 'overview';
-      setActiveSection(section === 'menu-manager' ? 'overview' : section);
+      setActiveSection(section === 'menu-manager' ? 'menu' : section);
       if (section === 'menu-manager') setShowMealForm(true);
       if (section === 'payouts') syncStripeStatus();
     }
@@ -303,29 +303,31 @@ export default function ChefMenuPage() {
           <Link href="/edit-profile" className="flex items-center gap-1.5 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Settings className="w-4 h-4" />Edit Vendor Profile</Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
           <button onClick={() => setActiveSection('overview')} className={`rounded-2xl border p-3 text-left ${activeSection === 'overview' ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Overview</p><p className="text-sm font-700 text-foreground mt-1">Chef home</p></button>
+          <button onClick={() => setActiveSection('menu')} className={`rounded-2xl border p-3 text-left ${activeSection === 'menu' ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Menu</p><p className="text-sm font-700 text-foreground mt-1">Manage menu</p></button>
           <button onClick={() => setActiveSection('orders')} className={`rounded-2xl border p-3 text-left ${activeSection === 'orders' ? 'border-amber-500 bg-amber-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Orders</p><p className="text-sm font-700 text-foreground mt-1">Incoming orders</p></button>
           <button onClick={() => { setActiveSection('payouts'); syncStripeStatus(); }} className={`rounded-2xl border p-3 text-left ${activeSection === 'payouts' ? 'border-green-500 bg-green-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Payouts</p><p className="text-sm font-700 text-foreground mt-1">Earnings</p></button>
           <button onClick={() => setActiveSection('hours')} className={`rounded-2xl border p-3 text-left ${activeSection === 'hours' ? 'border-blue-500 bg-blue-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Hours</p><p className="text-sm font-700 text-foreground mt-1">Business hours</p></button>
         </div>
 
         {activeSection === 'overview' && (
-          <>
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center justify-between gap-4 mb-3"><div><p className="text-sm font-700 text-foreground">Chef readiness</p><p className="text-xs text-muted-foreground">{readiness.completedCount} of {readiness.totalCount} setup areas complete</p></div><div className="text-right"><p className="text-2xl font-700 text-foreground">{readiness.percent}%</p><p className="text-xs text-muted-foreground capitalize">{readiness.status.replace('-', ' ')}</p></div></div>
               <div className="w-full h-2 rounded-full bg-muted overflow-hidden mb-4"><div className="h-full bg-primary rounded-full" style={{ width: `${readiness.percent}%` }} /></div>
               <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{item.key === 'payouts' && stripeSyncing ? <span className="text-xs font-700 text-amber-600">Checking payout setup...</span> : item.key === 'payouts' && item.complete ? <span className="text-xs font-700 text-green-600">Payouts connected</span> : !item.complete && <button onClick={() => item.key === 'menu' ? setShowMealForm(true) : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
             </div>
+        )}
 
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div><p className="text-sm font-700 text-foreground">Menu manager</p><p className="text-xs text-muted-foreground">Add and manage the dishes customers will see.</p></div>
-                <button onClick={() => setShowMealForm((prev) => !prev)} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />{showMealForm ? 'Close form' : 'Add meal'}</button>
-              </div>
+        {activeSection === 'menu' && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div><p className="text-sm font-700 text-foreground">Menu manager</p><p className="text-xs text-muted-foreground">Add and manage the dishes customers will see.</p></div>
+              <button onClick={() => setShowMealForm((prev) => !prev)} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />{showMealForm ? 'Close form' : 'Add meal'}</button>
+            </div>
 
-              {showMealForm && (
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 mb-4 space-y-4">
+            {showMealForm && (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 mb-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input value={mealTitle} onChange={(e) => setMealTitle(e.target.value)} placeholder="Meal title" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
                     <input value={mealPrice} onChange={(e) => setMealPrice(e.target.value)} placeholder="Price" inputMode="decimal" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
@@ -343,7 +345,6 @@ export default function ChefMenuPage() {
 
               {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Use the Add meal button above to create your first dish.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} • {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
             </div>
-          </>
         )}
 
         {activeSection === 'orders' && (

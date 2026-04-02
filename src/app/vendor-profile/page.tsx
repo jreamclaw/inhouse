@@ -51,6 +51,23 @@ interface DbVendorProfile {
   delivery_fee?: number | null;
 }
 
+function parseBusinessHoursFromBio(bio?: string | null) {
+  const match = bio?.match(/Hours:\s*([^\n]+)/i);
+  return match?.[1]?.trim() || null;
+}
+
+function getTodayOpenState(hoursText?: string | null) {
+  if (!hoursText || hoursText.toLowerCase().includes('closed all week')) {
+    return { label: 'Currently closed', isOpen: false };
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+  const [daysPart] = hoursText.split('•').map((part) => part.trim());
+  const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
+  const isOpenToday = openDays.includes(today);
+  return { label: isOpenToday ? 'Open today' : 'Currently closed', isOpen: isOpenToday };
+}
+
 interface MenuItem {
   id: string;
   title: string;
@@ -1956,6 +1973,8 @@ function VendorProfileContent() {
   const [vendorPosts, setVendorPosts] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const businessHours = parseBusinessHoursFromBio(vendor.bio);
+  const openState = getTodayOpenState(businessHours);
 
   useEffect(() => {
     loadVendor();
@@ -2323,10 +2342,16 @@ function VendorProfileContent() {
             )}
           </div>
 
-          {vendor.bio?.includes('Hours:') && (
-            <div className="mt-3 inline-flex items-center gap-2 text-[12px] text-muted-foreground bg-muted px-3 py-2 rounded-xl">
-              <Clock className="w-3.5 h-3.5 text-primary" />
-              <span>{vendor.bio.split('Hours:')[1]?.trim() || 'Hours not set'}</span>
+          {businessHours && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 text-[12px] text-muted-foreground bg-muted px-3 py-2 rounded-xl">
+                <Clock className="w-3.5 h-3.5 text-primary" />
+                <span>{businessHours}</span>
+              </div>
+              <div className={`inline-flex items-center gap-2 text-[12px] px-3 py-2 rounded-xl font-700 ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
+                <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                {openState.label}
+              </div>
             </div>
           )}
         </div>
