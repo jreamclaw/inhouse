@@ -245,7 +245,7 @@ export const MOCK_REVIEWS: Review[] = [
 {
   id: 'rev-001',
   customerName: 'Jordan Williams',
-  customerAvatar: "https://img.rocket.new/generatedImages/rocket_gen_img_14247f6dc-1772057422002.png",
+  customerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
   rating: 5,
   date: '2 days ago',
   text: "Absolutely incredible. The Truffle Tagliatelle was the best pasta I've had outside of Italy. The portion was generous and the truffle aroma was intoxicating. Will be ordering every week.",
@@ -263,7 +263,7 @@ export const MOCK_REVIEWS: Review[] = [
 {
   id: 'rev-002',
   customerName: 'Priya Nair',
-  customerAvatar: "https://img.rocket.new/generatedImages/rocket_gen_img_10c048421-1764895467197.png",
+  customerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
   rating: 5,
   date: '5 days ago',
   text: "The Osso Buco was a masterpiece. Tender, fall-off-the-bone veal with the most fragrant saffron risotto. Packaging was beautiful and everything arrived hot. Chef Marco is the real deal.",
@@ -277,7 +277,7 @@ export const MOCK_REVIEWS: Review[] = [
 {
   id: 'rev-003',
   customerName: 'Marcus Thompson',
-  customerAvatar: "https://img.rocket.new/generatedImages/rocket_gen_img_1038f0be2-1766590129170.png",
+  customerAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
   rating: 4,
   date: '1 week ago',
   text: "Really solid Cacio e Pepe — creamy, peppery, and cooked perfectly al dente. Delivery was a bit slow but the food was worth the wait. The tiramisu was a great add-on too.",
@@ -287,7 +287,7 @@ export const MOCK_REVIEWS: Review[] = [
 {
   id: 'rev-004',
   customerName: 'Sofia Reyes',
-  customerAvatar: "https://img.rocket.new/generatedImages/rocket_gen_img_109e9ea2a-1772468752458.png",
+  customerAvatar: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=200&q=80',
   rating: 5,
   date: '1 week ago',
   text: "The burrata was so fresh it tasted like it was made that morning. Paired with the heirloom tomatoes and basil oil — simple perfection. I've already recommended this chef to five friends.",
@@ -301,7 +301,7 @@ export const MOCK_REVIEWS: Review[] = [
 {
   id: 'rev-005',
   customerName: 'Devon Carter',
-  customerAvatar: "https://img.rocket.new/generatedImages/rocket_gen_img_1a02f3e11-1772324930194.png",
+  customerAvatar: 'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=200&q=80',
   rating: 5,
   date: '2 weeks ago',
   text: "Ordered for a dinner party and everyone was blown away. The presentation was restaurant-quality and the flavors were even better. Marco clearly puts his heart into every dish.",
@@ -311,7 +311,7 @@ export const MOCK_REVIEWS: Review[] = [
 {
   id: 'rev-006',
   customerName: 'Aaliyah Brooks',
-  customerAvatar: "https://img.rocket.new/generatedImages/rocket_gen_img_145925fa9-1769448175849.png",
+  customerAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80',
   rating: 3,
   date: '3 weeks ago',
   text: "Food was good but arrived a little cold. The tiramisu was the highlight — creamy and not too sweet. Would order again but hope the delivery time improves.",

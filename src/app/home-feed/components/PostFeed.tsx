@@ -112,7 +112,7 @@ const MOCK_POSTS = [
     role: 'chef' as const,
     verified: true
   },
-  image: "https://img.rocket.new/generatedImages/rocket_gen_img_1cdc31a08-1772058323789.png",
+  image: 'https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=1200&q=80',
   imageAlt: 'Seared salmon fillet with mango salsa and microgreens on a dark slate plate',
   caption: 'New on the menu: Mango Habanero Glazed Salmon 🥭🌶️ Sweet heat, perfectly seared. Inspired by my grandmother\'s West African kitchen. Pre-order opens tomorrow 6PM.',
   likes: 1203,
@@ -137,7 +137,7 @@ const MOCK_POSTS = [
     role: 'chef' as const,
     verified: true
   },
-  image: "https://img.rocket.new/generatedImages/rocket_gen_img_1c2b3d236-1767009263868.png",
+  image: 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=1200&q=80',
   imageAlt: 'Neapolitan margherita pizza with fresh basil leaves and mozzarella just out of a wood-fired oven',
   caption: 'The Margherita. Simple. Sacred. My wood-fired oven runs at 485°C for exactly this 🔥 Every Friday night, 8 pizzas only. DM to reserve yours.',
   likes: 2104,
@@ -213,7 +213,7 @@ const MOCK_POSTS = [
     role: 'chef' as const,
     verified: true
   },
-  image: "https://img.rocket.new/generatedImages/rocket_gen_img_145c5dcb6-1772243798514.png",
+  image: 'https://images.unsplash.com/photo-1613514785940-daed07799d9b?auto=format&fit=crop&w=1200&q=80',
   imageAlt: 'Authentic Mexican street tacos with carnitas, cilantro, and lime on a wooden board',
   caption: 'Street tacos from scratch 🌮 Slow-braised carnitas, fresh tortillas, and my abuela\'s salsa verde. Food truck at Dupont Circle this Saturday 11AM–3PM.',
   likes: 1456,
@@ -238,7 +238,7 @@ const MOCK_POSTS = [
     role: 'chef' as const,
     verified: true
   },
-  image: "https://img.rocket.new/generatedImages/rocket_gen_img_10b4c3c0c-1772088181548.png",
+  image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80',
   imageAlt: 'Gourmet smash burger with caramelized onions and special sauce on a brioche bun',
   caption: 'The smash burger that broke the internet (at least in my kitchen) 🍔 Double smash, American cheese, caramelized onions, secret sauce. Pop-up this weekend in Chicago!',
   likes: 2890,
