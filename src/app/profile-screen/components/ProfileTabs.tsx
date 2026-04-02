@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark } from 'lucide-react';
+import CustomerOrdersTab from './CustomerOrdersTab';
 import { toast } from 'sonner';
 
 import { createClient } from '@/lib/supabase/client';
@@ -476,36 +477,7 @@ export default function ProfileTabs() {
       )}
 
       {/* My Orders Tab (Customer only) */}
-      {activeTab === 'orders' && !isVendor && (
-        <div className="p-4">
-          <div className="flex flex-col items-center justify-center py-10 gap-0 text-center px-4">
-            {/* Chef Illustration */}
-            <div className="relative mb-6">
-              <div className="w-44 h-44 flex items-center justify-center">
-                <img
-                  src="/assets/chef-empty-state.svg"
-                  alt="Friendly chef holding a steaming bowl"
-                  className="w-full h-full object-contain drop-shadow-lg"
-                />
-              </div>
-            </div>
-            <h3 className="text-lg font-bold text-foreground mb-2 leading-snug">
-              Your kitchen is quiet...
-              <br />
-              <span className="text-primary">let&apos;s change that!</span>
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-              You haven&apos;t placed any orders yet. Discover talented local chefs cooking near you.
-            </p>
-            <Link href="/nearby">
-              <button className="flex items-center gap-2 bg-primary text-white text-sm font-bold px-7 py-3 rounded-full shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 transition-all duration-150">
-                <UtensilsCrossed className="w-4 h-4" />
-                Explore Local Chefs
-              </button>
-            </Link>
-          </div>
-        </div>
-      )}
+      {activeTab === 'orders' && !isVendor && <CustomerOrdersTab />}
 
       {/* Saved Tab (Customer only) */}
       {activeTab === 'saved' && !isVendor && (

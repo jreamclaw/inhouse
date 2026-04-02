@@ -48,6 +48,7 @@ interface DbVendorProfile {
   bio: string | null;
   location: string | null;
   followers_count?: number | null;
+  delivery_fee?: number | null;
 }
 
 interface MenuItem {
@@ -1975,7 +1976,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, bio, location, followers_count')
+          .select('id, full_name, username, avatar_url, bio, location, followers_count, delivery_fee')
           .eq('id', vendorId)
           .single(),
         supabase
@@ -2021,6 +2022,7 @@ function VendorProfileContent() {
         followers: dbVendor.followers_count || 0,
         location: dbVendor.location || 'Location unavailable',
         distance: undefined,
+        deliveryFee: Number(dbVendor.delivery_fee || 0),
         deliveryTime: 'TBD',
         minOrder: mappedMenu.length > 0 ? Math.min(...mappedMenu.map((item) => item.price)) : 0,
         menu: mappedMenu,
@@ -2036,7 +2038,9 @@ function VendorProfileContent() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('inhouse_vendor_name', vendor.name);
     window.localStorage.setItem('inhouse_vendor_avatar', vendor.avatar);
-  }, [vendor.name, vendor.avatar]);
+    window.localStorage.setItem('inhouse_vendor_location', vendor.location || '');
+    window.localStorage.setItem('inhouse_vendor_delivery_fee', String((vendor as any).deliveryFee ?? 0));
+  }, [vendor.name, vendor.avatar, vendor.location, vendor]);
 
   const categories = ['all', ...Array.from(new Set(vendor.menu.map((item) => item.category)))];
   const filteredMenu = activeCategory === 'all' ?
