@@ -490,7 +490,7 @@ function VendorCard({ vendor }: {vendor: Vendor;}) {
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2.5 flex-wrap">
           <span className="flex items-center gap-1">
             <MapPin className="w-3 h-3 text-primary" />
-            <span className="font-600 text-foreground">{vendor.distance ? `${vendor.distance} miles away` : vendor.location || 'Location unavailable'}</span>
+            <span className="font-600 text-foreground">{vendor.distance > 0 ? `${vendor.distance} miles away` : vendor.location || 'Location unavailable'}</span>
           </span>
           <span className="opacity-30">·</span>
           <span className="flex items-center gap-1">
@@ -559,7 +559,7 @@ export default function NearbyPage() {
 
   useEffect(() => {
     loadVendors();
-  }, []);
+  }, [profile?.latitude, profile?.longitude, userLocation]);
 
   const loadVendors = async () => {
     setLoadingVendors(true);
@@ -607,7 +607,7 @@ export default function NearbyPage() {
         .map((row, index) => {
           const computedDistance = hasCoordinates && typeof row.latitude === 'number' && typeof row.longitude === 'number'
             ? milesBetween(customerLat, customerLng, row.latitude, row.longitude)
-            : index + 1;
+            : null;
           return ({
         id: row.id,
         name: row.full_name || 'Chef',
@@ -618,7 +618,7 @@ export default function NearbyPage() {
         avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
         rating: 0,
         reviewCount: 0,
-        distance: Number(computedDistance.toFixed(1)),
+        distance: computedDistance != null ? Number(computedDistance.toFixed(1)) : 0,
         deliveryTime: 'Details unavailable',
         deliveryFee: 0,
         priceRange: '$$',
@@ -885,7 +885,7 @@ export default function NearbyPage() {
                       <p className="text-white font-700 text-sm leading-tight">{vendor.name}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="flex items-center gap-1 text-white/80 text-xs">
-                          <MapPin className="w-3 h-3" /> {vendor.location || userLocation}
+                          <MapPin className="w-3 h-3" /> {vendor.distance > 0 ? `${vendor.distance} miles away` : vendor.location || userLocation}
                         </span>
                         <span className="ml-auto bg-emerald-500/80 text-white text-[9px] font-700 px-1.5 py-0.5 rounded-full">
                           Live
