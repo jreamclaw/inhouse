@@ -14,7 +14,6 @@ import {
   Truck,
   X,
   ShoppingBag,
-  ChevronRight,
   LocateFixed,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,8 +38,7 @@ interface Vendor {
   deliveryFee: number;
   priceRange: '$' | '$$' | '$$$';
   isOpen: boolean;
-  tags: string[];
-  popularDish: { label: string; name: string; image: string; imageAlt: string };
+  knownFor: string;
   locationLabel: string;
   serviceRadiusMiles: number;
 }
@@ -76,72 +74,67 @@ function PriceRange({ range }: { range: '$' | '$$' | '$$$' }) {
   return (
     <span className="text-xs text-muted-foreground font-500">
       {['$', '$$', '$$$'].map((p, i) => (
-        <span key={i} className={p.length <= range.length ? 'text-foreground' : 'opacity-30'}>
-          $
-        </span>
+        <span key={i} className={p.length <= range.length ? 'text-foreground' : 'opacity-30'}>$</span>
       ))}
     </span>
   );
+}
+
+function formatDistance(distance: number) {
+  if (distance < 1) return '< 1 mi';
+  return `${distance.toFixed(1)} mi`;
+}
+
+function inferKnownFor(vendor: DbVendorRow) {
+  const bio = vendor.bio?.trim();
+  if (!bio) return 'Chef specials';
+  const firstSentence = bio.split(/[.!?]/)[0]?.trim();
+  if (!firstSentence) return 'Chef specials';
+  return firstSentence.length > 44 ? `${firstSentence.slice(0, 41)}...` : firstSentence;
 }
 
 function VendorCard({ vendor }: { vendor: Vendor }) {
   return (
     <div className="bg-card rounded-2xl overflow-hidden border border-border/50 hover:border-primary/25 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-250 active:scale-[0.99] group shadow-subtle">
       <Link href={`/vendor-profile?id=${vendor.id}`} className="block">
-        <div className="relative h-40 overflow-hidden bg-muted">
+        <div className="relative h-44 overflow-hidden bg-muted">
           <img src={vendor.image} alt={vendor.imageAlt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-white font-700 text-sm leading-tight truncate">{vendor.name}</p>
-              <p className="text-white/80 text-xs truncate">{vendor.cuisine}</p>
-            </div>
-            <div className="bg-black/45 backdrop-blur-sm text-white text-[11px] font-700 px-2.5 py-1 rounded-full shrink-0">
-              {vendor.distance.toFixed(1)} mi
-            </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+          <div className="absolute top-3 right-3 bg-black/45 backdrop-blur-sm text-white text-[11px] font-700 px-2.5 py-1 rounded-full shrink-0">
+            {formatDistance(vendor.distance)}
+          </div>
+          <div className="absolute bottom-3 left-3 right-3">
+            <p className="text-white font-700 text-base leading-tight truncate">{vendor.name}</p>
+            <p className="text-white/85 text-xs truncate mt-0.5">{vendor.cuisine}</p>
           </div>
         </div>
       </Link>
 
-      <div className="px-3 pt-3 pb-3.5">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <img src={vendor.avatar} alt={`${vendor.name} vendor avatar`} className="w-7 h-7 rounded-full object-cover border border-border/50 shrink-0" />
-            <div className="min-w-0">
-              <h3 className="font-700 text-foreground text-[13px] leading-tight truncate tracking-snug">{vendor.name}</h3>
-              <p className="text-[11px] text-muted-foreground truncate">{vendor.locationLabel}</p>
-            </div>
+      <div className="px-4 pt-3.5 pb-4">
+        <div className="flex items-center gap-2 mb-2.5 min-w-0">
+          <img src={vendor.avatar} alt={`${vendor.name} vendor avatar`} className="w-8 h-8 rounded-full object-cover border border-border/50 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-700 text-foreground truncate">{vendor.name}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{vendor.locationLabel}</p>
           </div>
-          <div className="flex items-center gap-1 shrink-0 bg-muted px-2 py-0.5 rounded-full">
-            <Star className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[11px] font-600 text-muted-foreground">New</span>
-          </div>
+          <PriceRange range={vendor.priceRange} />
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2.5 flex-wrap">
+        <div className="flex items-center gap-2 text-[12px] text-muted-foreground mb-3 flex-wrap">
           <span className="flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-primary" />
-            <span className="font-600 text-foreground">{vendor.distance.toFixed(1)} miles away</span>
+            <MapPin className="w-3.5 h-3.5 text-primary" />
+            <span>{formatDistance(vendor.distance)}</span>
           </span>
-          <span className="opacity-30">·</span>
+          <span className="opacity-40">•</span>
           <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {vendor.deliveryTime}
-          </span>
-          <span className="ml-auto">
-            <PriceRange range={vendor.priceRange} />
+            <Clock className="w-3.5 h-3.5" />
+            <span>{vendor.deliveryTime}</span>
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-          <span className="bg-muted text-muted-foreground text-[10px] font-500 px-2 py-0.5 rounded-full">
-            Serves within {vendor.serviceRadiusMiles} mi
-          </span>
-          {vendor.tags.slice(0, 1).map((tag) => (
-            <span key={tag} className="bg-muted text-muted-foreground text-[10px] font-500 px-2 py-0.5 rounded-full">
-              {tag}
-            </span>
-          ))}
+        <div className="rounded-xl bg-muted/60 px-3 py-2.5 mb-3">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-700 mb-1">Known for</p>
+          <p className="text-[13px] text-foreground font-600 leading-snug">{vendor.knownFor}</p>
         </div>
 
         <Link href={`/vendor-profile?id=${vendor.id}`} className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-700 transition-all duration-200 tracking-snug bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20 active:scale-[0.98] shadow-sm shadow-primary/15">
@@ -293,17 +286,11 @@ export default function NearbyPage() {
             rating: 0,
             reviewCount: 0,
             distance: distance == null ? 0 : Number(distance.toFixed(1)),
-            deliveryTime: 'Local delivery',
+            deliveryTime: '25–35 min',
             deliveryFee: 0,
             priceRange: '$$',
             isOpen: true,
-            tags: row.location ? [row.location, 'Local Chef'] : ['Local Chef'],
-            popularDish: {
-              label: 'Chef Preview',
-              name: row.full_name || 'Chef',
-              image: row.avatar_url || VENDOR_AVATAR_FALLBACK,
-              imageAlt: `${row.full_name || 'Chef'} featured preview`,
-            },
+            knownFor: inferKnownFor(row),
             locationLabel: row.location || 'Location unavailable',
             serviceRadiusMiles: chefServiceRadius,
           };
@@ -350,7 +337,8 @@ export default function NearbyPage() {
           !searchQuery ||
           v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           v.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          v.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+          v.knownFor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          v.locationLabel.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesOpen = !showOpenOnly || v.isOpen;
         return matchesCategory && matchesSearch && matchesOpen;
       })
@@ -521,7 +509,7 @@ export default function NearbyPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
             {[1, 2, 3, 4].map((item) => (
               <div key={item} className="bg-card rounded-2xl overflow-hidden border border-border/50 animate-pulse">
-                <div className="h-40 bg-muted" />
+                <div className="h-44 bg-muted" />
                 <div className="p-4 space-y-3">
                   <div className="h-4 bg-muted rounded w-2/3" />
                   <div className="h-3 bg-muted rounded w-1/2" />
