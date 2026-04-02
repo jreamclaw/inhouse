@@ -2325,6 +2325,13 @@ function VendorProfileContent() {
               </div>
             )}
           </div>
+
+          {vendor.bio?.includes('Hours:') && (
+            <div className="mt-3 inline-flex items-center gap-2 text-[12px] text-muted-foreground bg-muted px-3 py-2 rounded-xl">
+              <Clock className="w-3.5 h-3.5 text-primary" />
+              <span>{vendor.bio.split('Hours:')[1]?.trim() || 'Hours not set'}</span>
+            </div>
+          )}
         </div>
 
         {/* Tab Bar */}
