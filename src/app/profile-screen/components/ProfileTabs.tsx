@@ -195,7 +195,7 @@ export default function ProfileTabs() {
                 <span className="text-sm font-medium text-foreground">Payout / Earnings</span>
               </button>
             </Link>
-            <Link href="/edit-profile">
+            <Link href="/chef-menu?section=hours">
               <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 transition-colors text-left">
                 <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 <span className="text-sm font-medium text-foreground">Business Hours</span>

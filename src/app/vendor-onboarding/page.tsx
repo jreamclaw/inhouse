@@ -47,7 +47,7 @@ export default function VendorOnboardingPage() {
     }
 
     if (!loading && user && profile?.role === 'chef' && profile.vendor_onboarding_complete) {
-      router.replace('/edit-profile');
+      router.replace('/chef-menu');
       return;
     }
   }, [loading, user, profile, router]);
@@ -107,7 +107,7 @@ export default function VendorOnboardingPage() {
       if (updateError) throw updateError;
 
       await refreshProfile();
-      window.location.href = '/edit-profile';
+      window.location.href = '/chef-menu';
     } catch (err: any) {
       setError(err?.message || 'Failed to save your profile. Please try again.');
     } finally {
@@ -121,9 +121,9 @@ export default function VendorOnboardingPage() {
     try {
       await supabase.from('user_profiles').update({ vendor_onboarding_complete: true }).eq('id', user.id);
       await refreshProfile();
-      window.location.href = '/edit-profile';
+      window.location.href = '/chef-menu';
     } catch {
-      window.location.href = '/edit-profile';
+      window.location.href = '/chef-menu';
     } finally {
       setSaving(false);
     }
