@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { milesBetween } from '@/lib/location/distance';
+import { reverseGeocode } from '@/lib/location/geocode';
 
 type SortOption = 'distance' | 'rating' | 'delivery' | 'fee';
 type LocationSource = 'browser' | 'saved-profile' | 'manual' | 'none';
@@ -60,6 +61,11 @@ interface SavedAddressOption {
   label: string;
   value: string;
   icon: 'home' | 'work';
+}
+
+interface DisplayLocation {
+  shortLabel: string;
+  fullAddress: string;
 }
 
 const CATEGORIES = [
@@ -172,7 +178,7 @@ export default function NearbyPage() {
   const [manualLocationLabel, setManualLocationLabel] = useState('');
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
-  const [locationLabel, setLocationLabel] = useState(DEFAULT_LOCATION);
+  const [displayLocation, setDisplayLocation] = useState<DisplayLocation>({ shortLabel: DEFAULT_LOCATION, fullAddress: DEFAULT_LOCATION });
   const [locationCoords, setLocationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationSource, setLocationSource] = useState<LocationSource>('none');
   const [locationError, setLocationError] = useState('');
@@ -193,12 +199,13 @@ export default function NearbyPage() {
 
   useEffect(() => {
     if (profile?.location && locationSource === 'none') {
-      setLocationLabel(profile.location);
+      setDisplayLocation({ shortLabel: shortAddress(profile.location), fullAddress: profile.location });
     }
     if (typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number' && locationSource === 'none') {
       setLocationCoords({ latitude: profile.latitude, longitude: profile.longitude });
       setLocationSource('saved-profile');
-      setLocationLabel(profile.location || 'Saved location');
+      const full = profile.location || 'Saved location';
+      setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
     }
   }, [profile, locationSource]);
 
@@ -222,11 +229,15 @@ export default function NearbyPage() {
         setLocationCoords(nextCoords);
         setLocationSource('browser');
         setLocationError('');
-        setLocationLabel(profile?.location || `${nextCoords.latitude.toFixed(3)}, ${nextCoords.longitude.toFixed(3)}`);
+
+        const resolved = await reverseGeocode(nextCoords.latitude, nextCoords.longitude);
+        const fullAddress = resolved?.fullAddress || profile?.location || 'Current location';
+        const shortLabel = resolved?.shortLabel || shortAddress(fullAddress);
+        setDisplayLocation({ shortLabel, fullAddress });
 
         if (user?.id) {
           try {
-            await supabase.from('user_profiles').update({ latitude: nextCoords.latitude, longitude: nextCoords.longitude, updated_at: new Date().toISOString() }).eq('id', user.id);
+            await supabase.from('user_profiles').update({ location: fullAddress, latitude: nextCoords.latitude, longitude: nextCoords.longitude, updated_at: new Date().toISOString() }).eq('id', user.id);
           } catch {}
         }
       },
@@ -234,17 +245,19 @@ export default function NearbyPage() {
         if (typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number') {
           setLocationCoords({ latitude: profile.latitude, longitude: profile.longitude });
           setLocationSource('saved-profile');
-          setLocationLabel(profile.location || 'Saved location');
+          const full = profile.location || 'Saved location';
+          setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
           setLocationError('Location permission denied. Using your saved profile location.');
         } else if (manualLocationLabel.trim()) {
           setLocationSource('manual');
-          setLocationLabel(manualLocationLabel.trim());
+          setDisplayLocation({ shortLabel: shortAddress(manualLocationLabel.trim()), fullAddress: manualLocationLabel.trim() });
           setLocationCoords(null);
           setLocationError('Location permission denied. Using your manual location fallback.');
         } else {
           setLocationSource('none');
           setLocationCoords(null);
-          setLocationLabel(profile?.location || DEFAULT_LOCATION);
+          const full = profile?.location || DEFAULT_LOCATION;
+          setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
           setLocationError('Location permission denied. Add or save a location to see nearby chefs accurately.');
         }
       },
@@ -317,7 +330,7 @@ export default function NearbyPage() {
   const handleLocationChange = async (loc: string) => {
     const nextLabel = loc.trim();
     setManualLocationLabel(nextLabel);
-    setLocationLabel(nextLabel || DEFAULT_LOCATION);
+    setDisplayLocation({ shortLabel: shortAddress(nextLabel || DEFAULT_LOCATION), fullAddress: nextLabel || DEFAULT_LOCATION });
     setLocationSource(nextLabel ? 'manual' : 'none');
     setLocationCoords(null);
     setShowLocationSheet(false);
@@ -356,7 +369,7 @@ export default function NearbyPage() {
 
   const headerLocation = (
     <button onClick={() => setShowLocationSheet(true)} className="max-w-[220px] sm:max-w-[320px] flex items-center gap-1.5 text-[13px] font-700 text-foreground hover:text-primary transition-colors">
-      <span className="truncate">{shortAddress(locationLabel)}</span>
+      <span className="truncate">{displayLocation.shortLabel}</span>
       <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </button>
   );
@@ -512,6 +525,10 @@ export default function NearbyPage() {
             <div className="border-t border-border/60 my-3" />
 
             <div className="mb-4">
+              <div className="rounded-2xl bg-muted/40 px-4 py-3 mb-3">
+                <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-1">Current address</p>
+                <p className="text-sm text-foreground font-600">{displayLocation.fullAddress}</p>
+              </div>
               <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Saved addresses</p>
               <div className="space-y-2">
                 {savedAddresses.length > 0 ? savedAddresses.map((address) => {
