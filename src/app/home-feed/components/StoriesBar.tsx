@@ -130,26 +130,19 @@ export default function StoriesBar() {
 
   return (
     <>
-      <div className="bg-card border-b border-border/50 sticky top-14 z-30">
-        <div
-          ref={scrollRef}
-          className="flex gap-4 px-4 py-4 overflow-x-auto scrollbar-hide"
-        >
+      <div className="bg-background border-b border-border/30">
+        <div ref={scrollRef} className="flex gap-3 px-3 py-2.5 overflow-x-auto scrollbar-hide">
           <button
-            className="flex flex-col items-center gap-2 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
+            className="flex flex-col items-center gap-1.5 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
             aria-label="Add your story"
             onClick={ownStoryGroup ? () => openStoryViewer(ownStoryGroup) : handleAddStory}
             suppressHydrationWarning
           >
             <div className="relative">
-              <div className={`w-[62px] h-[62px] rounded-full flex items-center justify-center ${ownStoryGroup ? 'bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]' : 'bg-muted'}`}>
-                <div className="w-[56px] h-[56px] rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
+              <div className={`w-[64px] h-[64px] rounded-full flex items-center justify-center ${ownStoryGroup ? 'bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]' : 'bg-muted'}`}>
+                <div className="w-[58px] h-[58px] rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
                   {userAvatarUrl ? (
-                    <img
-                      src={userAvatarUrl}
-                      alt={`${displayName} profile avatar`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                    <img src={userAvatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-400 to-purple-500 text-white text-lg font-bold">
                       {displayName?.charAt(0)?.toUpperCase()}
@@ -163,44 +156,34 @@ export default function StoriesBar() {
                 </div>
               )}
             </div>
-            <span className="text-[10px] max-w-[58px] truncate text-center leading-tight tracking-tight text-muted-foreground font-400">
-              Your Story
+            <span className="text-[10px] max-w-[62px] truncate text-center leading-tight tracking-tight text-muted-foreground font-500">
+              Create Story
             </span>
           </button>
 
-          {loading ? (
-            <div className="flex items-center px-2">
-              <div className="text-[12px] text-muted-foreground">Loading stories...</div>
-            </div>
-          ) : otherStoryGroups.length === 0 ? (
-            <div className="flex items-center px-2">
-              <div className="text-[12px] text-muted-foreground">No stories yet.</div>
-            </div>
-          ) : (
-            otherStoryGroups.map((group) => (
-              <button
-                key={group.userId}
-                onClick={() => openStoryViewer(group)}
-                className="flex flex-col items-center gap-2 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
-                aria-label={`View ${group.name}'s story`}
-              >
-                <div className="w-[62px] h-[62px] rounded-full bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]">
-                  <div className="w-full h-full rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
-                    {group.avatarUrl ? (
-                      <img src={group.avatarUrl} alt={`${group.name} avatar`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-500 to-slate-700 text-white text-lg font-bold">
-                        {group.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
+          {loading ? null : otherStoryGroups.map((group) => (
+            <button
+              key={group.userId}
+              onClick={() => openStoryViewer(group)}
+              className="flex flex-col items-center gap-1.5 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
+              aria-label={`View ${group.name}'s story`}
+            >
+              <div className="w-[64px] h-[64px] rounded-full bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]">
+                <div className="w-full h-full rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
+                  {group.avatarUrl ? (
+                    <img src={group.avatarUrl} alt={`${group.name} avatar`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-500 to-slate-700 text-white text-lg font-bold">
+                      {group.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
-                <span className="text-[10px] max-w-[64px] truncate text-center leading-tight tracking-tight text-muted-foreground font-400">
-                  {group.name}
-                </span>
-              </button>
-            ))
-          )}
+              </div>
+              <span className="text-[10px] max-w-[62px] truncate text-center leading-tight tracking-tight text-muted-foreground font-500">
+                {group.name}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 

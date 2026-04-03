@@ -860,7 +860,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
   return (
     <div>
       {/* Feed filter tabs */}
-      <div className="flex items-center gap-1 px-4 py-3 border-b border-border/40 bg-card">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-border/30 bg-background">
         <button
           onClick={() => setFeedFilter('all')}
           className={`px-4 py-1.5 rounded-full text-sm font-600 transition-all duration-150 ${
@@ -886,7 +886,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
 
       {/* Invite Friends Banner */}
       {showInviteBanner && (
-        <div className="mx-4 mt-3 mb-1 flex items-center gap-3 bg-gradient-to-r from-primary/10 to-amber-500/10 border border-primary/20 rounded-2xl px-4 py-3">
+        <div className="mx-3 mt-2 mb-1 flex items-center gap-3 bg-gradient-to-r from-primary/10 to-amber-500/10 border border-primary/20 rounded-2xl px-4 py-3">
           <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
             <UserPlus className="w-4.5 h-4.5 text-primary" />
           </div>
