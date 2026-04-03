@@ -860,10 +860,10 @@ export default function PostFeed({ mode }: PostFeedProps) {
   return (
     <div>
       {/* Feed filter tabs */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-border/30 bg-background">
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/20 bg-background">
         <button
           onClick={() => setFeedFilter('all')}
-          className={`px-4 py-1.5 rounded-full text-sm font-600 transition-all duration-150 ${
+          className={`px-4 py-1.5 rounded-full text-[13px] font-600 transition-all duration-150 ${
             feedFilter === 'all' ?'bg-primary text-white shadow-sm shadow-primary/20' :'text-muted-foreground hover:text-foreground hover:bg-muted'
           }`}
         >
@@ -871,7 +871,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
         </button>
         <button
           onClick={() => setFeedFilter('following')}
-          className={`px-4 py-1.5 rounded-full text-sm font-600 transition-all duration-150 ${
+          className={`px-4 py-1.5 rounded-full text-[13px] font-600 transition-all duration-150 ${
             feedFilter === 'following' ?'bg-primary text-white shadow-sm shadow-primary/20' :'text-muted-foreground hover:text-foreground hover:bg-muted'
           }`}
         >

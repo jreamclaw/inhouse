@@ -130,8 +130,8 @@ export default function StoriesBar() {
 
   return (
     <>
-      <div className="bg-background border-b border-border/30">
-        <div ref={scrollRef} className="flex gap-3 px-3 py-2.5 overflow-x-auto scrollbar-hide">
+      <div className="bg-background border-b border-border/20">
+        <div ref={scrollRef} className="flex gap-3 px-3 py-2 overflow-x-auto scrollbar-hide">
           <button
             className="flex flex-col items-center gap-1.5 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
             aria-label="Add your story"
@@ -139,8 +139,8 @@ export default function StoriesBar() {
             suppressHydrationWarning
           >
             <div className="relative">
-              <div className={`w-[64px] h-[64px] rounded-full flex items-center justify-center ${ownStoryGroup ? 'bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]' : 'bg-muted'}`}>
-                <div className="w-[58px] h-[58px] rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
+              <div className={`w-[62px] h-[62px] rounded-full flex items-center justify-center ${ownStoryGroup ? 'bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]' : 'bg-muted'}`}>
+                <div className="w-[56px] h-[56px] rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
                   {userAvatarUrl ? (
                     <img src={userAvatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
@@ -168,7 +168,7 @@ export default function StoriesBar() {
               className="flex flex-col items-center gap-1.5 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
               aria-label={`View ${group.name}'s story`}
             >
-              <div className="w-[64px] h-[64px] rounded-full bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]">
+              <div className="w-[62px] h-[62px] rounded-full bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]">
                 <div className="w-full h-full rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
                   {group.avatarUrl ? (
                     <img src={group.avatarUrl} alt={`${group.name} avatar`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
