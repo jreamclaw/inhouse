@@ -5,9 +5,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import {
   MapPin,
-  Star,
   Clock,
-  Navigation,
   SlidersHorizontal,
   ChevronDown,
   Search,
@@ -15,6 +13,9 @@ import {
   X,
   ShoppingBag,
   LocateFixed,
+  Home,
+  Briefcase,
+  Plus,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -54,6 +55,13 @@ interface DbVendorRow {
   service_radius_miles: number | null;
 }
 
+interface SavedAddressOption {
+  id: string;
+  label: string;
+  value: string;
+  icon: 'home' | 'work';
+}
+
 const CATEGORIES = [
   { id: 'all', label: 'All', emoji: '🍽️' },
   { id: 'chef', label: 'Chefs', emoji: '👨‍🍳' },
@@ -91,6 +99,12 @@ function inferKnownFor(vendor: DbVendorRow) {
   const firstSentence = bio.split(/[.!?]/)[0]?.trim();
   if (!firstSentence) return 'Chef specials';
   return firstSentence.length > 44 ? `${firstSentence.slice(0, 41)}...` : firstSentence;
+}
+
+function shortAddress(label: string) {
+  const value = label?.trim() || DEFAULT_LOCATION;
+  if (value === DEFAULT_LOCATION) return value;
+  return value.split(',')[0]?.trim() || value;
 }
 
 function VendorCard({ vendor }: { vendor: Vendor }) {
@@ -151,7 +165,7 @@ export default function NearbyPage() {
   const [sortBy, setSortBy] = useState<SortOption>('distance');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [customerRadiusMiles, setCustomerRadiusMiles] = useState<number>(10);
   const [customInput, setCustomInput] = useState('');
@@ -165,6 +179,17 @@ export default function NearbyPage() {
 
   const { user, profile } = useAuth();
   const supabase = createClient();
+
+  const savedAddresses = useMemo<SavedAddressOption[]>(() => {
+    const options: SavedAddressOption[] = [];
+    if (profile?.location) {
+      options.push({ id: 'home', label: 'Home', value: profile.location, icon: 'home' });
+    }
+    if (manualLocationLabel && manualLocationLabel !== profile?.location) {
+      options.push({ id: 'work', label: 'Work', value: manualLocationLabel, icon: 'work' });
+    }
+    return options;
+  }, [profile?.location, manualLocationLabel]);
 
   useEffect(() => {
     if (profile?.location && locationSource === 'none') {
@@ -193,11 +218,7 @@ export default function NearbyPage() {
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const nextCoords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-
+        const nextCoords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
         setLocationCoords(nextCoords);
         setLocationSource('browser');
         setLocationError('');
@@ -205,14 +226,7 @@ export default function NearbyPage() {
 
         if (user?.id) {
           try {
-            await supabase
-              .from('user_profiles')
-              .update({
-                latitude: nextCoords.latitude,
-                longitude: nextCoords.longitude,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', user.id);
+            await supabase.from('user_profiles').update({ latitude: nextCoords.latitude, longitude: nextCoords.longitude, updated_at: new Date().toISOString() }).eq('id', user.id);
           } catch {}
         }
       },
@@ -258,17 +272,12 @@ export default function NearbyPage() {
       const mapped: Vendor[] = ((data as DbVendorRow[] | null) ?? [])
         .map((row) => {
           if (typeof row.latitude !== 'number' || typeof row.longitude !== 'number') return null;
-
           const chefServiceRadius = row.service_radius_miles || 10;
-          const distance = hasCoords
-            ? milesBetween(locationCoords!.latitude, locationCoords!.longitude, row.latitude, row.longitude)
-            : null;
-
+          const distance = hasCoords ? milesBetween(locationCoords!.latitude, locationCoords!.longitude, row.latitude, row.longitude) : null;
           const insideCustomerRadius = distance == null ? false : distance <= customerRadiusMiles;
           const insideChefRadius = distance == null ? false : distance <= chefServiceRadius;
 
           if (hasCoords && (!insideCustomerRadius || !insideChefRadius)) return null;
-
           if (!hasCoords) {
             if (!normalizedManual) return null;
             const rowLocation = (row.location || '').toLowerCase();
@@ -311,15 +320,12 @@ export default function NearbyPage() {
     setLocationLabel(nextLabel || DEFAULT_LOCATION);
     setLocationSource(nextLabel ? 'manual' : 'none');
     setLocationCoords(null);
-    setShowLocationPicker(false);
+    setShowLocationSheet(false);
     setCustomInput('');
 
     if (user?.id && nextLabel) {
       try {
-        await supabase
-          .from('user_profiles')
-          .update({ location: nextLabel, updated_at: new Date().toISOString() })
-          .eq('id', user.id);
+        await supabase.from('user_profiles').update({ location: nextLabel, updated_at: new Date().toISOString() }).eq('id', user.id);
       } catch {}
     }
   };
@@ -333,12 +339,7 @@ export default function NearbyPage() {
     return vendors
       .filter((v) => {
         const matchesCategory = selectedCategory === 'all' || v.category === selectedCategory;
-        const matchesSearch =
-          !searchQuery ||
-          v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          v.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          v.knownFor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          v.locationLabel.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = !searchQuery || v.name.toLowerCase().includes(searchQuery.toLowerCase()) || v.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) || v.knownFor.toLowerCase().includes(searchQuery.toLowerCase()) || v.locationLabel.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesOpen = !showOpenOnly || v.isOpen;
         return matchesCategory && matchesSearch && matchesOpen;
       })
@@ -353,104 +354,20 @@ export default function NearbyPage() {
 
   const activeSortLabel = SORT_OPTIONS.find((s) => s.id === sortBy);
 
+  const headerLocation = (
+    <button onClick={() => setShowLocationSheet(true)} className="max-w-[220px] sm:max-w-[320px] flex items-center gap-1.5 text-[13px] font-700 text-foreground hover:text-primary transition-colors bg-muted/70 px-3 py-1.5 rounded-full">
+      <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+      <span className="truncate">{shortAddress(locationLabel)}</span>
+      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+    </button>
+  );
+
   return (
-    <AppLayout>
-      <div className="max-w-screen-lg mx-auto px-4 py-0">
-        <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-md pt-4 pb-3 -mx-4 px-4 border-b border-border">
-          <div className="flex items-start justify-between mb-3 relative gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-                <Navigation className="w-4 h-4 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground leading-none mb-0.5">Showing chefs near</p>
-                <button onClick={() => setShowLocationPicker(!showLocationPicker)} className="flex items-center gap-1 text-sm font-700 text-foreground hover:text-primary transition-colors min-w-0">
-                  <span className="truncate max-w-[220px] sm:max-w-[360px]">{locationLabel}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${showLocationPicker ? 'rotate-180' : ''}`} />
-                </button>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Source: {locationSource === 'browser' ? 'live browser location' : locationSource === 'saved-profile' ? 'saved profile coordinates' : locationSource === 'manual' ? 'manual location fallback' : 'no valid location yet'}
-                </p>
-              </div>
-            </div>
-            <button onClick={requestBrowserLocation} className="shrink-0 flex items-center gap-1.5 text-xs font-600 px-3 py-1.5 rounded-full border border-border hover:border-primary/30 hover:text-primary transition-colors">
-              <LocateFixed className="w-3.5 h-3.5" /> Refresh
-            </button>
-
-            {showLocationPicker && (
-              <div className="absolute left-0 right-0 top-full mt-2 bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden">
-                <div className="p-3 border-b border-border space-y-3">
-                  <div>
-                    <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Manual fallback location</p>
-                    <form onSubmit={handleCustomSubmit} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={customInput}
-                        onChange={(e) => setCustomInput(e.target.value)}
-                        placeholder="Enter city or zip code..."
-                        className="flex-1 bg-muted rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
-                        autoFocus
-                      />
-                      <button type="submit" className="bg-primary text-white text-sm font-600 px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors">
-                        Use
-                      </button>
-                    </form>
-                  </div>
-                  <div>
-                    <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Search radius</p>
-                    <div className="flex flex-wrap gap-2">
-                      {CUSTOMER_RADIUS_OPTIONS.map((radius) => (
-                        <button
-                          key={radius}
-                          type="button"
-                          onClick={() => setCustomerRadiusMiles(radius)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-700 border transition-colors ${customerRadiusMiles === radius ? 'bg-primary text-white border-primary' : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground'}`}
-                        >
-                          {radius} mi
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {locationError && <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">{locationError}</p>}
-
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chefs or cuisines..."
-              className="w-full bg-muted rounded-xl pl-9 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-600 whitespace-nowrap transition-all duration-200 shrink-0 active:scale-95 ${selectedCategory === cat.id ? 'bg-primary text-white shadow-md shadow-primary/20 scale-105' : 'bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground hover:scale-105 hover:shadow-sm'}`}
-              >
-                <span>{cat.emoji}</span>
-                <span>{cat.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between py-3 gap-3 flex-wrap">
+    <AppLayout headerCenter={headerLocation}>
+      <div className="max-w-screen-lg mx-auto px-4 py-4">
+        <div className="flex items-center justify-between py-1 gap-3 flex-wrap">
           <p className="text-sm text-muted-foreground">
-            <span className="font-700 text-foreground">{filteredVendors.length}</span> chefs within {customerRadiusMiles} miles
+            <span className="font-700 text-foreground">{filteredVendors.length}</span> chefs nearby
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <button
@@ -460,19 +377,6 @@ export default function NearbyPage() {
               <span className={`w-1.5 h-1.5 rounded-full ${showOpenOnly ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
               Open now
             </button>
-
-            <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5">
-              <span className="text-xs font-600 text-muted-foreground">Radius</span>
-              <select
-                value={customerRadiusMiles}
-                onChange={(e) => setCustomerRadiusMiles(Number(e.target.value))}
-                className="bg-transparent text-xs font-700 text-foreground outline-none"
-              >
-                {CUSTOMER_RADIUS_OPTIONS.map((radius) => (
-                  <option key={radius} value={radius}>{radius} mi</option>
-                ))}
-              </select>
-            </div>
 
             <div className="relative">
               <button
@@ -485,16 +389,12 @@ export default function NearbyPage() {
                 <ChevronDown className={`w-3 h-3 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
               </button>
               {showSortMenu && (
-                <div className="absolute right-0 top-full mt-1.5 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden min-w-[170px]">
+                <div className="absolute right-0 top-full mt-1.5 bg-card border border-border rounded-xl shadow-xl z-40 overflow-hidden min-w-[170px]">
                   <div className="px-3 py-2 border-b border-border">
                     <p className="text-[10px] font-700 text-muted-foreground uppercase tracking-wider">Sort by</p>
                   </div>
                   {SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => { setSortBy(opt.id); setShowSortMenu(false); }}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2.5 ${sortBy === opt.id ? 'bg-primary/10 text-primary font-700' : 'text-foreground hover:bg-muted'}`}
-                    >
+                    <button key={opt.id} onClick={() => { setSortBy(opt.id); setShowSortMenu(false); }} className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2.5 ${sortBy === opt.id ? 'bg-primary/10 text-primary font-700' : 'text-foreground hover:bg-muted'}`}>
                       <span>{opt.icon}</span>
                       {opt.label}
                     </button>
@@ -503,6 +403,37 @@ export default function NearbyPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {locationError && <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 mb-3">{locationError}</p>}
+
+        <div className="relative mb-3 mt-2">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search chefs or cuisines..."
+            className="w-full bg-muted rounded-xl pl-9 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-2">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-600 whitespace-nowrap transition-all duration-200 shrink-0 active:scale-95 ${selectedCategory === cat.id ? 'bg-primary text-white shadow-md shadow-primary/20 scale-105' : 'bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground hover:scale-105 hover:shadow-sm'}`}
+            >
+              <span>{cat.emoji}</span>
+              <span>{cat.label}</span>
+            </button>
+          ))}
         </div>
 
         {loadingVendors ? (
@@ -527,21 +458,97 @@ export default function NearbyPage() {
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
               <Truck className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="font-700 text-foreground mb-1">No chefs found in range</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              {locationSource === 'none'
-                ? 'Turn on location or add a manual fallback location to search nearby chefs.'
-                : 'No chefs match your current location and radius yet. Try increasing your radius or refreshing location.'}
-            </p>
-            <button
-              onClick={() => { setSelectedCategory('all'); setSearchQuery(''); setShowOpenOnly(false); setCustomerRadiusMiles(25); }}
-              className="mt-4 text-sm font-600 text-primary hover:underline"
-            >
-              Widen search
-            </button>
+            <h3 className="font-700 text-foreground mb-1">No chefs found nearby</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">Try updating your location or widening your radius from the location sheet.</p>
           </div>
         )}
       </div>
+
+      {showLocationSheet && (
+        <div className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-end sm:items-center sm:justify-center">
+          <div className="w-full sm:max-w-lg bg-card rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-700 text-foreground">Choose location</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Search an address, use your location, or pick a saved address.</p>
+              </div>
+              <button onClick={() => setShowLocationSheet(false)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors">
+                <X className="w-4 h-4 text-foreground" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCustomSubmit} className="flex gap-2 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  placeholder="Search address or ZIP"
+                  className="w-full bg-muted rounded-xl pl-9 pr-3 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                  autoFocus
+                />
+              </div>
+              <button type="submit" className="bg-primary text-white text-sm font-700 px-4 py-3 rounded-xl hover:bg-primary/90 transition-colors">Use</button>
+            </form>
+
+            <button onClick={requestBrowserLocation} className="w-full flex items-center gap-3 rounded-2xl border border-border px-4 py-3 text-left hover:border-primary/30 hover:bg-muted/40 transition-all mb-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <LocateFixed className="w-4.5 h-4.5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-700 text-foreground">Use current location</p>
+                <p className="text-xs text-muted-foreground">Fastest way to find chefs near you</p>
+              </div>
+            </button>
+
+            {savedAddresses.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Saved addresses</p>
+                <div className="space-y-2">
+                  {savedAddresses.map((address) => {
+                    const AddressIcon = address.icon === 'home' ? Home : Briefcase;
+                    return (
+                      <button key={address.id} onClick={() => handleLocationChange(address.value)} className="w-full flex items-center gap-3 rounded-2xl border border-border px-4 py-3 text-left hover:border-primary/30 hover:bg-muted/40 transition-all">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <AddressIcon className="w-4.5 h-4.5 text-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-700 text-foreground">{address.label}</p>
+                          <p className="text-xs text-muted-foreground truncate">{address.value}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => setCustomInput('')} className="w-full flex items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-3 text-left hover:border-primary/30 hover:bg-muted/40 transition-all mb-4">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                <Plus className="w-4.5 h-4.5 text-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-700 text-foreground">Add new address</p>
+                <p className="text-xs text-muted-foreground">Search and save another location</p>
+              </div>
+            </button>
+
+            <div className="rounded-2xl bg-muted/50 p-4">
+              <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Advanced</p>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-700 text-foreground">Search radius</p>
+                  <p className="text-xs text-muted-foreground">Only chefs within this distance will appear.</p>
+                </div>
+                <select value={customerRadiusMiles} onChange={(e) => setCustomerRadiusMiles(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none">
+                  {CUSTOMER_RADIUS_OPTIONS.map((radius) => <option key={radius} value={radius}>{radius} mi</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

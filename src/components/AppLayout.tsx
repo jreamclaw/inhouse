@@ -12,6 +12,7 @@ import ProfileCompletionBanner from '@/components/ProfileCompletionBanner';
 interface AppLayoutProps {
   children: React.ReactNode;
   currentUser?: { name: string; avatar: string; role: 'chef' | 'customer' };
+  headerCenter?: React.ReactNode;
 }
 
 const NAV_ITEMS = [
@@ -22,7 +23,7 @@ const NAV_ITEMS = [
   { href: '/profile-screen', icon: 'UserCircleIcon', label: 'Profile' },
 ];
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isDark, setIsDark] = useState(false);
@@ -67,7 +68,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <header className="sticky top-0 z-40 bg-card/96 dark:bg-[#0F0F10]/96 border-b border-[#E5E5E5] dark:border-white/15 backdrop-blur-xl">
         <div className="max-w-screen-2xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 shrink-0"><Image src="/assets/images/Untitled-1773907427735.jpeg" alt="InHouse" width={22} height={22} className="object-contain rounded-md" /></div>
-          <div className="absolute left-0 right-0 flex justify-center pointer-events-none"><span className="font-script text-[32px] leading-none text-[#111111] dark:text-white tracking-wide pointer-events-none select-none">InHouse</span></div>
+          <div className="absolute left-0 right-0 flex justify-center pointer-events-none px-16">{headerCenter ? <div className="pointer-events-auto">{headerCenter}</div> : <span className="font-script text-[32px] leading-none text-[#111111] dark:text-white tracking-wide pointer-events-none select-none">InHouse</span>}</div>
           <div className="flex items-center gap-1">
             <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Toggle theme">{mounted && (isDark ? <Sun className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /> : <Moon className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />)}</button>
             <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /></Link>
