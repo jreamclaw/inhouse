@@ -2261,11 +2261,10 @@ function VendorProfileContent() {
         </div>
 
         {/* Vendor Info */}
-        <div className="px-4 pt-4 pb-4 bg-card border-b border-border/50">
-          <div className="flex items-start gap-4">
-            {/* Avatar */}
-            <div className="relative -mt-10 shrink-0">
-              <div className="w-[76px] h-[76px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated">
+        <div className="px-4 pb-4 bg-card border-b border-border/50">
+          <div className="flex items-end gap-4 -mt-8 sm:-mt-10 mb-3.5">
+            <div className="relative shrink-0">
+              <div className="w-[76px] h-[76px] sm:w-[84px] sm:h-[84px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated bg-card">
                 <img src={vendor.avatar} alt={`${vendor.name} chef avatar`} className="w-full h-full object-cover" />
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border-2 border-card text-xs shadow-sm">
@@ -2273,87 +2272,93 @@ function VendorProfileContent() {
               </div>
             </div>
 
-            <div className="flex-1 min-w-0 pt-1">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h1 className="text-[17px] font-700 text-foreground leading-tight tracking-snug">{vendor.name}</h1>
-                  <p className="text-[12px] text-muted-foreground mt-0.5">@{vendor.username} · {vendor.cuisine}</p>
-                </div>
-                <button
-                  suppressHydrationWarning
-                  onClick={handleFollow}
-                  disabled={followLoading}
-                  className={`shrink-0 flex items-center gap-1.5 text-[13px] font-600 px-4 py-2 rounded-full active:scale-95 transition-all duration-200 shadow-sm min-w-[90px] justify-center ${
-                  isFollowing ?
-                  'bg-muted text-muted-foreground border border-border/60 hover:border-red-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20' :
-                  'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20'} ${
-                  followLoading ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                  {followLoading ?
-                  <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> :
-                  <>
-                      <Heart className={`w-3.5 h-3.5 ${isFollowing ? 'fill-current' : ''}`} />
-                      {isFollowing ? 'Following' : 'Follow'}
-                    </>
-                  }
-                </button>
+            <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-2">
+              <div className="text-center">
+                <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.menu.length}</p>
+                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Menu</p>
               </div>
-
-              {/* Stats */}
-              <div className="flex items-center gap-3.5 mt-2 flex-wrap">
-                {vendor.reviewCount > 0 ? (
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span className="text-[13px] text-foreground font-tabular font-600">{vendor.rating}</span>
-                    <span className="text-[12px] text-muted-foreground">({vendor.reviewCount})</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                    <Star className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>No reviews yet</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                  <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span>{vendor.followers > 0 ? `${vendor.followers >= 1000 ? `${(vendor.followers / 1000).toFixed(1)}k` : vendor.followers} followers` : '0 followers'}</span>
-                </div>
+              <div className="text-center">
+                <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.followers >= 1000 ? `${(vendor.followers / 1000).toFixed(1)}k` : vendor.followers}</p>
+                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Followers</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.reviewCount}</p>
+                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Reviews</p>
               </div>
             </div>
           </div>
 
-          {/* Bio */}
-          <p className="text-[13px] text-muted-foreground mt-3.5 leading-relaxed">{vendor.bio}</p>
+          <div className="space-y-2">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-[18px] sm:text-[20px] font-700 text-foreground leading-tight tracking-snug">{vendor.name}</h1>
+                <span className="flex items-center gap-1 bg-[#FFE5D0] text-[#C2410C] dark:bg-orange-500/15 dark:text-[#FB923C] text-[11px] font-semibold px-2 py-0.5 rounded-full border border-[#FFD2B3]">
+                  <ChefHat className="w-3 h-3" />Chef
+                </span>
+              </div>
+              <p className="text-[13px] font-semibold text-foreground">@{vendor.username}</p>
+            </div>
 
-          {/* Meta info */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3">
-            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              <MapPin className="w-3.5 h-3.5 text-primary" />
-              <span>{vendor.location}</span>
-              {vendor.distance && <span className="text-primary font-500">· {vendor.distance}</span>}
-            </div>
-            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              <Clock className="w-3.5 h-3.5" />
-              <span>{vendor.deliveryTime === 'TBD' ? 'Pickup / delivery details coming soon' : vendor.deliveryTime}</span>
-            </div>
-            {vendor.minOrder > 0 && (
+            <p className="text-[14px] text-muted-foreground leading-relaxed">{vendor.bio}</p>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>From ${vendor.minOrder}</span>
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                <span>{vendor.location}</span>
+                {vendor.distance && <span className="text-primary font-500">· {vendor.distance}</span>}
+              </div>
+              <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{vendor.deliveryTime === 'TBD' ? 'Pickup / delivery details coming soon' : vendor.deliveryTime}</span>
+              </div>
+              {vendor.minOrder > 0 && (
+                <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>From ${vendor.minOrder}</span>
+                </div>
+              )}
+            </div>
+
+            {businessHours && (
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <div className="inline-flex items-center gap-2 text-[12px] text-muted-foreground bg-muted px-3 py-2 rounded-xl">
+                  <Clock className="w-3.5 h-3.5 text-primary" />
+                  <span>{businessHours}</span>
+                </div>
+                <div className={`inline-flex items-center gap-2 text-[12px] px-3 py-2 rounded-xl font-700 ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
+                  <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                  {openState.label}
+                </div>
               </div>
             )}
           </div>
 
-          {businessHours && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 text-[12px] text-muted-foreground bg-muted px-3 py-2 rounded-xl">
-                <Clock className="w-3.5 h-3.5 text-primary" />
-                <span>{businessHours}</span>
-              </div>
-              <div className={`inline-flex items-center gap-2 text-[12px] px-3 py-2 rounded-xl font-700 ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
-                <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                {openState.label}
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mt-3.5 flex-wrap">
+            <button
+              suppressHydrationWarning
+              onClick={handleFollow}
+              disabled={followLoading}
+              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 text-[13px] font-600 px-4 py-2.5 rounded-xl active:scale-95 transition-all duration-200 shadow-sm ${
+              isFollowing ?
+              'bg-muted text-muted-foreground border border-border/60 hover:border-red-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20' :
+              'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20'} ${
+              followLoading ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              {followLoading ?
+              <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> :
+              <>
+                  <Heart className={`w-3.5 h-3.5 ${isFollowing ? 'fill-current' : ''}`} />
+                  {isFollowing ? 'Following' : 'Follow'}
+                </>
+              }
+            </button>
+            <button
+              suppressHydrationWarning
+              className="h-[42px] px-4 border border-border rounded-xl flex items-center justify-center hover:bg-muted transition-colors"
+              aria-label="Share vendor"
+              onClick={() => toast.success('Link copied!')}>
+              <Share2 className="w-4 h-4 text-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Bar */}
