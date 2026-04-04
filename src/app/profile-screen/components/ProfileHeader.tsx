@@ -130,7 +130,7 @@ export default function ProfileHeader() {
           )}
 
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-            {profile?.location && (
+            {profile?.location && profile?.privacy_show_location !== false && (
               <div className="flex items-center gap-1.5 text-[12px] text-[#555555] dark:text-[#E5E7EB]">
                 <MapPin className="w-3.5 h-3.5" />
                 <span>{profile.location}</span>

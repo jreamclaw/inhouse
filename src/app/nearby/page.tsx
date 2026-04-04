@@ -50,6 +50,7 @@ interface DbVendorRow {
   full_name: string;
   bio: string | null;
   location: string | null;
+  privacy_show_location?: boolean | null;
   avatar_url: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -271,7 +272,7 @@ export default function NearbyPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles, availability_override')
+        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, availability_override')
         .eq('role', 'chef')
         .eq('vendor_onboarding_complete', true)
         .not('latitude', 'is', null)
@@ -314,7 +315,7 @@ export default function NearbyPage() {
             priceRange: '$$',
             isOpen: row.availability_override === 'closed' ? false : true,
             knownFor: inferKnownFor(row),
-            locationLabel: row.location || 'Location unavailable',
+            locationLabel: row.privacy_show_location === false ? 'Location private' : (row.location || 'Location unavailable'),
             serviceRadiusMiles: chefServiceRadius,
           };
         })

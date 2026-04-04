@@ -48,6 +48,7 @@ interface DbVendorProfile {
   cover_url?: string | null;
   bio: string | null;
   location: string | null;
+  privacy_show_location?: boolean | null;
   followers_count?: number | null;
   delivery_fee?: number | null;
   business_hours?: string | null;
@@ -2041,7 +2042,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, delivery_fee, business_hours, closed_days, availability_override')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee, business_hours, closed_days, availability_override')
           .eq('id', vendorId)
           .single(),
         supabase
@@ -2085,7 +2086,7 @@ function VendorProfileContent() {
         rating: 0,
         reviewCount: 0,
         followers: dbVendor.followers_count || 0,
-        location: dbVendor.location || 'Location unavailable',
+        location: dbVendor.privacy_show_location === false ? 'Location private' : (dbVendor.location || 'Location unavailable'),
         distance: undefined,
         deliveryFee: Number(dbVendor.delivery_fee || 0),
         deliveryTime: 'TBD',

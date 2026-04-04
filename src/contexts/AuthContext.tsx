@@ -16,6 +16,9 @@ export interface UserProfile {
   location: string | null;
   role: 'chef' | 'customer' | null;
   availability_override?: 'open' | 'closed' | null;
+  privacy_show_location?: boolean;
+  privacy_public_profile?: boolean;
+  privacy_show_activity?: boolean;
   onboarding_complete: boolean;
   vendor_onboarding_complete: boolean;
   followers_count: number;
