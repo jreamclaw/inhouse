@@ -88,9 +88,10 @@ export default function VendorOnboardingPage() {
     setSaving(true);
     setError('');
     try {
-      const hoursText = `${daysOpen.join(', ')} ? ${openTime} - ${closeTime}`;
+      const hoursText = `${daysOpen.join(', ')} • ${openTime} - ${closeTime}`;
+      const closedDays = DAYS.filter((day) => !daysOpen.includes(day));
       const categoryText = selectedCategories.join(', ');
-      const fullBio = bio.trim() ? bio.trim() : `${businessName} - ${categoryText}. Open ${hoursText}.`;
+      const fullBio = bio.trim() ? bio.trim() : `${businessName} - ${categoryText}.`;
 
       const { error: updateError } = await supabase
         .from('user_profiles')
@@ -99,6 +100,8 @@ export default function VendorOnboardingPage() {
           bio: fullBio,
           location,
           avatar_url: avatarUrl || null,
+          business_hours: hoursText,
+          closed_days: closedDays,
           vendor_onboarding_complete: true,
           updated_at: new Date().toISOString(),
         })
