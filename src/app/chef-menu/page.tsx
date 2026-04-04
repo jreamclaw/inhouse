@@ -104,7 +104,7 @@ export default function ChefMenuPage() {
     if (!user) return;
     try {
       const [{ data: profileRow }, { data: mealRows }, { data: revenueRows }] = await Promise.all([
-        supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio').eq('id', user.id).single(),
+        supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days').eq('id', user.id).single(),
         supabase.from('meals').select('id, title, description, price, category, available, image_url, modifier_groups').eq('chef_id', user.id).order('created_at', { ascending: false }),
         supabase.from('order_revenue').select('total, chef_earnings, delivery_fee, status').eq('chef_id', user.id),
       ]);
@@ -123,8 +123,9 @@ export default function ChefMenuPage() {
         pendingPayout: pending.reduce((sum, row) => sum + Number(row.chef_earnings || 0), 0),
       });
 
+      const structuredHours = typeof profileRow?.business_hours === 'string' ? profileRow.business_hours : null;
       const hoursFromBio = typeof profileRow?.bio === 'string' ? profileRow.bio : profile?.bio || '';
-      setBusinessHoursRows(defaultBusinessHours(hoursFromBio, []));
+      setBusinessHoursRows(defaultBusinessHours(structuredHours || hoursFromBio, profileRow?.closed_days || []));
     } finally {
       setLoading(false);
     }
@@ -246,16 +247,11 @@ export default function ChefMenuPage() {
     setSavingBusinessHours(true);
     try {
       const businessHours = formatBusinessHours(businessHoursRows);
-      const existingBio = profile?.bio || '';
-      const hoursLine = `Hours: ${businessHours}`;
-      const nextBio = existingBio.includes('Hours:')
-        ? existingBio.replace(/Hours:\s*[^.]+/i, hoursLine)
-        : `${existingBio.trim()}${existingBio.trim() ? '\n\n' : ''}${hoursLine}`;
-
-      const { error } = await supabase.from('user_profiles').update({ bio: nextBio, updated_at: new Date().toISOString() }).eq('id', user.id);
+      const closedDays = businessHoursRows.filter((row) => !row.open).map((row) => row.day);
+      const { error } = await supabase.from('user_profiles').update({ business_hours: businessHours, closed_days: closedDays, updated_at: new Date().toISOString() }).eq('id', user.id);
       if (error) throw error;
       await refreshProfile();
-      setStripeState((prev: any) => ({ ...prev, bio: nextBio }));
+      setStripeState((prev: any) => ({ ...prev, business_hours: businessHours, closed_days: closedDays }));
       toast.success('Business hours updated');
     } catch (error: any) {
       toast.error(error?.message || 'Could not save business hours');
@@ -287,7 +283,7 @@ export default function ChefMenuPage() {
     stripe_onboarding_complete: stripeState?.stripe_onboarding_complete,
     stripe_charges_enabled: stripeState?.stripe_charges_enabled,
     stripe_payouts_enabled: stripeState?.stripe_payouts_enabled,
-    business_hours: profile?.bio,
+    business_hours: stripeState?.business_hours || (profile as any)?.business_hours || null,
   });
 
   const missingItems = readiness.items.filter((item) => !item.complete);

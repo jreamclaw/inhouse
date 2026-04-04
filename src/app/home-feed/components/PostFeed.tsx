@@ -273,6 +273,7 @@ interface DbPost {
   comments_count: number;
   created_at: string;
   viewer_has_liked?: { user_id: string }[];
+  viewer_has_saved?: { user_id: string }[];
   post_media?: DbPostMedia[];
   user_profiles: {
     id: string;
@@ -313,7 +314,7 @@ function dbPostToMockShape(p: DbPost): MockPost {
     location: p.location,
     distance: null,
     isLiked: Boolean(p.viewer_has_liked && p.viewer_has_liked.length > 0),
-    isSaved: false,
+    isSaved: Boolean(p.viewer_has_saved && p.viewer_has_saved.length > 0),
     mealTag: null,
     type: 'food' as const,
     availability: null,
@@ -405,13 +406,31 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
     }
   }, [liked, likeCount, post.id, post.user.name, supabase, user?.id]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    if (!user?.id) {
+      toast.error('Please sign in to save posts.');
+      return;
+    }
+
     setIsSaveAnimating(true);
     setTimeout(() => setIsSaveAnimating(false), 400);
     const nowSaved = !saved;
     setSaved(nowSaved);
-    toast(nowSaved ? 'Saved' : 'Removed from saved', { duration: 1800 });
-  }, [saved]);
+
+    try {
+      if (nowSaved) {
+        const { error } = await supabase.from('saved_posts').insert({ post_id: post.id, user_id: user.id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('saved_posts').delete().eq('post_id', post.id).eq('user_id', user.id);
+        if (error) throw error;
+      }
+      toast(nowSaved ? 'Saved' : 'Removed from saved', { duration: 1800 });
+    } catch {
+      setSaved(!nowSaved);
+      toast.error('Could not update saved posts.');
+    }
+  }, [saved, post.id, supabase, user?.id]);
 
   const handleFollow = useCallback(async () => {
     if (followLoading) return;
@@ -737,17 +756,20 @@ export default function PostFeed({ mode }: PostFeedProps) {
       if (error) throw error;
       if (data && data.length > 0) {
         let likedPostIds = new Set<string>();
+        let savedPostIds = new Set<string>();
         if (user?.id) {
-          const { data: likesData } = await supabase
-            .from('post_likes')
-            .select('post_id')
-            .eq('user_id', user.id);
+          const [{ data: likesData }, { data: savesData }] = await Promise.all([
+            supabase.from('post_likes').select('post_id').eq('user_id', user.id),
+            supabase.from('saved_posts').select('post_id').eq('user_id', user.id),
+          ]);
           likedPostIds = new Set((likesData || []).map((row: any) => row.post_id));
+          savedPostIds = new Set((savesData || []).map((row: any) => row.post_id));
         }
 
         setDbPosts((data as DbPost[]).map((post) => dbPostToMockShape({
           ...post,
           viewer_has_liked: likedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
+          viewer_has_saved: savedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
         })));
       } else {
         setDbPosts([]);

@@ -38,6 +38,20 @@ interface DbMeal {
   available: boolean;
 }
 
+interface DbSavedPost {
+  id: string;
+  created_at: string;
+  posts: {
+    id: string;
+    caption: string | null;
+    media_url: string;
+    media_type: 'image' | 'video';
+    likes_count: number;
+    user_id: string;
+    post_media?: DbPostMedia[];
+  } | null;
+}
+
 type CartItem = { id: string; title: string; price: number; qty: number };
 
 export default function ProfileTabs() {
@@ -53,8 +67,10 @@ export default function ProfileTabs() {
 
   const [dbPosts, setDbPosts] = useState<DbPost[]>([]);
   const [dbMeals, setDbMeals] = useState<DbMeal[]>([]);
+  const [savedPosts, setSavedPosts] = useState<DbSavedPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [mealsLoading, setMealsLoading] = useState(false);
+  const [savedLoading, setSavedLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   useEffect(() => {
@@ -64,6 +80,7 @@ export default function ProfileTabs() {
     if (user?.id) {
       loadPosts();
       if (isVendor) loadMeals();
+      if (!isVendor) loadSavedPosts();
     }
   }, [user?.id, isVendor, searchParams]);
 
@@ -94,6 +111,39 @@ export default function ProfileTabs() {
       // no-op
     } finally {
       setPostsLoading(false);
+    }
+  };
+
+  const loadSavedPosts = async () => {
+    if (!user?.id) return;
+    setSavedLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('saved_posts')
+        .select(`
+          id,
+          created_at,
+          posts:post_id (
+            id,
+            caption,
+            media_url,
+            media_type,
+            likes_count,
+            user_id,
+            post_media (
+              media_url,
+              media_type,
+              sort_order
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) setSavedPosts(data as DbSavedPost[]);
+    } catch {
+      // no-op
+    } finally {
+      setSavedLoading(false);
     }
   };
 
@@ -482,32 +532,51 @@ export default function ProfileTabs() {
       {/* Saved Tab (Customer only) */}
       {activeTab === 'saved' && !isVendor && (
         <div className="p-4">
-          <div className="flex flex-col items-center justify-center py-10 gap-0 text-center px-4">
-            {/* Chef Illustration */}
-            <div className="relative mb-6">
-              <div className="w-44 h-44 flex items-center justify-center">
-                <img
-                  src="/assets/chef-empty-state.svg"
-                  alt="Friendly chef holding a steaming bowl"
-                  className="w-full h-full object-contain drop-shadow-lg"
-                />
-              </div>
+          {savedLoading ? (
+            <PostFeedSkeleton count={2} />
+          ) : savedPosts.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1.5">
+              {savedPosts.map((savedPost) => {
+                const post = savedPost.posts;
+                if (!post) return null;
+                const orderedMedia = (post.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+                const coverMedia = orderedMedia[0] || { media_url: post.media_url, media_type: post.media_type, sort_order: 0 };
+                return (
+                  <div key={savedPost.id} className="relative aspect-square overflow-hidden bg-muted rounded-lg">
+                    {coverMedia.media_type === 'video' ? (
+                      <video src={coverMedia.media_url} className="w-full h-full object-cover" muted />
+                    ) : (
+                      <img src={coverMedia.media_url} alt={post.caption || 'Saved post'} className="w-full h-full object-cover" loading="lazy" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <h3 className="text-lg font-bold text-foreground mb-2 leading-snug">
-              Your kitchen is quiet...
-              <br />
-              <span className="text-primary">let&apos;s change that!</span>
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-              Save your favourite chefs and dishes here so you can find them again in a flash.
-            </p>
-            <Link href="/nearby">
-              <button className="flex items-center gap-2 bg-primary text-white text-sm font-bold px-7 py-3 rounded-full shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 transition-all duration-150">
-                <Heart className="w-4 h-4" />
-                Explore &amp; Discover
-              </button>
-            </Link>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 gap-0 text-center px-4">
+              <div className="relative mb-6">
+                <div className="w-44 h-44 flex items-center justify-center">
+                  <img
+                    src="/assets/chef-empty-state.svg"
+                    alt="Friendly chef holding a steaming bowl"
+                    className="w-full h-full object-contain drop-shadow-lg"
+                  />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2 leading-snug">
+                Nothing saved yet
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
+                Save your favourite chefs and posts here so you can find them again fast.
+              </p>
+              <Link href="/nearby">
+                <button className="flex items-center gap-2 bg-primary text-white text-sm font-bold px-7 py-3 rounded-full shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 transition-all duration-150">
+                  <Heart className="w-4 h-4" />
+                  Explore &amp; Discover
+                </button>
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>

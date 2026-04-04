@@ -49,11 +49,17 @@ interface DbVendorProfile {
   location: string | null;
   followers_count?: number | null;
   delivery_fee?: number | null;
+  business_hours?: string | null;
+  closed_days?: string[] | null;
 }
 
 function parseBusinessHoursFromBio(bio?: string | null) {
   const match = bio?.match(/Hours:\s*([^\n]+)/i);
   return match?.[1]?.trim() || null;
+}
+
+function resolveBusinessHours(vendor: Partial<DbVendorProfile> & { bio?: string | null }) {
+  return vendor.business_hours || parseBusinessHoursFromBio(vendor.bio) || null;
 }
 
 function getTodayOpenState(hoursText?: string | null) {
@@ -1973,7 +1979,7 @@ function VendorProfileContent() {
   const [vendorPosts, setVendorPosts] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  const businessHours = parseBusinessHoursFromBio(vendor.bio);
+  const businessHours = resolveBusinessHours(vendor as any);
   const openState = getTodayOpenState(businessHours);
   const isOwnVendorProfile = !!user?.id && user.id === vendor.id;
 
@@ -1997,7 +2003,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, bio, location, followers_count, delivery_fee')
+          .select('id, full_name, username, avatar_url, bio, location, followers_count, delivery_fee, business_hours, closed_days')
           .eq('id', vendorId)
           .single(),
         supabase
