@@ -45,6 +45,7 @@ interface DbVendorProfile {
   full_name: string;
   username: string | null;
   avatar_url: string | null;
+  cover_url?: string | null;
   bio: string | null;
   location: string | null;
   followers_count?: number | null;
@@ -2040,7 +2041,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, bio, location, followers_count, delivery_fee, business_hours, closed_days, availability_override')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, delivery_fee, business_hours, closed_days, availability_override')
           .eq('id', vendorId)
           .single(),
         supabase
@@ -2077,7 +2078,7 @@ function VendorProfileContent() {
         name: dbVendor.full_name || 'Chef',
         username: dbVendor.username || (dbVendor.full_name || 'chef').toLowerCase().replace(/\s+/g, '_'),
         avatar: dbVendor.avatar_url || '/assets/images/no_image.png',
-        coverImage: dbVendor.avatar_url || '/assets/images/no_image.png',
+        coverImage: dbVendor.cover_url || dbVendor.avatar_url || '/assets/images/no_image.png',
         coverAlt: `${dbVendor.full_name || 'Chef'} profile`,
         cuisine: 'Local Chef',
         bio: dbVendor.bio || 'Local chef on InHouse.',
