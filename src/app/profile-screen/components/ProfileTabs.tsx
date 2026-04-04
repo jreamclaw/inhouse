@@ -74,6 +74,17 @@ export default function ProfileTabs() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [vendorToolsOpen, setVendorToolsOpen] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isVendor) return;
+    const saved = window.localStorage.getItem('inhouse_vendor_tools_open');
+    if (saved === 'true') setVendorToolsOpen(true);
+  }, [isVendor]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isVendor) return;
+    window.localStorage.setItem('inhouse_vendor_tools_open', vendorToolsOpen ? 'true' : 'false');
+  }, [vendorToolsOpen, isVendor]);
+
   const requestedTab = searchParams.get('tab');
   const refreshKey = searchParams.get('refresh');
 
