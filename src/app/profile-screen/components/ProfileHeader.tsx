@@ -15,15 +15,52 @@ function parseHoursFromBio(bio?: string | null) {
   return { cleanBio, hours };
 }
 
-function getTodayStatus(hours?: string | null) {
-  if (!hours || hours.toLowerCase().includes('closed all week')) {
-    return { label: 'Currently closed', isOpen: false };
+function getTodayStatus(hours?: string | null, availabilityOverride?: 'open' | 'closed' | null) {
+  if (availabilityOverride === 'open') {
+    return { label: 'Open now', isOpen: true };
   }
+
+  if (availabilityOverride === 'closed') {
+    return { label: 'Closed manually', isOpen: false };
+  }
+
+  if (!hours || hours.toLowerCase().includes('closed all week')) {
+    return { label: 'Closed now', isOpen: false };
+  }
+
+  const [daysPart = '', timePart = ''] = hours.split('•').map((part) => part.trim());
   const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-  const [daysPart] = hours.split('•').map((part) => part.trim());
   const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
-  const isOpen = openDays.includes(today);
-  return { label: isOpen ? 'Open today' : 'Currently closed', isOpen };
+
+  if (!openDays.includes(today)) {
+    return { label: 'Closed now', isOpen: false };
+  }
+
+  const timeMatch = timePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+  if (!timeMatch) {
+    return { label: 'Open today', isOpen: true };
+  }
+
+  const toMinutes = (value: string) => {
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const openMinutes = toMinutes(timeMatch[1]);
+  const closeMinutes = toMinutes(timeMatch[2]);
+  const isOpenNow = nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+
+  if (isOpenNow) {
+    return { label: 'Open now', isOpen: true };
+  }
+
+  if (nowMinutes < openMinutes) {
+    return { label: `Opens at ${timeMatch[1]}`, isOpen: false };
+  }
+
+  return { label: 'Closed now', isOpen: false };
 }
 
 export default function ProfileHeader() {
@@ -39,7 +76,7 @@ export default function ProfileHeader() {
   const joinedDate = profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '';
 
   const { cleanBio, hours } = useMemo(() => parseHoursFromBio(profile?.bio), [profile?.bio]);
-  const openState = useMemo(() => getTodayStatus(hours), [hours]);
+  const openState = useMemo(() => getTodayStatus(hours, profile?.availability_override || null), [hours, profile?.availability_override]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
