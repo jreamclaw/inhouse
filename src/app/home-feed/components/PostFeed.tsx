@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Heart,
+  MessageCircle,
   Share2,
   Bookmark,
   MoreHorizontal,
@@ -284,6 +285,18 @@ interface DbPost {
   } | null;
 }
 
+interface DbComment {
+  id: string;
+  body: string;
+  created_at: string;
+  user_id: string;
+  user_profiles?: {
+    full_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
 function timeAgoFromDate(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -352,6 +365,9 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
   const [followLoading, setFollowLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState('');
+  const [comments, setComments] = useState<DbComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(post.comments);
   const [isHeartAnimating, setIsHeartAnimating] = useState(false);
   const [isSaveAnimating, setIsSaveAnimating] = useState(false);
   const [isCartAnimating, setIsCartAnimating] = useState(false);
@@ -360,6 +376,39 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
   useEffect(() => {
     setMediaIndex(0);
   }, [post.id]);
+
+  useEffect(() => {
+    if (showComments && comments.length === 0) {
+      loadComments();
+    }
+  }, [showComments]);
+
+  const loadComments = useCallback(async () => {
+    setCommentsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select(`
+          id,
+          body,
+          created_at,
+          user_id,
+          user_profiles:user_id (
+            full_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('post_id', post.id)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setComments((data as DbComment[] | null) || []);
+    } catch {
+      setComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [post.id, supabase]);
 
   const handleLike = useCallback(async () => {
     if (!user?.id) {
@@ -473,9 +522,40 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
     }
   }, [post]);
 
-  const handleComment = useCallback(() => {
-    return;
-  }, []);
+  const handleComment = useCallback(async () => {
+    if (!user?.id) {
+      toast.error('Please sign in to comment.');
+      return;
+    }
+    if (!comment.trim()) return;
+
+    const body = comment.trim();
+    setComment('');
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({ post_id: post.id, user_id: user.id, body })
+        .select(`
+          id,
+          body,
+          created_at,
+          user_id,
+          user_profiles:user_id (
+            full_name,
+            username,
+            avatar_url
+          )
+        `)
+        .single();
+      if (error) throw error;
+      setComments((prev) => [...prev, data as DbComment]);
+      setCommentsCount((prev) => prev + 1);
+      toast.success('Comment posted');
+    } catch {
+      setComment(body);
+      toast.error('Could not post comment.');
+    }
+  }, [comment, post.id, supabase, user?.id]);
 
   const typeLabels: Record<string, {label: string;color: string;}> = {
     new_item: { label: '✨ New Menu Item', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
@@ -610,6 +690,12 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
             <button onClick={handleShare} className="p-2 group rounded-full hover:bg-muted/60 transition-colors" aria-label="Share post">
               <Share2 className="w-[22px] h-[22px] text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
             </button>
+            <button
+              onClick={() => setShowComments((v) => !v)}
+              className="p-2 group rounded-full hover:bg-muted/60 transition-colors"
+              aria-label="Toggle comments">
+              <MessageCircle className="w-[22px] h-[22px] text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
+            </button>
           </div>
 
           <button onClick={handleSave} className="p-2 group rounded-full hover:bg-muted/60 transition-colors" aria-label={saved ? 'Unsave post' : 'Save post'}>
@@ -624,6 +710,15 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
         <p className="text-[13px] font-700 text-foreground mb-1.5 font-tabular tracking-snug">
           {likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}
         </p>
+
+        {commentsCount > 0 && (
+          <button
+            onClick={() => setShowComments((v) => !v)}
+            className="text-[13px] text-muted-foreground mb-1.5 hover:text-foreground transition-colors"
+          >
+            View all {commentsCount} comments
+          </button>
+        )}
 
         {/* Caption */}
         <p className="text-[13px] text-foreground leading-relaxed">
@@ -659,6 +754,39 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
             </div>
           </div>
         }
+
+        {showComments && (
+          <div className="mt-3 pt-3 border-t border-border/40 space-y-3">
+            {commentsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading comments...</p>
+            ) : comments.length > 0 ? (
+              <div className="space-y-3">
+                {comments.map((entry) => (
+                  <div key={entry.id} className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-border bg-muted flex items-center justify-center">
+                      {entry.user_profiles?.avatar_url ? (
+                        <img src={entry.user_profiles.avatar_url} alt={entry.user_profiles?.full_name || 'User'} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[11px] font-700 text-foreground">{(entry.user_profiles?.full_name || 'U').charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[13px] text-foreground leading-relaxed">
+                        <span className="font-700 mr-1">{entry.user_profiles?.username || entry.user_profiles?.full_name || 'user'}</span>
+                        {entry.body}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{timeAgoFromDate(entry.created_at)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p>
+            )}
+
+            <CommentInput comment={comment} setComment={setComment} handleComment={handleComment} />
+          </div>
+        )}
       </div>
     </article>);
 
