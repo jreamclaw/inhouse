@@ -64,14 +64,42 @@ function resolveBusinessHours(vendor: Partial<DbVendorProfile> & { bio?: string 
 
 function getTodayOpenState(hoursText?: string | null) {
   if (!hoursText || hoursText.toLowerCase().includes('closed all week')) {
-    return { label: 'Currently closed', isOpen: false };
+    return { label: 'Closed now', isOpen: false };
   }
 
+  const [daysPart = '', timePart = ''] = hoursText.split('•').map((part) => part.trim());
   const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-  const [daysPart] = hoursText.split('•').map((part) => part.trim());
   const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
-  const isOpenToday = openDays.includes(today);
-  return { label: isOpenToday ? 'Open today' : 'Currently closed', isOpen: isOpenToday };
+
+  if (!openDays.includes(today)) {
+    return { label: 'Closed now', isOpen: false };
+  }
+
+  const timeMatch = timePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+  if (!timeMatch) {
+    return { label: 'Open today', isOpen: true };
+  }
+
+  const toMinutes = (value: string) => {
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const openMinutes = toMinutes(timeMatch[1]);
+  const closeMinutes = toMinutes(timeMatch[2]);
+  const isOpenNow = nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+
+  if (isOpenNow) {
+    return { label: 'Open now', isOpen: true };
+  }
+
+  if (nowMinutes < openMinutes) {
+    return { label: `Opens at ${timeMatch[1]}`, isOpen: false };
+  }
+
+  return { label: 'Closed now', isOpen: false };
 }
 
 interface MenuItem {
