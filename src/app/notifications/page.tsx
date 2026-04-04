@@ -11,7 +11,7 @@ interface NotificationItem {
   id: string;
   title: string;
   body: string;
-  type: 'order' | 'chef';
+  type: 'order' | 'chef' | 'follow' | 'like';
 }
 
 const EMPTY_NOTIFICATIONS: NotificationItem[] = [];
@@ -29,44 +29,21 @@ export default function NotificationsPage() {
     if (!user?.id) return;
 
     try {
-      if (profile?.role === 'chef') {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('id, customer_name, status, created_at')
-          .eq('chef_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (error) throw error;
-
-        const chefNotifications: NotificationItem[] = ((data as any[]) || []).map((order) => ({
-          id: order.id,
-          title: `Order ${order.status}`,
-          body: `${order.customer_name || 'A customer'} has an order in ${order.status} status.`,
-          type: 'order',
-        }));
-
-        setNotifications(chefNotifications);
-        return;
-      }
-
       const { data, error } = await supabase
-        .from('orders')
-        .select('id, status, created_at')
-        .eq('customer_id', user.id)
+        .from('notifications')
+        .select('id, title, body, type, created_at')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(25);
 
       if (error) throw error;
 
-      const customerNotifications: NotificationItem[] = ((data as any[]) || []).map((order) => ({
-        id: order.id,
-        title: 'Order update',
-        body: `Your order is currently ${String(order.status).replaceAll('_', ' ')}.`,
-        type: 'order',
-      }));
-
-      setNotifications(customerNotifications);
+      setNotifications(((data as any[]) || []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        body: item.body,
+        type: item.type,
+      })));
     } catch {
       setNotifications(EMPTY_NOTIFICATIONS);
     }
@@ -97,6 +74,10 @@ export default function NotificationsPage() {
               <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center shrink-0">
                 {item.type === 'order' ? (
                   <ShoppingBag className="w-5 h-5 text-foreground" />
+                ) : item.type === 'follow' ? (
+                  <ChefHat className="w-5 h-5 text-foreground" />
+                ) : item.type === 'like' ? (
+                  <Bell className="w-5 h-5 text-foreground" />
                 ) : (
                   <ChefHat className="w-5 h-5 text-foreground" />
                 )}

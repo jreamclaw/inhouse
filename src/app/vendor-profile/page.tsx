@@ -2240,6 +2240,15 @@ function VendorProfileContent() {
           .from('user_follows')
           .insert({ follower_id: user.id, following_id: vendorId });
         if (error) throw error;
+        await supabase.from('notifications').insert({
+          user_id: vendorId,
+          actor_id: user.id,
+          type: 'follow',
+          title: 'New follower',
+          body: `${profile?.full_name || 'Someone'} started following you.`,
+          entity_id: user.id,
+          entity_type: 'user_profile',
+        });
         setIsFollowing(true);
         toast.success(`Following ${vendor.name}!`, {
           description: "You'll see their new posts in your feed",

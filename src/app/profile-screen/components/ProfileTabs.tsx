@@ -73,16 +73,20 @@ export default function ProfileTabs() {
   const [savedLoading, setSavedLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
+  const requestedTab = searchParams.get('tab');
+  const refreshKey = searchParams.get('refresh');
+
   useEffect(() => {
-    const requestedTab = searchParams.get('tab');
-    const refreshKey = searchParams.get('refresh');
     if (requestedTab) setActiveTab(requestedTab);
+  }, [requestedTab]);
+
+  useEffect(() => {
     if (user?.id) {
       loadPosts();
       if (isVendor) loadMeals();
       if (!isVendor) loadSavedPosts();
     }
-  }, [user?.id, isVendor, searchParams]);
+  }, [user?.id, isVendor, refreshKey]);
 
   const loadPosts = async () => {
     if (!user?.id) return;

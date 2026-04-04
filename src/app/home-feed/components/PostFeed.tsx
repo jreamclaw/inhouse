@@ -342,6 +342,7 @@ interface PostCardProps {
   mode: 'local' | 'explore';
   isFollowed?: boolean;
   onFollowToggle?: (userId: string, userName: string) => void;
+  onDeletePost?: (postId: string) => void;
 }
 
 function AvailabilityBadge({ tag }: {tag: AvailabilityTag;}) {
@@ -355,7 +356,7 @@ function AvailabilityBadge({ tag }: {tag: AvailabilityTag;}) {
 
 }
 
-function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
+function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: PostCardProps) {
   const { user } = useAuth();
   const supabase = createClient();
   const [liked, setLiked] = useState(post.isLiked);
@@ -363,6 +364,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
   const [saved, setSaved] = useState(post.isSaved);
   const [followed, setFollowed] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [showPostMenu, setShowPostMenu] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState<DbComment[]>([]);
@@ -428,6 +430,17 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
           .from('post_likes')
           .insert({ post_id: post.id, user_id: user.id });
         if (error) throw error;
+        if (post.user.id !== user.id) {
+          await supabase.from('notifications').insert({
+            user_id: post.user.id,
+            actor_id: user.id,
+            type: 'like',
+            title: 'New like',
+            body: `${user.user_metadata?.full_name || 'Someone'} liked your post.`,
+            entity_id: post.id,
+            entity_type: 'post',
+          });
+        }
       } else {
         const { error } = await supabase
           .from('post_likes')
@@ -497,6 +510,22 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
       toast(`Unfollowed ${post.user.name}`, { duration: 2000 });
     }
   }, [followed, followLoading, post.user.name]);
+
+  const handleDeletePost = useCallback(async () => {
+    if (!user?.id || post.user.id !== user.id) return;
+    const confirmed = typeof window === 'undefined' ? false : window.confirm('Delete this post? This cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase.from('posts').delete().eq('id', post.id).eq('user_id', user.id);
+      if (error) throw error;
+      onDeletePost?.(post.id);
+      setShowPostMenu(false);
+      toast.success('Post deleted');
+    } catch {
+      toast.error('Could not delete post.');
+    }
+  }, [onDeletePost, post.id, post.user.id, supabase, user?.id]);
 
   const handleShare = useCallback(() => {
     if (navigator.share) {
@@ -621,11 +650,22 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
             {isFollowed ? 'Following' : 'Follow'}
           </button>
           }
-          <button
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-all duration-150"
-            aria-label="More options">
-            <MoreHorizontal className="w-[18px] h-[18px] text-muted-foreground" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowPostMenu((v) => !v)}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-all duration-150"
+              aria-label="More options">
+              <MoreHorizontal className="w-[18px] h-[18px] text-muted-foreground" />
+            </button>
+            {showPostMenu && (
+              <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-border bg-card shadow-xl z-20 overflow-hidden">
+                <button onClick={() => { setShowPostMenu(false); handleShare(); }} className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors">Share post</button>
+                {user?.id === post.user.id && (
+                  <button onClick={handleDeletePost} className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">Delete post</button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -922,6 +962,10 @@ export default function PostFeed({ mode }: PostFeedProps) {
     }
   };
 
+  const handleDeletePost = (postId: string) => {
+    setDbPosts((prev) => prev.filter((post) => post.id !== postId));
+  };
+
   const handleFollowToggle = async (userId: string, userName: string) => {
     if (!user?.id) {
       toast.error('Please sign in to follow chefs.');
@@ -946,6 +990,15 @@ export default function PostFeed({ mode }: PostFeedProps) {
           .insert({ follower_id: user.id, following_id: userId });
 
         if (error) throw error;
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          actor_id: user.id,
+          type: 'follow',
+          title: 'New follower',
+          body: `${user.user_metadata?.full_name || 'Someone'} started following you.`,
+          entity_id: user.id,
+          entity_type: 'user_profile',
+        });
         toast.success(`Following ${userName}!`, { duration: 3000 });
       }
 
@@ -1135,6 +1188,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
           mode={mode}
           isFollowed={followedUserIds.has(post.user.id)}
           onFollowToggle={handleFollowToggle}
+          onDeletePost={handleDeletePost}
         />
       ))
       }
