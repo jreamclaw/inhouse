@@ -15,6 +15,7 @@ export interface UserProfile {
   bio: string | null;
   location: string | null;
   role: 'chef' | 'customer' | null;
+  availability_override?: 'open' | 'closed' | null;
   onboarding_complete: boolean;
   vendor_onboarding_complete: boolean;
   followers_count: number;

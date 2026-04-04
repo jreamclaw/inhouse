@@ -51,6 +51,7 @@ interface DbVendorProfile {
   delivery_fee?: number | null;
   business_hours?: string | null;
   closed_days?: string[] | null;
+  availability_override?: 'open' | 'closed' | null;
 }
 
 function parseBusinessHoursFromBio(bio?: string | null) {
@@ -62,7 +63,15 @@ function resolveBusinessHours(vendor: Partial<DbVendorProfile> & { bio?: string 
   return vendor.business_hours || parseBusinessHoursFromBio(vendor.bio) || null;
 }
 
-function getTodayOpenState(hoursText?: string | null) {
+function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'open' | 'closed' | null) {
+  if (availabilityOverride === 'open') {
+    return { label: 'Open now', isOpen: true };
+  }
+
+  if (availabilityOverride === 'closed') {
+    return { label: 'Closed manually', isOpen: false };
+  }
+
   if (!hoursText || hoursText.toLowerCase().includes('closed all week')) {
     return { label: 'Closed now', isOpen: false };
   }
@@ -2008,7 +2017,7 @@ function VendorProfileContent() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const businessHours = resolveBusinessHours(vendor as any);
-  const openState = getTodayOpenState(businessHours);
+  const openState = getTodayOpenState(businessHours, (vendor as any)?.availability_override || null);
   const isOwnVendorProfile = !!user?.id && user.id === vendor.id;
 
   useEffect(() => {
@@ -2031,7 +2040,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, bio, location, followers_count, delivery_fee, business_hours, closed_days')
+          .select('id, full_name, username, avatar_url, bio, location, followers_count, delivery_fee, business_hours, closed_days, availability_override')
           .eq('id', vendorId)
           .single(),
         supabase

@@ -54,6 +54,7 @@ interface DbVendorRow {
   latitude: number | null;
   longitude: number | null;
   service_radius_miles: number | null;
+  availability_override?: 'open' | 'closed' | null;
 }
 
 interface SavedAddressOption {
@@ -270,7 +271,7 @@ export default function NearbyPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles')
+        .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles, availability_override')
         .eq('role', 'chef')
         .eq('vendor_onboarding_complete', true)
         .not('latitude', 'is', null)
@@ -311,7 +312,7 @@ export default function NearbyPage() {
             deliveryTime: '25–35 min',
             deliveryFee: 0,
             priceRange: '$$',
-            isOpen: true,
+            isOpen: row.availability_override === 'closed' ? false : true,
             knownFor: inferKnownFor(row),
             locationLabel: row.location || 'Location unavailable',
             serviceRadiusMiles: chefServiceRadius,
@@ -368,7 +369,7 @@ export default function NearbyPage() {
   const activeSortLabel = SORT_OPTIONS.find((s) => s.id === sortBy);
 
   const headerLocation = (
-    <button onClick={() => setShowLocationSheet(true)} className="max-w-[220px] sm:max-w-[320px] flex items-center gap-1.5 text-[13px] font-700 text-foreground hover:text-primary transition-colors">
+    <button onClick={() => setShowLocationSheet(true)} className="max-w-[170px] sm:max-w-[260px] flex items-center gap-1.5 text-[13px] font-700 text-foreground hover:text-primary transition-colors min-w-0">
       <span className="truncate">{displayLocation.shortLabel}</span>
       <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </button>
@@ -381,7 +382,7 @@ export default function NearbyPage() {
           <p className="text-sm text-muted-foreground">
             <span className="font-700 text-foreground">{filteredVendors.length}</span> chefs nearby
           </p>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <button
               onClick={() => setShowOpenOnly(!showOpenOnly)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-600 border transition-all ${showOpenOnly ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground'}`}
@@ -501,14 +502,17 @@ export default function NearbyPage() {
             </form>
 
             <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
+              <button type="button" onClick={requestBrowserLocation} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-primary/10 hover:bg-primary/15 transition-colors text-sm font-700 text-primary">
+                <LocateFixed className="w-4 h-4" /> Current location
+              </button>
               <button type="button" onClick={() => profile?.location && handleLocationChange(profile.location)} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
                 <Home className="w-4 h-4" /> Home
               </button>
               <button type="button" onClick={() => manualLocationLabel && handleLocationChange(manualLocationLabel)} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
                 <Briefcase className="w-4 h-4" /> Work
               </button>
-              <button type="button" onClick={() => setCustomInput('')} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
-                <Plus className="w-4 h-4" /> Add label
+              <button type="button" onClick={() => customInput.trim() && handleLocationChange(customInput.trim())} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
+                <Plus className="w-4 h-4" /> Use typed address
               </button>
             </div>
 

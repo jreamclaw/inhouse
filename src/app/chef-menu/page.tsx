@@ -66,6 +66,7 @@ export default function ChefMenuPage() {
   const [mealImagePreview, setMealImagePreview] = useState<string | null>(null);
   const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
   const [businessHoursRows, setBusinessHoursRows] = useState<BusinessHourRow[]>(defaultBusinessHours());
+  const [availabilityOverride, setAvailabilityOverride] = useState<'open' | 'closed' | null>(null);
   const [savingBusinessHours, setSavingBusinessHours] = useState(false);
   const [earningsSummary, setEarningsSummary] = useState({ gross: 0, net: 0, deliveryFees: 0, completedOrders: 0, pendingPayout: 0 });
 
@@ -104,7 +105,7 @@ export default function ChefMenuPage() {
     if (!user) return;
     try {
       const [{ data: profileRow }, { data: mealRows }, { data: revenueRows }] = await Promise.all([
-        supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days').eq('id', user.id).single(),
+        supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days, availability_override').eq('id', user.id).single(),
         supabase.from('meals').select('id, title, description, price, category, available, image_url, modifier_groups').eq('chef_id', user.id).order('created_at', { ascending: false }),
         supabase.from('order_revenue').select('total, chef_earnings, delivery_fee, status').eq('chef_id', user.id),
       ]);
@@ -126,6 +127,7 @@ export default function ChefMenuPage() {
       const structuredHours = typeof profileRow?.business_hours === 'string' ? profileRow.business_hours : null;
       const hoursFromBio = typeof profileRow?.bio === 'string' ? profileRow.bio : profile?.bio || '';
       setBusinessHoursRows(defaultBusinessHours(structuredHours || hoursFromBio, profileRow?.closed_days || []));
+      setAvailabilityOverride((profileRow?.availability_override as 'open' | 'closed' | null) || null);
     } finally {
       setLoading(false);
     }
@@ -248,10 +250,10 @@ export default function ChefMenuPage() {
     try {
       const businessHours = formatBusinessHours(businessHoursRows);
       const closedDays = businessHoursRows.filter((row) => !row.open).map((row) => row.day);
-      const { error } = await supabase.from('user_profiles').update({ business_hours: businessHours, closed_days: closedDays, updated_at: new Date().toISOString() }).eq('id', user.id);
+      const { error } = await supabase.from('user_profiles').update({ business_hours: businessHours, closed_days: closedDays, availability_override: availabilityOverride, updated_at: new Date().toISOString() }).eq('id', user.id);
       if (error) throw error;
       await refreshProfile();
-      setStripeState((prev: any) => ({ ...prev, business_hours: businessHours, closed_days: closedDays }));
+      setStripeState((prev: any) => ({ ...prev, business_hours: businessHours, closed_days: closedDays, availability_override: availabilityOverride }));
       toast.success('Business hours updated');
     } catch (error: any) {
       toast.error(error?.message || 'Could not save business hours');
@@ -379,6 +381,11 @@ export default function ChefMenuPage() {
           <div className="space-y-4">
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-3 mb-3"><Clock3 className="w-5 h-5 text-blue-600" /><div><p className="text-sm font-700 text-foreground">Business hours</p><p className="text-xs text-muted-foreground">Set the days and times customers should expect you to be open.</p></div></div>
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <button onClick={() => setAvailabilityOverride(null)} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === null ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Auto</button>
+                <button onClick={() => setAvailabilityOverride('open')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'open' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-border text-muted-foreground'}`}>Open now</button>
+                <button onClick={() => setAvailabilityOverride('closed')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'closed' ? 'border-red-500 bg-red-500/10 text-red-600' : 'border-border text-muted-foreground'}`}>Closed now</button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
