@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark } from 'lucide-react';
+import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown } from 'lucide-react';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import { toast } from 'sonner';
 
@@ -72,6 +72,7 @@ export default function ProfileTabs() {
   const [mealsLoading, setMealsLoading] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [vendorToolsOpen, setVendorToolsOpen] = useState(false);
 
   const requestedTab = searchParams.get('tab');
   const refreshKey = searchParams.get('refresh');
@@ -223,38 +224,55 @@ export default function ProfileTabs() {
       {/* ── VENDOR-SPECIFIC QUICK ACTIONS ── */}
       {isVendor && activeTab === 'posts' && (
         <div className="p-4 border-b border-border">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Vendor Tools</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Link href="/chef-menu?section=menu-manager">
-              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
-                <UtensilsCrossed className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">Manage Menu</span>
-              </button>
-            </Link>
-            <Link href="/chef-menu?section=orders">
-              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left">
-                <Package className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">Orders Received</span>
-              </button>
-            </Link>
-            <Link href="/edit-profile">
-              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-violet-500/5 hover:bg-violet-500/10 border border-violet-500/20 transition-colors text-left">
-                <Settings className="w-4 h-4 text-violet-500 flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">Edit Vendor Profile</span>
-              </button>
-            </Link>
-            <Link href="/chef-menu?section=payouts">
-              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-green-500/5 hover:bg-green-500/10 border border-green-500/20 transition-colors text-left">
-                <DollarSign className="w-4 h-4 text-green-500 flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">Payout / Earnings</span>
-              </button>
-            </Link>
-            <Link href="/chef-menu?section=hours">
-              <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 transition-colors text-left">
-                <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">Business Hours</span>
-              </button>
-            </Link>
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <button
+              onClick={() => setVendorToolsOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-muted/40 transition-colors"
+              aria-expanded={vendorToolsOpen}
+              aria-label="Toggle vendor tools"
+            >
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vendor Tools</p>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${vendorToolsOpen ? 'rotate-180' : 'rotate-0'}`} />
+            </button>
+
+            <div className={`grid transition-all duration-300 ease-out ${vendorToolsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-70'}`}>
+              <div className="overflow-hidden">
+                <div className="p-3 pt-0 border-t border-border/60">
+                  <div className="grid grid-cols-2 gap-2 pt-3">
+                    <Link href="/chef-menu?section=menu-manager">
+                      <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
+                        <UtensilsCrossed className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground">Manage Menu</span>
+                      </button>
+                    </Link>
+                    <Link href="/chef-menu?section=orders">
+                      <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left">
+                        <Package className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground">Orders Received</span>
+                      </button>
+                    </Link>
+                    <Link href="/edit-profile">
+                      <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-violet-500/5 hover:bg-violet-500/10 border border-violet-500/20 transition-colors text-left">
+                        <Settings className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground">Edit Vendor Profile</span>
+                      </button>
+                    </Link>
+                    <Link href="/chef-menu?section=payouts">
+                      <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-green-500/5 hover:bg-green-500/10 border border-green-500/20 transition-colors text-left">
+                        <DollarSign className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground">Payout / Earnings</span>
+                      </button>
+                    </Link>
+                    <Link href="/chef-menu?section=hours">
+                      <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 transition-colors text-left">
+                        <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground">Business Hours</span>
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
