@@ -38,6 +38,17 @@ async function syncFollowerCounts(supabase: ReturnType<typeof createClient>, fol
   ]);
 }
 
+async function shouldCreateNotification(supabase: ReturnType<typeof createClient>, userId: string, key: 'notif_new_follower' | 'notif_post_likes' | 'notif_order_updates') {
+  const { data } = await supabase
+    .from('user_settings')
+    .select(key)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!data) return true;
+  return data[key] !== false;
+}
+
 
 // Availability tag types
 type AvailabilityTag = 'available_today' | 'selling_fast' | 'limited_plates' | 'pre_order' | 'trending';
@@ -430,7 +441,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
           .from('post_likes')
           .insert({ post_id: post.id, user_id: user.id });
         if (error) throw error;
-        if (post.user.id !== user.id) {
+        if (post.user.id !== user.id && await shouldCreateNotification(supabase, post.user.id, 'notif_post_likes')) {
           await supabase.from('notifications').insert({
             user_id: post.user.id,
             actor_id: user.id,
@@ -990,15 +1001,17 @@ export default function PostFeed({ mode }: PostFeedProps) {
           .insert({ follower_id: user.id, following_id: userId });
 
         if (error) throw error;
-        await supabase.from('notifications').insert({
-          user_id: userId,
-          actor_id: user.id,
-          type: 'follow',
-          title: 'New follower',
-          body: `${user.user_metadata?.full_name || 'Someone'} started following you.`,
-          entity_id: user.id,
-          entity_type: 'user_profile',
-        });
+        if (await shouldCreateNotification(supabase, userId, 'notif_new_follower')) {
+          await supabase.from('notifications').insert({
+            user_id: userId,
+            actor_id: user.id,
+            type: 'follow',
+            title: 'New follower',
+            body: `${user.user_metadata?.full_name || 'Someone'} started following you.`,
+            entity_id: user.id,
+            entity_type: 'user_profile',
+          });
+        }
         toast.success(`Following ${userName}!`, { duration: 3000 });
       }
 

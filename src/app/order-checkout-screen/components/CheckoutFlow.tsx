@@ -398,15 +398,23 @@ export default function CheckoutFlow() {
 
       if (revenueError) throw revenueError;
 
-      await supabase.from('notifications').insert({
-        user_id: chefId,
-        actor_id: user.id,
-        type: 'order',
-        title: 'New order received',
-        body: `${deliveryValues.fullName || profile?.full_name || 'A customer'} placed a new order.`,
-        entity_id: orderRow.id,
-        entity_type: 'order',
-      });
+      const { data: chefSettings } = await supabase
+        .from('user_settings')
+        .select('notif_order_updates')
+        .eq('user_id', chefId)
+        .maybeSingle();
+
+      if ((chefSettings as any)?.notif_order_updates !== false) {
+        await supabase.from('notifications').insert({
+          user_id: chefId,
+          actor_id: user.id,
+          type: 'order',
+          title: 'New order received',
+          body: `${deliveryValues.fullName || profile?.full_name || 'A customer'} placed a new order.`,
+          entity_id: orderRow.id,
+          entity_type: 'order',
+        });
+      }
 
       setOrderId(orderRow.id);
       setOrderStatus('pending');
