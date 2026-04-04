@@ -4,7 +4,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Heart,
-  MessageCircle,
   Share2,
   Bookmark,
   MoreHorizontal,
@@ -411,17 +410,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
     setTimeout(() => setIsSaveAnimating(false), 400);
     const nowSaved = !saved;
     setSaved(nowSaved);
-    if (nowSaved) {
-      toast('Saved locally on this device', {
-        description: 'Collection sync is not connected yet',
-        duration: 2500
-      });
-    } else {
-      toast('Removed local save', {
-        description: 'Saved collections are not synced yet',
-        duration: 2000
-      });
-    }
+    toast(nowSaved ? 'Saved' : 'Removed from saved', { duration: 1800 });
   }, [saved]);
 
   const handleFollow = useCallback(async () => {
@@ -466,13 +455,8 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
   }, [post]);
 
   const handleComment = useCallback(() => {
-    if (!comment.trim()) return;
-    toast('Comments are not connected yet', {
-      description: 'UI is here, but comment persistence is still pending',
-      duration: 2500
-    });
-    setComment('');
-  }, [comment]);
+    return;
+  }, []);
 
   const typeLabels: Record<string, {label: string;color: string;}> = {
     new_item: { label: '✨ New Menu Item', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
@@ -604,12 +588,6 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
                 isHeartAnimating ? 'scale-150' : ''} ${
                 liked ? 'fill-red-500 text-red-500' : 'text-muted-foreground group-hover:text-red-400'}`} />
             </button>
-            <button
-              onClick={() => setShowComments(!showComments)}
-              className="p-2 group rounded-full hover:bg-muted/60 transition-colors"
-              aria-label="Toggle comments">
-              <MessageCircle className="w-[22px] h-[22px] text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
-            </button>
             <button onClick={handleShare} className="p-2 group rounded-full hover:bg-muted/60 transition-colors" aria-label="Share post">
               <Share2 className="w-[22px] h-[22px] text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
             </button>
@@ -635,20 +613,6 @@ function PostCard({ post, mode, isFollowed, onFollowToggle }: PostCardProps) {
           </Link>
           {post.caption}
         </p>
-
-        {/* Comments count toggle */}
-        {post.comments > 0 &&
-        <button
-          onClick={() => setShowComments(!showComments)}
-          className="text-[13px] text-muted-foreground mt-2 hover:text-foreground transition-colors">
-            View all {post.comments} comments
-          </button>
-        }
-
-        {/* Comment input */}
-        {showComments &&
-        <CommentInput comment={comment} setComment={setComment} handleComment={handleComment} />
-        }
 
         {/* Order from chef CTA */}
         {post.user.role === 'chef' && post.mealTag &&

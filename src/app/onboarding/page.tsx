@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { reverseGeocode } from '@/lib/location/geocode';
 import AppLogo from '@/components/ui/AppLogo';
 import { ChefHat, ShoppingBag, ArrowRight, MapPin, Users, Star, Utensils, Heart, Loader2, CheckCircle } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
@@ -33,8 +34,19 @@ export default function OnboardingPage() {
     navigator.geolocation.getCurrentPosition(async (position) => {
       setLocationGranted(true);
       try {
-        const coordsLabel = `${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)}`;
-        if (resolvedUserId) await supabase.from('user_profiles').update({ location: coordsLabel, latitude: position.coords.latitude, longitude: position.coords.longitude, updated_at: new Date().toISOString() }).eq('id', resolvedUserId);
+        const resolved = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+        const fullAddress = resolved?.fullAddress || 'Current location';
+        if (resolvedUserId) {
+          await supabase
+            .from('user_profiles')
+            .update({
+              location: fullAddress,
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', resolvedUserId);
+        }
       } catch {}
       setLocationLoading(false);
     }, () => { setLocationGranted(false); setLocationLoading(false); });
