@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '@/lib/supabase/client';
@@ -23,6 +23,29 @@ export default function CreateStoryPage() {
   const [media, setMedia] = useState<StoryMedia | null>(null);
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [storiesAvailable, setStoriesAvailable] = useState(true);
+  const [checkingStories, setCheckingStories] = useState(true);
+
+  useEffect(() => {
+    const verifyStories = async () => {
+      setCheckingStories(true);
+      try {
+        const { error } = await supabase.from('stories').select('id').limit(1);
+        if (error) {
+          const message = String(error.message || '').toLowerCase();
+          if (message.includes('stories') && (message.includes('does not exist') || message.includes('schema cache'))) {
+            setStoriesAvailable(false);
+          }
+        } else {
+          setStoriesAvailable(true);
+        }
+      } finally {
+        setCheckingStories(false);
+      }
+    };
+
+    verifyStories();
+  }, [supabase]);
 
   const storyPolicyLabel = useMemo(() => {
     if (profile?.role === 'chef') return 'Chef story';
@@ -57,6 +80,11 @@ export default function CreateStoryPage() {
   };
 
   const handleSubmit = async () => {
+    if (!storiesAvailable) {
+      toast.error('Stories are not live yet.');
+      return;
+    }
+
     if (!user?.id) {
       toast.error('You must be logged in to post a story');
       return;
@@ -110,12 +138,19 @@ export default function CreateStoryPage() {
           <h1 className="text-lg font-700 text-foreground">Create Story</h1>
           <button
             onClick={handleSubmit}
-            disabled={uploading || !media}
+            disabled={uploading || !media || !storiesAvailable || checkingStories}
             className="text-sm font-700 text-primary disabled:opacity-40 disabled:cursor-not-allowed hover:text-primary/80 transition-colors flex items-center gap-1.5"
           >
             {uploading ? <><Loader2 className="w-4 h-4 animate-spin" />Posting...</> : 'Post Story'}
           </button>
         </div>
+
+        {!checkingStories && !storiesAvailable && (
+          <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <p className="text-sm font-700 text-foreground">Stories are not live yet</p>
+            <p className="text-xs text-muted-foreground mt-1">This workspace has the story code, but the live database table is not available yet.</p>
+          </div>
+        )}
 
         <div className="mb-4 rounded-2xl border border-border bg-card px-4 py-3">
           <p className="text-sm font-700 text-foreground">{storyPolicyLabel}</p>
@@ -123,8 +158,11 @@ export default function CreateStoryPage() {
         </div>
 
         <div
-          onClick={() => inputRef.current?.click()}
-          className="relative rounded-2xl border-2 border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 mb-6 p-6"
+          onClick={() => {
+            if (!storiesAvailable || checkingStories) return;
+            inputRef.current?.click();
+          }}
+          className={`relative rounded-2xl border-2 border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-4 transition-all duration-200 mb-6 p-6 ${storiesAvailable && !checkingStories ? 'cursor-pointer hover:border-primary/50 hover:bg-muted/50' : 'opacity-60 cursor-not-allowed'}`}
         >
           <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
             <ImagePlus className="w-7 h-7 text-primary" />
@@ -134,7 +172,7 @@ export default function CreateStoryPage() {
             <p className="text-sm text-muted-foreground mt-1">One image or video per story</p>
             <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, GIF, WEBP, MP4, MOV, WEBM · Max 50MB</p>
           </div>
-          <input ref={inputRef} type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" />
+          <input ref={inputRef} type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" disabled={!storiesAvailable || checkingStories} />
         </div>
 
         {media && (
@@ -173,7 +211,7 @@ export default function CreateStoryPage() {
 
         <button
           onClick={handleSubmit}
-          disabled={uploading || !media}
+          disabled={uploading || !media || !storiesAvailable || checkingStories}
           className="w-full bg-primary text-white font-700 py-3.5 rounded-2xl hover:bg-primary/90 active:scale-95 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
         >
           {uploading ? <><Loader2 className="w-5 h-5 animate-spin" />Posting story...</> : 'Share Story'}

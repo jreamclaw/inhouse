@@ -39,6 +39,7 @@ export default function StoriesBar() {
 
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storiesAvailable, setStoriesAvailable] = useState(true);
   const [activeGroup, setActiveGroup] = useState<StoryGroup | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -72,7 +73,17 @@ export default function StoriesBar() {
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        const message = String(error.message || '').toLowerCase();
+        if (message.includes('stories') && (message.includes('does not exist') || message.includes('schema cache'))) {
+          setStoriesAvailable(false);
+          setStoryGroups([]);
+          return;
+        }
+        throw error;
+      }
+
+      setStoriesAvailable(true);
 
       const grouped = new Map<string, StoryGroup>();
       for (const row of (data as StoryRow[] | null) ?? []) {
@@ -127,6 +138,10 @@ export default function StoriesBar() {
     }
     router.push('/create-story');
   };
+
+  if (!storiesAvailable) {
+    return null;
+  }
 
   return (
     <>
