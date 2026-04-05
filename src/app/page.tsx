@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,46 +11,49 @@ export default function RootPage() {
   const pathname = usePathname();
   const { user, profile, loading } = useAuth();
 
+  const redirectDecision = useMemo(() => {
+    if (!user) {
+      return { redirectTarget: '/login', reason: 'missing-session' };
+    }
+
+    if (!profile) {
+      return { redirectTarget: '/role-selection', reason: 'missing-profile' };
+    }
+
+    if (!profile.role) {
+      return { redirectTarget: '/role-selection', reason: 'missing-role' };
+    }
+
+    if (profile.role === 'chef') {
+      return {
+        redirectTarget: profile.vendor_onboarding_complete ? '/chef-menu' : '/vendor-onboarding',
+        reason: profile.vendor_onboarding_complete ? 'chef-ready' : 'chef-vendor-onboarding-incomplete',
+      };
+    }
+
+    if (!profile.onboarding_complete) {
+      return { redirectTarget: '/onboarding', reason: 'customer-onboarding-incomplete' };
+    }
+
+    return { redirectTarget: '/home-feed', reason: 'customer-ready' };
+  }, [user, profile]);
+
   useEffect(() => {
     if (loading) return;
 
-    const timeout = setTimeout(() => {
-      let redirectTarget: string;
-      let reason: string;
+    authDebug('root-page.redirect-decision', {
+      pathname,
+      sessionExists: !!user,
+      userId: user?.id ?? null,
+      profileRole: profile?.role ?? null,
+      onboardingComplete: profile?.onboarding_complete ?? null,
+      vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+      redirectTarget: redirectDecision.redirectTarget,
+      reason: redirectDecision.reason,
+    });
 
-      if (!user) {
-        redirectTarget = '/login';
-        reason = 'missing-session';
-      } else if (!profile?.role) {
-        redirectTarget = '/role-selection';
-        reason = 'missing-role';
-      } else if (profile.role === 'chef') {
-        redirectTarget = profile.vendor_onboarding_complete ? '/chef-menu' : '/vendor-onboarding';
-        reason = profile.vendor_onboarding_complete ? 'chef-ready' : 'chef-vendor-onboarding-incomplete';
-      } else if (!profile.onboarding_complete) {
-        redirectTarget = '/onboarding';
-        reason = 'customer-onboarding-incomplete';
-      } else {
-        redirectTarget = '/home-feed';
-        reason = 'customer-ready';
-      }
-
-      authDebug('root-page.redirect-decision', {
-        pathname,
-        sessionExists: !!user,
-        userId: user?.id ?? null,
-        profileRole: profile?.role ?? null,
-        onboardingComplete: profile?.onboarding_complete ?? null,
-        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
-        redirectTarget,
-        reason,
-      });
-
-      router.replace(redirectTarget);
-    }, 1400);
-
-    return () => clearTimeout(timeout);
-  }, [loading, user, profile, router, pathname]);
+    router.replace(redirectDecision.redirectTarget);
+  }, [loading, user, profile, router, pathname, redirectDecision]);
 
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">
@@ -62,12 +65,12 @@ export default function RootPage() {
         </div>
         <h1 className="mt-5 text-white text-2xl font-700 tracking-tight">InHouse</h1>
         <p className="mt-2 text-white/55 text-sm text-center max-w-xs">
-          Discover local chefs and hidden food businesses near you.
+          Checking your account...
         </p>
       </div>
 
       <div className="absolute bottom-10 text-[11px] text-white/35 tracking-wide">
-        Loading InHouse...
+        Routing you now...
       </div>
 
       <style jsx global>{`
