@@ -126,11 +126,24 @@ export async function GET(request: NextRequest) {
     redirectTarget: next,
   });
 
-  let { data: profile } = await supabase
+  let { data: profile, error: profileError } = await supabase
     .from('user_profiles')
     .select('role, onboarding_complete, vendor_onboarding_complete')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
+
+  if (profileError) {
+    authDebug('auth-callback.profile-fetch-error', {
+      pathname,
+      sessionExists: !!exchangedSession,
+      userId,
+      profileRole: null,
+      onboardingComplete: null,
+      vendorOnboardingComplete: null,
+      redirectTarget: '/role-selection',
+      reason: profileError.message,
+    });
+  }
 
   authDebug('auth-callback.profile-fetch', {
     pathname,
@@ -146,9 +159,9 @@ export async function GET(request: NextRequest) {
   if (!profile) {
     const userEmail = exchangedUser.email ?? '';
     const userMeta = exchangedUser.user_metadata ?? {};
-    const { data: newProfile } = await supabase
+    const { data: newProfile, error: upsertError } = await supabase
       .from('user_profiles')
-      .insert({
+      .upsert({
         id: userId,
         email: userEmail,
         full_name: userMeta.full_name || userMeta.name || userEmail.split('@')[0],
@@ -157,10 +170,28 @@ export async function GET(request: NextRequest) {
         role: (role === 'chef' || role === 'customer') ? role : null,
         onboarding_complete: false,
         vendor_onboarding_complete: false,
-      })
+      }, { onConflict: 'id' })
       .select('role, onboarding_complete, vendor_onboarding_complete')
-      .single();
-    profile = newProfile;
+      .maybeSingle();
+
+    if (upsertError) {
+      authDebug('auth-callback.profile-upsert-error', {
+        pathname,
+        sessionExists: !!exchangedSession,
+        userId,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: '/role-selection',
+        reason: upsertError.message,
+      });
+    }
+
+    profile = newProfile ?? {
+      role: (role === 'chef' || role === 'customer') ? role : null,
+      onboarding_complete: false,
+      vendor_onboarding_complete: false,
+    };
 
     authDebug('auth-callback.profile-created', {
       pathname,
