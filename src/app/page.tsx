@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +10,6 @@ export default function RootPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, profile, loading } = useAuth();
-  const [fallbackReady, setFallbackReady] = useState(false);
 
   const redirectDecision = useMemo(() => {
     if (!user) {
@@ -40,13 +39,7 @@ export default function RootPage() {
   }, [user, profile]);
 
   useEffect(() => {
-    if (!loading) return;
-    const timeout = window.setTimeout(() => setFallbackReady(true), 3500);
-    return () => window.clearTimeout(timeout);
-  }, [loading]);
-
-  useEffect(() => {
-    if (loading && !fallbackReady) return;
+    if (loading) return;
 
     authDebug('root-page.redirect-decision', {
       pathname,
@@ -56,11 +49,11 @@ export default function RootPage() {
       onboardingComplete: profile?.onboarding_complete ?? null,
       vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
       redirectTarget: redirectDecision.redirectTarget,
-      reason: loading ? `fallback-${redirectDecision.reason}` : redirectDecision.reason,
+      reason: redirectDecision.reason,
     });
 
     router.replace(redirectDecision.redirectTarget);
-  }, [loading, fallbackReady, user, profile, router, pathname, redirectDecision]);
+  }, [loading, user, profile, router, pathname, redirectDecision]);
 
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">

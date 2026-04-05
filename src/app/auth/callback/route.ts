@@ -126,24 +126,11 @@ export async function GET(request: NextRequest) {
     redirectTarget: next,
   });
 
-  let { data: profile, error: profileError } = await supabase
+  let { data: profile } = await supabase
     .from('user_profiles')
     .select('role, onboarding_complete, vendor_onboarding_complete')
     .eq('id', userId)
-    .maybeSingle();
-
-  if (profileError) {
-    authDebug('auth-callback.profile-fetch-error', {
-      pathname,
-      sessionExists: !!exchangedSession,
-      userId,
-      profileRole: null,
-      onboardingComplete: null,
-      vendorOnboardingComplete: null,
-      redirectTarget: '/role-selection',
-      reason: profileError.message,
-    });
-  }
+    .single();
 
   authDebug('auth-callback.profile-fetch', {
     pathname,
@@ -159,9 +146,9 @@ export async function GET(request: NextRequest) {
   if (!profile) {
     const userEmail = exchangedUser.email ?? '';
     const userMeta = exchangedUser.user_metadata ?? {};
-    const { data: newProfile, error: upsertError } = await supabase
+    const { data: newProfile } = await supabase
       .from('user_profiles')
-      .upsert({
+      .insert({
         id: userId,
         email: userEmail,
         full_name: userMeta.full_name || userMeta.name || userEmail.split('@')[0],
@@ -170,28 +157,10 @@ export async function GET(request: NextRequest) {
         role: (role === 'chef' || role === 'customer') ? role : null,
         onboarding_complete: false,
         vendor_onboarding_complete: false,
-      }, { onConflict: 'id' })
+      })
       .select('role, onboarding_complete, vendor_onboarding_complete')
-      .maybeSingle();
-
-    if (upsertError) {
-      authDebug('auth-callback.profile-upsert-error', {
-        pathname,
-        sessionExists: !!exchangedSession,
-        userId,
-        profileRole: null,
-        onboardingComplete: null,
-        vendorOnboardingComplete: null,
-        redirectTarget: '/role-selection',
-        reason: upsertError.message,
-      });
-    }
-
-    profile = newProfile ?? {
-      role: (role === 'chef' || role === 'customer') ? role : null,
-      onboarding_complete: false,
-      vendor_onboarding_complete: false,
-    };
+      .single();
+    profile = newProfile;
 
     authDebug('auth-callback.profile-created', {
       pathname,
