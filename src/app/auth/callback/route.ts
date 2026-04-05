@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     pathname,
     sessionExists: !!exchangedSession,
     userId,
-    profileRole: role,
+    profileRole: null,
     onboardingComplete: null,
     vendorOnboardingComplete: null,
     redirectTarget: next,
@@ -215,6 +215,8 @@ export async function GET(request: NextRequest) {
     ? resolvePostLoginRoute(profile)
     : { destination: next, reason: 'explicit-next' };
 
+  const redirectUrl = new URL(destination, origin).toString();
+
   authDebug('auth-callback.final-redirect', {
     pathname,
     sessionExists: !!exchangedSession,
@@ -223,10 +225,11 @@ export async function GET(request: NextRequest) {
     onboardingComplete: profile?.onboarding_complete ?? null,
     vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
     redirectTarget: destination,
+    finalRedirectUrl: redirectUrl,
     reason,
   });
 
-  const redirectResponse = NextResponse.redirect(`${origin}${destination}`);
+  const redirectResponse = NextResponse.redirect(redirectUrl);
   response.cookies.getAll().forEach((cookie) => {
     redirectResponse.cookies.set(cookie);
   });
