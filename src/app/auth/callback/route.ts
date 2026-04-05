@@ -161,9 +161,9 @@ export async function GET(request: NextRequest) {
   if (!profile) {
     const userEmail = exchangedUser.email ?? '';
     const userMeta = exchangedUser.user_metadata ?? {};
-    const { data: newProfile } = await supabase
+    const { data: newProfile, error: profileUpsertError } = await supabase
       .from('user_profiles')
-      .insert({
+      .upsert({
         id: userId,
         email: userEmail,
         full_name: userMeta.full_name || userMeta.name || userEmail.split('@')[0],
@@ -172,10 +172,28 @@ export async function GET(request: NextRequest) {
         role: (role === 'chef' || role === 'customer') ? role : null,
         onboarding_complete: false,
         vendor_onboarding_complete: false,
-      })
+      }, { onConflict: 'id' })
       .select('role, onboarding_complete, vendor_onboarding_complete')
-      .single();
-    profile = newProfile;
+      .maybeSingle();
+
+    if (profileUpsertError) {
+      authDebug('auth-callback.profile-create-error', {
+        pathname,
+        sessionExists: !!exchangedSession,
+        userId,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+        reason: profileUpsertError.message,
+      });
+    }
+
+    profile = newProfile ?? {
+      role: (role === 'chef' || role === 'customer') ? role : null,
+      onboarding_complete: false,
+      vendor_onboarding_complete: false,
+    };
 
     authDebug('auth-callback.profile-created', {
       pathname,
