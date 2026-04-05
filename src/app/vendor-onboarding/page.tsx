@@ -18,7 +18,7 @@ const STEPS = [
 
 export default function VendorOnboardingPage() {
   const router = useRouter();
-  const { user, profile, loading, refreshProfile, getUserProfile } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const supabase = createClient();
 
   const [step, setStep] = useState(1);
@@ -32,7 +32,6 @@ export default function VendorOnboardingPage() {
   const [closeTime, setCloseTime] = useState('21:00');
   const [daysOpen, setDaysOpen] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [resolvedProfile, setResolvedProfile] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -55,37 +54,12 @@ export default function VendorOnboardingPage() {
 
   useEffect(() => {
     if (profile) {
-      setResolvedProfile(profile);
       setBusinessName(profile.full_name || '');
       setBio(profile.bio || '');
       setLocation(profile.location || '');
       setAvatarUrl(profile.avatar_url || '');
     }
   }, [profile]);
-
-  useEffect(() => {
-    if (loading || !user || profile || resolvedProfile) return;
-
-    let cancelled = false;
-
-    const hydrateProfile = async () => {
-      try {
-        const freshProfile = await getUserProfile();
-        if (!cancelled && freshProfile) {
-          setResolvedProfile(freshProfile);
-          setBusinessName(freshProfile.full_name || '');
-          setBio(freshProfile.bio || '');
-          setLocation(freshProfile.location || '');
-          setAvatarUrl(freshProfile.avatar_url || '');
-        }
-      } catch {}
-    };
-
-    hydrateProfile();
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, user, profile, resolvedProfile, getUserProfile]);
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
@@ -158,9 +132,7 @@ export default function VendorOnboardingPage() {
     }
   };
 
-  const activeProfile = profile || resolvedProfile;
-
-  if (loading || !user || !activeProfile) {
+  if (loading || !user || !profile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="flex items-center gap-3 text-muted-foreground">
@@ -171,7 +143,7 @@ export default function VendorOnboardingPage() {
     );
   }
 
-  if (activeProfile.role !== 'chef' || activeProfile.vendor_onboarding_complete) {
+  if (profile.role !== 'chef' || profile.vendor_onboarding_complete) {
     return null;
   }
 

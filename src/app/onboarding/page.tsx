@@ -14,7 +14,7 @@ type Role = 'chef' | 'customer';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, profile, loading, getUserProfile } = useAuth();
+  const { user, profile, loading } = useAuth();
   const supabase = createClient();
   const resolvedUserId = user?.id ?? profile?.id ?? null;
 
@@ -23,35 +23,10 @@ export default function OnboardingPage() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [resolvedProfile, setResolvedProfile] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
-
-  useEffect(() => {
-    if (profile) {
-      setResolvedProfile(profile);
-      return;
-    }
-
-    if (loading || !user || resolvedProfile) return;
-
-    let cancelled = false;
-    const hydrateProfile = async () => {
-      try {
-        const freshProfile = await getUserProfile();
-        if (!cancelled && freshProfile) {
-          setResolvedProfile(freshProfile);
-        }
-      } catch {}
-    };
-
-    hydrateProfile();
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, user, profile, resolvedProfile, getUserProfile]);
 
   const handleRequestLocation = () => {
     setLocationLoading(true);
@@ -77,14 +52,12 @@ export default function OnboardingPage() {
     }, () => { setLocationGranted(false); setLocationLoading(false); });
   };
 
-  const activeProfile = profile || resolvedProfile;
-
   const handleFinish = async () => {
     if (!user) return router.replace('/login');
-    if (!activeProfile?.role) return router.replace('/role-selection');
+    if (!profile?.role) return router.replace('/role-selection');
     setSaving(true); setError('');
     try {
-      const existingRole = activeProfile.role as Role;
+      const existingRole = profile.role as Role;
       const { error: updateError } = await supabase.from('user_profiles').update({ onboarding_complete: true, location_permission_granted: locationGranted, updated_at: new Date().toISOString() }).eq('id', resolvedUserId);
       if (updateError) throw updateError;
       if (existingRole === 'chef') router.replace('/vendor-onboarding'); else router.replace('/home-feed');
