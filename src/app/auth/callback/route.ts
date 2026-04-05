@@ -4,11 +4,17 @@ import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
 import { NextResponse } from 'next/server';
 import { type NextRequest } from 'next/server';
 
+function normalizeNextPath(next: string | null) {
+  if (!next) return 'role-based';
+  if (next === 'role-based') return next;
+  return next.startsWith('/') ? next : '/home-feed';
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const { searchParams, origin, pathname } = url;
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/home-feed';
+  const next = normalizeNextPath(searchParams.get('next'));
   const requestedRole = searchParams.get('role');
 
   authDebug('auth-callback.entry', {
@@ -34,7 +40,14 @@ export async function GET(request: NextRequest) {
       redirectTarget: '/login',
       reason: 'missing-code',
     });
-    return NextResponse.redirect(`${origin}/login`);
+    const loginUrl = new URL('/login', origin);
+    if (next && next !== 'role-based') {
+      loginUrl.searchParams.set('next', next);
+    }
+    if (requestedRole === 'chef' || requestedRole === 'customer') {
+      loginUrl.searchParams.set('role', requestedRole);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   const response = NextResponse.next({ request });
@@ -87,7 +100,14 @@ export async function GET(request: NextRequest) {
       redirectTarget: '/login',
       reason: error?.message ?? 'missing-session-after-exchange',
     });
-    return NextResponse.redirect(`${origin}/login`);
+    const loginUrl = new URL('/login', origin);
+    if (next && next !== 'role-based') {
+      loginUrl.searchParams.set('next', next);
+    }
+    if (requestedRole === 'chef' || requestedRole === 'customer') {
+      loginUrl.searchParams.set('role', requestedRole);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   const userId = exchangedUser.id;

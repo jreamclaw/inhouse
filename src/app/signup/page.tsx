@@ -113,13 +113,16 @@ export default function SignUpPage() {
     setError('');
     setOauthLoading(provider);
     try {
-      // Use NEXT_PUBLIC_SITE_URL env var so redirect works on both preview and published domains
       const siteUrl = window.location.origin;
-      const next = 'role-based';
+      const callbackUrl = new URL('/auth/callback', siteUrl);
+      callbackUrl.searchParams.set('next', 'role-based');
+      callbackUrl.searchParams.set('role', accountType);
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${siteUrl}/auth/callback?next=${next}&role=${accountType}`,
+          redirectTo: callbackUrl.toString(),
+          skipBrowserRedirect: false,
         },
       });
       if (error) throw error;

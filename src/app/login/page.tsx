@@ -120,10 +120,20 @@ export default function LoginPage() {
     setOauthLoading(provider);
     try {
       const siteUrl = window.location.origin;
+      const currentUrl = new URL(window.location.href);
+      const requestedNext = currentUrl.searchParams.get('next');
+      const requestedRole = currentUrl.searchParams.get('role');
+      const callbackUrl = new URL('/auth/callback', siteUrl);
+      callbackUrl.searchParams.set('next', requestedNext && requestedNext.startsWith('/') ? requestedNext : 'role-based');
+      if (requestedRole === 'chef' || requestedRole === 'customer') {
+        callbackUrl.searchParams.set('role', requestedRole);
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${siteUrl}/auth/callback?next=role-based`,
+          redirectTo: callbackUrl.toString(),
+          skipBrowserRedirect: false,
         },
       });
       if (error) throw error;
