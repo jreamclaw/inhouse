@@ -126,11 +126,26 @@ export async function GET(request: NextRequest) {
     redirectTarget: next,
   });
 
-  let { data: profile } = await supabase
+  const { data: existingProfile, error: profileLookupError } = await supabase
     .from('user_profiles')
     .select('role, onboarding_complete, vendor_onboarding_complete')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
+
+  if (profileLookupError) {
+    authDebug('auth-callback.profile-fetch-error', {
+      pathname,
+      sessionExists: !!exchangedSession,
+      userId,
+      profileRole: null,
+      onboardingComplete: null,
+      vendorOnboardingComplete: null,
+      redirectTarget: null,
+      reason: profileLookupError.message,
+    });
+  }
+
+  let profile = existingProfile;
 
   authDebug('auth-callback.profile-fetch', {
     pathname,
