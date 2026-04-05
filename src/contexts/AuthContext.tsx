@@ -44,6 +44,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
+  const clearLocalAuthState = () => {
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
       const supabase = createClient();
@@ -103,26 +109,74 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const supabase = createClient();
 
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      authDebug('auth-context.session-init', {
-        pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
-        sessionExists: !!initialSession,
-        userId: initialSession?.user?.id ?? null,
-        profileRole: null,
-        onboardingComplete: null,
-        vendorOnboardingComplete: null,
-        redirectTarget: null,
-      });
-      if (initialSession?.user) {
-        setSession(initialSession);
-        setUser(initialSession.user);
-        fetchProfile(initialSession.user.id).finally(() => setLoading(false));
-      } else {
-        setSession(null);
-        setUser(null);
+    const restoreVerifiedSession = async () => {
+      try {
+        const [{ data: sessionData }, userResult] = await Promise.all([
+          supabase.auth.getSession(),
+          supabase.auth.getUser(),
+        ]);
+
+        const initialSession = sessionData.session ?? null;
+        const verifiedUser = userResult.data.user ?? null;
+        const userError = userResult.error;
+        const pathname = typeof window !== 'undefined' ? window.location.pathname : 'unknown';
+
+        authDebug('auth-context.session-init', {
+          pathname,
+          sessionExists: !!initialSession,
+          userId: initialSession?.user?.id ?? null,
+          profileRole: null,
+          onboardingComplete: null,
+          vendorOnboardingComplete: null,
+          redirectTarget: null,
+          reason: verifiedUser ? 'verified-user' : (userError?.message ?? 'no-verified-user'),
+        });
+
+        if (initialSession?.user && !verifiedUser) {
+          authDebug('auth-context.session-init.invalid-local-session', {
+            pathname,
+            sessionExists: true,
+            userId: initialSession.user.id,
+            profileRole: null,
+            onboardingComplete: null,
+            vendorOnboardingComplete: null,
+            redirectTarget: null,
+            reason: userError?.message ?? 'session-user-missing-from-getUser',
+          });
+          await supabase.auth.signOut({ scope: 'local' });
+          clearLocalAuthState();
+          setLoading(false);
+          return;
+        }
+
+        if (initialSession && verifiedUser) {
+          const verifiedSession = { ...initialSession, user: verifiedUser };
+          setSession(verifiedSession);
+          setUser(verifiedUser);
+          await fetchProfile(verifiedUser.id);
+          setLoading(false);
+          return;
+        }
+
+        clearLocalAuthState();
+        setLoading(false);
+      } catch (error: any) {
+        authDebug('auth-context.session-init.error', {
+          pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+          sessionExists: false,
+          userId: null,
+          profileRole: null,
+          onboardingComplete: null,
+          vendorOnboardingComplete: null,
+          redirectTarget: null,
+          reason: error?.message ?? 'unknown',
+        });
+        clearLocalAuthState();
         setLoading(false);
       }
-    });
+    };
+
+    restoreVerifiedSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       authDebug('auth-context.auth-state-change', {
@@ -135,16 +189,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         redirectTarget: null,
         reason: event,
       });
-      setSession(newSession);
 
-      if (newSession?.user) {
-        setUser(newSession.user);
-        fetchProfile(newSession.user.id).finally(() => setLoading(false));
-      } else {
-        setUser(null);
-        setProfile(null);
+      if (event === 'SIGNED_OUT' || !newSession?.user) {
+        clearLocalAuthState();
         setLoading(false);
+        return;
       }
+
+      setSession(newSession);
+      setUser(newSession.user);
+      fetchProfile(newSession.user.id).finally(() => setLoading(false));
     });
 
     return () => subscription.unsubscribe();
@@ -171,7 +225,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) {
+      const message = error.message || '';
+      if (/session|refresh token|jwt|invalid|expired/i.test(message)) {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+        clearLocalAuthState();
+      }
+      throw error;
+    }
     if (data.session?.user) {
       setSession(data.session);
       setUser(data.session.user);
@@ -192,9 +253,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const supabase = createClient();
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-    setUser(null);
-    setSession(null);
-    setProfile(null);
+    clearLocalAuthState();
   };
 
   const getCurrentUser = async () => {
