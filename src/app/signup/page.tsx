@@ -7,10 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { authDebug } from '@/lib/auth/debug';
 import AppLogo from '@/components/ui/AppLogo';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2, ChefHat, ShoppingBag, Check } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-type AccountType = 'customer' | 'chef';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -21,7 +19,6 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
@@ -30,36 +27,25 @@ export default function SignUpPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!accountType) {
-      setError('Please select an account type to continue.');
-      return;
-    }
     if (password.length < 6) {
       setError('Password must be at least 6 characters.');
       return;
     }
     setLoading(true);
     try {
-      // Pass the selected role in metadata so the DB trigger saves it correctly
-      const signUpResult = await signUp(email, password, { fullName: name, role: accountType });
+      const signUpResult = await signUp(email, password, { fullName: name });
 
-      // Email signup should not route through OAuth callback unless a confirmation code exists.
       const signedUpUser = signUpResult?.user ?? signUpResult?.session?.user ?? null;
       const hasImmediateSession = Boolean(signUpResult?.session?.user);
 
-      toast.success(accountType === 'chef' ? '👨‍🍳 Chef account created!' : '🎉 Account created!', {
+      toast.success('🎉 Account created!', {
         description: hasImmediateSession
-          ? (accountType === 'chef' ? "Let's set up your chef profile" : 'Welcome to InHouse!')
+          ? 'Welcome to InHouse!'
           : 'Check your email to confirm your account.',
         duration: 3000,
       });
 
-      if (!signedUpUser) {
-        router.replace('/login');
-        return;
-      }
-
-      if (!hasImmediateSession) {
+      if (!signedUpUser || !hasImmediateSession) {
         router.replace('/login');
         return;
       }
@@ -68,7 +54,7 @@ export default function SignUpPage() {
         .from('user_profiles')
         .select('role, onboarding_complete, vendor_onboarding_complete')
         .eq('id', signedUpUser.id)
-        .single();
+        .maybeSingle();
 
       authDebug('signup.profile-fetch', {
         pathname,
@@ -82,7 +68,7 @@ export default function SignUpPage() {
       });
 
       const destination = getPostLoginRoute(profile ?? {
-        role: accountType,
+        role: null,
         onboarding_complete: false,
         vendor_onboarding_complete: false,
       });
@@ -91,7 +77,7 @@ export default function SignUpPage() {
         pathname,
         sessionExists: hasImmediateSession,
         userId: signedUpUser.id,
-        profileRole: profile?.role ?? accountType,
+        profileRole: profile?.role ?? null,
         onboardingComplete: profile?.onboarding_complete ?? false,
         vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? false,
         redirectTarget: destination,
@@ -106,17 +92,12 @@ export default function SignUpPage() {
   };
 
   const handleOAuth = async (provider: 'google' | 'apple') => {
-    if (!accountType) {
-      setError('Please select an account type before continuing with OAuth.');
-      return;
-    }
     setError('');
     setOauthLoading(provider);
     try {
       const siteUrl = window.location.origin;
       const callbackUrl = new URL('/auth/callback', siteUrl);
       callbackUrl.searchParams.set('next', 'role-based');
-      callbackUrl.searchParams.set('role', accountType);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -183,55 +164,12 @@ export default function SignUpPage() {
             <p className="text-muted-foreground">Join InHouse and start discovering local chefs</p>
           </div>
 
-          {/* Account Type Selection — required */}
-          <div className="mb-6">
-            <p className="text-sm font-semibold text-foreground mb-3">
-              I want to join as <span className="text-destructive">*</span>
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              {/* Customer */}
-              <button
-                type="button"
-                onClick={() => setAccountType('customer')}
-                className={`relative flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-150 cursor-pointer focus:outline-none ${
-                  accountType === 'customer' ?'border-violet-500 bg-violet-50 dark:bg-violet-950/30 shadow-md scale-[1.02]' :'border-border bg-card hover:border-muted-foreground/30 hover:shadow-sm'
-                }`}
-              >
-                {accountType === 'customer' && (
-                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                  </div>
-                )}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white">
-                  <ShoppingBag className="w-5 h-5" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">Customer</p>
-                  <p className="text-xs text-muted-foreground">Order & discover</p>
-                </div>
-              </button>
-
-              {/* Chef / Vendor */}
-              <button
-                type="button"
-                onClick={() => setAccountType('chef')}
-                className={`relative flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-150 cursor-pointer focus:outline-none ${
-                  accountType === 'chef' ?'border-orange-400 bg-orange-50 dark:bg-orange-950/30 shadow-md scale-[1.02]' :'border-border bg-card hover:border-muted-foreground/30 hover:shadow-sm'
-                }`}
-              >
-                {accountType === 'chef' && (
-                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                  </div>
-                )}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white">
-                  <ChefHat className="w-5 h-5" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">Chef / Vendor</p>
-                  <p className="text-xs text-muted-foreground">Sell your meals</p>
-                </div>
-              </button>
+          <div className="mb-6 rounded-2xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground mb-2">How it works</p>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>1. Create your account with Google, Apple, or email.</p>
+              <p>2. Choose how you want to use InHouse after you sign in.</p>
+              <p>3. Finish setup and start ordering or selling.</p>
             </div>
           </div>
 
@@ -334,14 +272,14 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              disabled={loading || !!oauthLoading || !accountType}
+              disabled={loading || !!oauthLoading}
               className="w-full h-12 bg-primary hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none shadow-lg shadow-primary/25 mt-1"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  {accountType === 'chef' ? 'Create Chef Account' : accountType === 'customer' ? 'Create Customer Account' : 'Create Account'}
+                  Create Account
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
