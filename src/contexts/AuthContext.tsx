@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
         redirectTarget: null,
       });
-      const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).single();
+      const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle();
       if (!error && data) {
         setProfile(data as UserProfile);
         authDebug('auth-context.profile-fetch.success', {
@@ -268,7 +268,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserProfile = async () => {
     if (!user) return null;
     const supabase = createClient();
-    const { data, error } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
+    const { data, error } = await supabase.from('user_profiles').select('*').eq('id', user.id).maybeSingle();
     if (error) throw error;
     return data;
   };

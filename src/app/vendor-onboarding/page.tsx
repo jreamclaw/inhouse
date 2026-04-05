@@ -160,7 +160,7 @@ export default function VendorOnboardingPage() {
 
   const activeProfile = profile || resolvedProfile;
 
-  if (loading || !user || !activeProfile) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="flex items-center gap-3 text-muted-foreground">
@@ -171,7 +171,11 @@ export default function VendorOnboardingPage() {
     );
   }
 
-  if (activeProfile.role !== 'chef' || activeProfile.vendor_onboarding_complete) {
+  if (activeProfile?.role && activeProfile.role !== 'chef') {
+    return null;
+  }
+
+  if (activeProfile?.vendor_onboarding_complete) {
     return null;
   }
 
