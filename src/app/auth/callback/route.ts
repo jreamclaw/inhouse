@@ -104,8 +104,6 @@ export async function GET(request: NextRequest) {
   }
 
   const userId = exchangedUser.id;
-  const metadataRole = exchangedUser.user_metadata?.role;
-  const role = metadataRole === 'chef' || metadataRole === 'customer' ? metadataRole : null;
 
   authDebug('auth-callback.session-exchanged', {
     pathname,
@@ -137,6 +135,7 @@ export async function GET(request: NextRequest) {
   }
 
   let profile = existingProfile;
+  const role = existingProfile?.role ?? null;
 
   authDebug('auth-callback.profile-fetch', {
     pathname,
@@ -160,7 +159,7 @@ export async function GET(request: NextRequest) {
         full_name: userMeta.full_name || userMeta.name || userEmail.split('@')[0],
         avatar_url: userMeta.avatar_url || userMeta.picture || '',
         username: userMeta.username || userEmail.split('@')[0],
-        role: (role === 'chef' || role === 'customer') ? role : null,
+        role: null,
         onboarding_complete: false,
         vendor_onboarding_complete: false,
       }, { onConflict: 'id' })
@@ -181,7 +180,7 @@ export async function GET(request: NextRequest) {
     }
 
     profile = newProfile ?? {
-      role: (role === 'chef' || role === 'customer') ? role : null,
+      role: null,
       onboarding_complete: false,
       vendor_onboarding_complete: false,
     };
