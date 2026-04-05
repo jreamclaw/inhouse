@@ -73,8 +73,7 @@ export default function RoleSelectionPage() {
 
       if (updateError) throw updateError;
 
-      // Both roles should complete shared onboarding first.
-      router.replace('/onboarding');
+      router.replace(selectedRole === 'chef' ? '/vendor-onboarding' : '/onboarding');
     } catch (err: any) {
       setError(err?.message || 'Failed to save your role. Please try again.');
     } finally {

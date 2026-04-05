@@ -213,7 +213,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         data: {
           full_name: metadata?.fullName || '',
           avatar_url: metadata?.avatarUrl || '',
-          role: metadata?.role || 'customer',
+          ...(metadata?.role ? { role: metadata.role } : {}),
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`
       }

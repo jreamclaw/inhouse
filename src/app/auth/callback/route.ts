@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin, pathname } = url;
   const code = searchParams.get('code');
   const next = normalizeNextPath(searchParams.get('next'));
-  const requestedRole = searchParams.get('role');
 
   authDebug('auth-callback.entry', {
     pathname,
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
     onboardingComplete: null,
     vendorOnboardingComplete: null,
     redirectTarget: code ? next : '/login',
-    requestedRole,
+    requestedRole: null,
     hasCode: !!code,
   });
 
@@ -43,9 +42,6 @@ export async function GET(request: NextRequest) {
     const loginUrl = new URL('/login', origin);
     if (next && next !== 'role-based') {
       loginUrl.searchParams.set('next', next);
-    }
-    if (requestedRole === 'chef' || requestedRole === 'customer') {
-      loginUrl.searchParams.set('role', requestedRole);
     }
     return NextResponse.redirect(loginUrl);
   }
@@ -104,17 +100,12 @@ export async function GET(request: NextRequest) {
     if (next && next !== 'role-based') {
       loginUrl.searchParams.set('next', next);
     }
-    if (requestedRole === 'chef' || requestedRole === 'customer') {
-      loginUrl.searchParams.set('role', requestedRole);
-    }
     return NextResponse.redirect(loginUrl);
   }
 
   const userId = exchangedUser.id;
   const metadataRole = exchangedUser.user_metadata?.role;
-  const role = (requestedRole === 'chef' || requestedRole === 'customer')
-    ? requestedRole
-    : (metadataRole === 'chef' || metadataRole === 'customer' ? metadataRole : null);
+  const role = metadataRole === 'chef' || metadataRole === 'customer' ? metadataRole : null;
 
   authDebug('auth-callback.session-exchanged', {
     pathname,
