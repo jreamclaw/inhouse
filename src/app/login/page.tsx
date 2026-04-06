@@ -120,7 +120,7 @@ export default function LoginPage() {
     setOauthLoading(provider);
     try {
       const redirectTo = provider === 'google'
-        ? `${window.location.origin}/role-selection`
+        ? `${window.location.origin}/oauth-complete`
         : `${window.location.origin}/auth/callback?next=role-based`;
 
       const { error } = await supabase.auth.signInWithOAuth({
