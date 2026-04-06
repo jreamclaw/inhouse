@@ -94,40 +94,42 @@ export default function SearchPage() {
         ) : results.length > 0 ? (
           <div className="space-y-3">
             {results.map((person) => {
-              const href = person.role === 'chef' ? `/vendor-profile?id=${person.id}` : '#';
-              return (
-                <Link
-                  key={person.id}
-                  href={href}
-                  onClick={(e) => {
-                    if (person.role !== 'chef') {
-                      e.preventDefault();
-                    }
-                  }}
-                  className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center">
-                      {person.avatar_url ? (
-                        <img src={person.avatar_url} alt={person.full_name || person.username || 'User'} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-sm font-700 text-foreground">{(person.full_name || person.username || 'U').charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-700 text-foreground truncate">{person.full_name || person.username || 'User'}</p>
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${person.role === 'chef' ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground'}`}>
-                          {person.role === 'chef' ? <ChefHat className="w-3 h-3" /> : <UserRound className="w-3 h-3" />}
-                          {person.role === 'chef' ? 'Chef' : 'User'}
-                        </span>
-                      </div>
-                      {person.username && <p className="text-xs text-muted-foreground mt-0.5">@{person.username}</p>}
-                      {person.bio && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{person.bio}</p>}
-                      {person.role !== 'chef' && <p className="text-[11px] text-muted-foreground mt-2">Public customer profiles are coming next.</p>}
-                    </div>
+              const cardInner = (
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center">
+                    {person.avatar_url ? (
+                      <img src={person.avatar_url} alt={person.full_name || person.username || 'User'} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-700 text-foreground">{(person.full_name || person.username || 'U').charAt(0).toUpperCase()}</span>
+                    )}
                   </div>
-                </Link>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-700 text-foreground truncate">{person.full_name || person.username || 'User'}</p>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${person.role === 'chef' ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground'}`}>
+                        {person.role === 'chef' ? <ChefHat className="w-3 h-3" /> : <UserRound className="w-3 h-3" />}
+                        {person.role === 'chef' ? 'Chef' : 'User'}
+                      </span>
+                    </div>
+                    {person.username && <p className="text-xs text-muted-foreground mt-0.5">@{person.username}</p>}
+                    {person.bio && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{person.bio}</p>}
+                    {person.role !== 'chef' && <p className="text-[11px] text-muted-foreground mt-2">Public customer profiles are coming next.</p>}
+                  </div>
+                </div>
+              );
+
+              if (person.role === 'chef') {
+                return (
+                  <Link key={person.id} href={`/vendor-profile?id=${person.id}`} className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all">
+                    {cardInner}
+                  </Link>
+                );
+              }
+
+              return (
+                <div key={person.id} className="rounded-2xl border border-border bg-card p-4 opacity-90">
+                  {cardInner}
+                </div>
               );
             })}
           </div>
