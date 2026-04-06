@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const response = NextResponse.next({ request });
+  const redirectUrlPlaceholder = new URL(next === 'role-based' ? '/home-feed' : next, origin).toString();
+  const response = NextResponse.redirect(redirectUrlPlaceholder);
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -56,7 +57,6 @@ export async function GET(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, {
               ...options,
@@ -73,6 +73,19 @@ export async function GET(request: NextRequest) {
   const { data: authData, error } = await supabase.auth.exchangeCodeForSession(code);
   const exchangedSession = authData?.session ?? null;
   const exchangedUser = authData?.user ?? exchangedSession?.user ?? null;
+
+  authDebug('auth-callback.exchange-result', {
+    pathname,
+    sessionExists: !!exchangedSession,
+    userId: exchangedUser?.id ?? null,
+    profileRole: null,
+    onboardingComplete: null,
+    vendorOnboardingComplete: null,
+    redirectTarget: null,
+    reason: error?.message ?? null,
+    hasAccessToken: !!exchangedSession?.access_token,
+    hasRefreshToken: !!exchangedSession?.refresh_token,
+  });
 
   authDebug('callback.session-result', {
     pathname,
@@ -240,9 +253,6 @@ export async function GET(request: NextRequest) {
     reason,
   });
 
-  const redirectResponse = NextResponse.redirect(redirectUrl);
-  response.cookies.getAll().forEach((cookie) => {
-    redirectResponse.cookies.set(cookie);
-  });
-  return redirectResponse;
+  response.headers.set('Location', redirectUrl);
+  return response;
 }

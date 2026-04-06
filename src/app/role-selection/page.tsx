@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -56,6 +56,31 @@ export default function RoleSelectionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const checkClientSession = async () => {
+      const sessionResult = await supabase.auth.getUser();
+      console.log('ROLE_SELECTION_CLIENT_GET_USER', sessionResult);
+      setDebugInfo((prev) => ({
+        ...prev,
+        clientGetUserResult: {
+          data: sessionResult.data,
+          error: sessionResult.error?.message ?? null,
+        },
+      }));
+    };
+
+    checkClientSession().catch((sessionError: any) => {
+      console.log('ROLE_SELECTION_CLIENT_GET_USER_ERROR', sessionError?.message || sessionError);
+      setDebugInfo((prev) => ({
+        ...prev,
+        clientGetUserResult: {
+          data: null,
+          error: sessionError?.message ?? 'unknown',
+        },
+      }));
+    });
+  }, [supabase]);
 
   const handleContinue = async () => {
     let activeUser = user;
@@ -407,6 +432,7 @@ export default function RoleSelectionPage() {
           <p><span className="font-semibold text-foreground">Debug</span></p>
           <p>selectedRole: {String(debugInfo.selectedRole ?? selectedRole ?? null)}</p>
           <p>user.id present: {String(debugInfo.userIdPresent ?? !!user?.id)}</p>
+          <p>client getUser result: {JSON.stringify(debugInfo.clientGetUserResult ?? null)}</p>
           <p>profile check result: {JSON.stringify(debugInfo.profileCheckResult ?? null)}</p>
           <p>bootstrap insert result: {JSON.stringify(debugInfo.bootstrapInsertResult ?? null)}</p>
           <p>role update result: {JSON.stringify(debugInfo.roleUpdateResult ?? null)}</p>
