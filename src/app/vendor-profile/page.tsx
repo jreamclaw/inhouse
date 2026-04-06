@@ -2025,7 +2025,9 @@ function VendorProfileContent() {
   const { user } = useAuth();
   const [vendorOverride, setVendorOverride] = useState<(typeof VENDOR_DATA)[string] | null>(null);
   const [vendorLoading, setVendorLoading] = useState(true);
-  const vendor = vendorOverride ?? VENDOR_DATA[vendorId] ?? VENDOR_DATA['chef-marco'];
+  const [vendorNotFound, setVendorNotFound] = useState(false);
+  const isUuidVendor = /^[0-9a-fA-F-]{36}$/.test(vendorId);
+  const vendor = vendorOverride ?? (!isUuidVendor ? VENDOR_DATA[vendorId] ?? VENDOR_DATA['chef-marco'] : null);
 
   const [cart, setCart] = useState<CartItemCustomization[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -2050,10 +2052,12 @@ function VendorProfileContent() {
 
   const loadVendor = async () => {
     setVendorLoading(true);
+    setVendorNotFound(false);
     try {
       const isUuid = /^[0-9a-fA-F-]{36}$/.test(vendorId);
       if (!isUuid) {
         setVendorOverride(null);
+        setVendorNotFound(false);
         setVendorLoading(false);
         return;
       }
@@ -2081,6 +2085,7 @@ function VendorProfileContent() {
       if (mealsError) throw mealsError;
       if (!profile) {
         setVendorOverride(null);
+        setVendorNotFound(true);
         return;
       }
 
@@ -2121,21 +2126,24 @@ function VendorProfileContent() {
       });
     } catch {
       setVendorOverride(null);
+      if (isUuidVendor) {
+        setVendorNotFound(true);
+      }
     } finally {
       setVendorLoading(false);
     }
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !vendor) return;
     window.localStorage.setItem('inhouse_vendor_name', vendor.name);
     window.localStorage.setItem('inhouse_vendor_avatar', vendor.avatar);
     window.localStorage.setItem('inhouse_vendor_location', vendor.location || '');
     window.localStorage.setItem('inhouse_vendor_delivery_fee', String((vendor as any).deliveryFee ?? 0));
-  }, [vendor.name, vendor.avatar, vendor.location, vendor]);
+  }, [vendor]);
 
-  const categories = ['all', ...Array.from(new Set(vendor.menu.map((item) => item.category)))];
-  const filteredMenu = activeCategory === 'all' ?
+  const categories = vendor ? ['all', ...Array.from(new Set(vendor.menu.map((item) => item.category)))] : ['all'];
+  const filteredMenu = !vendor ? [] : activeCategory === 'all' ?
   vendor.menu :
   vendor.menu.filter((item) => item.category === activeCategory);
 
@@ -2144,7 +2152,7 @@ function VendorProfileContent() {
 
   // Build a map of itemId -> modifierGroups for CartDrawer
   const modifierGroupsMap: Record<string, ModifierGroup[]> = {};
-  vendor.menu.forEach((item) => {
+  (vendor?.menu || []).forEach((item) => {
     if (item.modifierGroups) {
       modifierGroupsMap[item.id] = item.modifierGroups;
     }
@@ -2197,7 +2205,7 @@ function VendorProfileContent() {
   };
 
   const handleEditCartItem = (cartItem: CartItemCustomization) => {
-    const menuItem = vendor.menu.find((m) => m.id === cartItem.itemId);
+    const menuItem = vendor?.menu.find((m) => m.id === cartItem.itemId);
     if (!menuItem) return;
     setShowCart(false);
     openCustomization(menuItem, cartItem);
@@ -2312,7 +2320,7 @@ function VendorProfileContent() {
       rating_count: vendor.reviewCount,
     },
     vendorCredentials as TrustCredentialShape[],
-    vendor.menu.filter((item) => !!item.image).length,
+    (vendor?.menu || []).filter((item) => !!item.image).length,
   );
 
   // Determine back link — go to /nearby if vendor is a marketplace vendor
@@ -2324,6 +2332,22 @@ function VendorProfileContent() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <AppLayout>
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          <Link href="/search" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline mb-6">
+            <ChevronLeft className="w-4 h-4" /> Back to search
+          </Link>
+          <div className="rounded-3xl border border-border bg-card p-6 text-center">
+            <p className="text-base font-700 text-foreground">Chef profile unavailable</p>
+            <p className="text-sm text-muted-foreground mt-2">{vendorNotFound ? 'This chef profile could not be loaded right now.' : 'This chef profile is not available.'}</p>
+          </div>
         </div>
       </AppLayout>
     );
