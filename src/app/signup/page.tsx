@@ -95,14 +95,14 @@ export default function SignUpPage() {
     setError('');
     setOauthLoading(provider);
     try {
-      const siteUrl = window.location.origin;
-      const callbackUrl = new URL('/auth/callback', siteUrl);
-      callbackUrl.searchParams.set('next', 'role-based');
+      const redirectTo = provider === 'google'
+        ? `${window.location.origin}/role-selection`
+        : `${window.location.origin}/auth/callback?next=role-based`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: callbackUrl.toString(),
+          redirectTo,
           skipBrowserRedirect: false,
         },
       });
