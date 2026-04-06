@@ -36,9 +36,26 @@ export default function OnboardingPage() {
       redirectTarget: null,
       loading,
       profilePresent: !!profile,
+      redirectExecuted: false,
     });
 
-    if (!loading && !user) {
+    if (loading) {
+      authDebug('onboarding.waiting-for-hydration', {
+        pathname: '/onboarding',
+        sessionExists: !!user,
+        userId: resolvedUserId,
+        profileRole: profile?.role ?? null,
+        onboardingComplete: profile?.onboarding_complete ?? null,
+        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+        redirectTarget: null,
+        loading,
+        profilePresent: !!profile,
+        redirectExecuted: false,
+      });
+      return;
+    }
+
+    if (!user) {
       authDebug('onboarding.redirect-no-session', {
         pathname: '/onboarding',
         sessionExists: false,
@@ -47,23 +64,62 @@ export default function OnboardingPage() {
         onboardingComplete: null,
         vendorOnboardingComplete: null,
         redirectTarget: '/login',
+        loading,
+        profilePresent: !!profile,
+        redirectExecuted: true,
       });
       router.replace('/login');
       return;
     }
 
-    if (!loading && user && !profile?.role) {
+    if (!profile) {
+      authDebug('onboarding.redirect-missing-profile', {
+        pathname: '/onboarding',
+        sessionExists: true,
+        userId: resolvedUserId,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: '/role-selection',
+        loading,
+        profilePresent: false,
+        redirectExecuted: true,
+      });
+      router.replace('/role-selection');
+      return;
+    }
+
+    if (!profile.role) {
       authDebug('onboarding.redirect-missing-role', {
         pathname: '/onboarding',
         sessionExists: true,
         userId: resolvedUserId,
         profileRole: null,
-        onboardingComplete: profile?.onboarding_complete ?? null,
-        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+        onboardingComplete: profile.onboarding_complete ?? null,
+        vendorOnboardingComplete: profile.vendor_onboarding_complete ?? null,
         redirectTarget: '/role-selection',
-        profilePresent: !!profile,
+        loading,
+        profilePresent: true,
+        redirectExecuted: true,
       });
       router.replace('/role-selection');
+      return;
+    }
+
+    if (profile.role === 'chef') {
+      authDebug('onboarding.redirect-chef', {
+        pathname: '/onboarding',
+        sessionExists: true,
+        userId: resolvedUserId,
+        profileRole: profile.role,
+        onboardingComplete: profile.onboarding_complete ?? null,
+        vendorOnboardingComplete: profile.vendor_onboarding_complete ?? null,
+        redirectTarget: '/vendor-onboarding',
+        loading,
+        profilePresent: true,
+        redirectExecuted: true,
+      });
+      router.replace('/vendor-onboarding');
     }
   }, [loading, user, profile, router, resolvedUserId]);
 
@@ -103,7 +159,7 @@ export default function OnboardingPage() {
     } catch (err: any) { setError(err?.message || 'Something went wrong. Please try again.'); setSaving(false); }
   };
 
-  if (loading || !user || !profile?.role) {
+  if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center px-4"><div className="flex items-center gap-3 text-muted-foreground"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /><span className="text-sm">Loading onboarding...</span></div></div>;
   }
 
