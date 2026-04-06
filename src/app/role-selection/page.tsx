@@ -55,6 +55,7 @@ export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
 
   const handleContinue = async () => {
     authDebug('role-selection.continue-clicked', {
@@ -65,6 +66,15 @@ export default function RoleSelectionPage() {
       onboardingComplete: null,
       vendorOnboardingComplete: null,
       redirectTarget: null,
+    });
+    setDebugInfo({
+      selectedRole,
+      userIdPresent: !!user?.id,
+      profileCheckResult: null,
+      bootstrapInsertResult: null,
+      roleUpdateResult: null,
+      errorText: null,
+      redirectReached: false,
     });
 
     if (!selectedRole) {
@@ -108,11 +118,24 @@ export default function RoleSelectionPage() {
         redirectTarget: null,
       });
 
-      const { data: existingProfileRows, error: existingProfileError } = await supabase
+      const profileCheckResponse = await supabase
         .from('user_profiles')
         .select('id')
         .eq('id', user.id)
         .limit(1);
+
+      console.log('ROLE_PROFILE_CHECK', profileCheckResponse);
+      setDebugInfo((prev) => ({
+        ...prev,
+        profileCheckResult: {
+          data: profileCheckResponse.data,
+          error: profileCheckResponse.error?.message ?? null,
+          status: profileCheckResponse.status,
+          statusText: profileCheckResponse.statusText,
+        },
+      }));
+
+      const { data: existingProfileRows, error: existingProfileError } = profileCheckResponse;
 
       if (existingProfileError) {
         authDebug('role-selection.profile-check-failed', {
@@ -125,6 +148,7 @@ export default function RoleSelectionPage() {
           redirectTarget: null,
           reason: existingProfileError.message,
         });
+        setError(`profile check failed: ${existingProfileError.message}`);
         throw existingProfileError;
       }
 
@@ -139,7 +163,7 @@ export default function RoleSelectionPage() {
           redirectTarget: null,
         });
 
-        const { error: bootstrapError } = await supabase
+        const bootstrapResponse = await supabase
           .from('user_profiles')
           .upsert({
             id: user.id,
@@ -153,6 +177,19 @@ export default function RoleSelectionPage() {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
 
+        console.log('ROLE_PROFILE_BOOTSTRAP', bootstrapResponse);
+        setDebugInfo((prev) => ({
+          ...prev,
+          bootstrapInsertResult: {
+            data: bootstrapResponse.data ?? null,
+            error: bootstrapResponse.error?.message ?? null,
+            status: bootstrapResponse.status,
+            statusText: bootstrapResponse.statusText,
+          },
+        }));
+
+        const { error: bootstrapError } = bootstrapResponse;
+
         if (bootstrapError) {
           authDebug('role-selection.profile-bootstrap-failed', {
             pathname: '/role-selection',
@@ -164,15 +201,29 @@ export default function RoleSelectionPage() {
             redirectTarget: null,
             reason: bootstrapError.message,
           });
+          setError(`profile bootstrap failed: ${bootstrapError.message}`);
           throw bootstrapError;
         }
       }
 
-      const { data: updatedRows, error: updateError } = await supabase
+      const roleUpdateResponse = await supabase
         .from('user_profiles')
         .update({ role: selectedRole, updated_at: new Date().toISOString() })
         .eq('id', user.id)
         .select('id, role');
+
+      console.log('ROLE_UPDATE_RESULT', roleUpdateResponse);
+      setDebugInfo((prev) => ({
+        ...prev,
+        roleUpdateResult: {
+          data: roleUpdateResponse.data,
+          error: roleUpdateResponse.error?.message ?? null,
+          status: roleUpdateResponse.status,
+          statusText: roleUpdateResponse.statusText,
+        },
+      }));
+
+      const { data: updatedRows, error: updateError } = roleUpdateResponse;
 
       if (updateError) {
         authDebug('role-selection.update-failed', {
@@ -185,6 +236,7 @@ export default function RoleSelectionPage() {
           redirectTarget: null,
           reason: updateError.message,
         });
+        setError(`role update failed: ${updateError.message}`);
         throw updateError;
       }
 
@@ -198,7 +250,13 @@ export default function RoleSelectionPage() {
           vendorOnboardingComplete: null,
           redirectTarget: null,
         });
-        throw new Error('Could not find your profile to save your role. Please try again.');
+        const zeroRowsMessage = 'role update returned zero rows';
+        setError(zeroRowsMessage);
+        setDebugInfo((prev) => ({
+          ...prev,
+          errorText: zeroRowsMessage,
+        }));
+        throw new Error(zeroRowsMessage);
       }
 
       const redirectTarget = selectedRole === 'chef' ? '/vendor-onboarding' : '/onboarding';
@@ -214,21 +272,30 @@ export default function RoleSelectionPage() {
         rowsUpdated: updatedRows.length,
       });
 
-      authDebug('role-selection.redirect-start', {
-        pathname: '/role-selection',
-        sessionExists: true,
+      console.log('ROLE_SAVE_SUCCESS', {
+        selectedRole,
         userId: user.id,
-        profileRole: updatedRows[0]?.role ?? selectedRole,
-        onboardingComplete: null,
-        vendorOnboardingComplete: null,
-        redirectTarget,
+        data: updatedRows,
       });
 
+      setDebugInfo((prev) => ({
+        ...prev,
+        errorText: null,
+        redirectReached: true,
+        successMessage: `role saved successfully: ${selectedRole}`,
+      }));
+
       refreshProfile().catch(() => undefined);
-      window.location.href = redirectTarget;
+      window.location.assign(redirectTarget);
       return;
     } catch (err: any) {
-      setError(err?.message || 'Failed to save your role. Please try again.');
+      const exactMessage = err?.message || 'Failed to save your role. Please try again.';
+      console.log('ROLE_SAVE_ERROR', exactMessage);
+      setError(exactMessage);
+      setDebugInfo((prev) => ({
+        ...prev,
+        errorText: exactMessage,
+      }));
     } finally {
       setLoading(false);
     }
@@ -318,6 +385,18 @@ export default function RoleSelectionPage() {
             {error}
           </div>
         )}
+
+        <div className="mb-4 rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground space-y-2">
+          <p><span className="font-semibold text-foreground">Debug</span></p>
+          <p>selectedRole: {String(debugInfo.selectedRole ?? selectedRole ?? null)}</p>
+          <p>user.id present: {String(debugInfo.userIdPresent ?? !!user?.id)}</p>
+          <p>profile check result: {JSON.stringify(debugInfo.profileCheckResult ?? null)}</p>
+          <p>bootstrap insert result: {JSON.stringify(debugInfo.bootstrapInsertResult ?? null)}</p>
+          <p>role update result: {JSON.stringify(debugInfo.roleUpdateResult ?? null)}</p>
+          <p>error text: {String(debugInfo.errorText ?? error ?? '')}</p>
+          <p>redirect reached: {String(debugInfo.redirectReached ?? false)}</p>
+          <p>success: {String(debugInfo.successMessage ?? '')}</p>
+        </div>
 
         {/* Continue Button */}
         <button
