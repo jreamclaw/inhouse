@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import {
@@ -282,9 +282,13 @@ export default function NearbyPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
   const [displayLocation, setDisplayLocation] = useState<DisplayLocation>({ shortLabel: DEFAULT_LOCATION, fullAddress: DEFAULT_LOCATION });
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationCoords, setLocationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationSource, setLocationSource] = useState<LocationSource>('none');
   const [locationError, setLocationError] = useState('');
+  const [locationLoading, setLocationLoading] = useState(true);
+  const watchIdRef = useRef<number | null>(null);
+  const lastSavedLocationRef = useRef<{ latitude: number; longitude: number; fullAddress: string } | null>(null);
 
   const { user, profile } = useAuth();
   const supabase = createClient();
@@ -313,23 +317,12 @@ export default function NearbyPage() {
   }, [profile, locationSource]);
 
   useEffect(() => {
-    requestBrowserLocation();
-  }, [user?.id]);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      requestBrowserLocation();
-    };
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleFocus();
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibility);
+    startWatchingLocation();
 
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      if (watchIdRef.current != null && typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
     };
   }, [user?.id, profile?.id, manualLocationLabel]);
 
@@ -337,51 +330,83 @@ export default function NearbyPage() {
     loadVendors();
   }, [profile?.id, locationCoords?.latitude, locationCoords?.longitude, customerRadiusMiles, manualLocationLabel]);
 
-  const requestBrowserLocation = () => {
+  const persistLiveLocation = async (nextCoords: { latitude: number; longitude: number }, fullAddress: string) => {
+    if (!user?.id) return;
+
+    const last = lastSavedLocationRef.current;
+    const locationChangedEnough = !last || milesBetween(last.latitude, last.longitude, nextCoords.latitude, nextCoords.longitude) > 0.03 || last.fullAddress !== fullAddress;
+    if (!locationChangedEnough) return;
+
+    lastSavedLocationRef.current = { ...nextCoords, fullAddress };
+
+    try {
+      await supabase.from('user_profiles').update({
+        location: fullAddress,
+        latitude: nextCoords.latitude,
+        longitude: nextCoords.longitude,
+        updated_at: new Date().toISOString(),
+      }).eq('id', user.id);
+    } catch {}
+  };
+
+  const handleBrowserLocationSuccess = async (position: GeolocationPosition) => {
+    const nextCoords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+    setUserLocation(nextCoords);
+    setLocationCoords(nextCoords);
+    setLocationSource('browser');
+    setLocationError('');
+    setLocationLoading(false);
+
+    const resolved = await reverseGeocode(nextCoords.latitude, nextCoords.longitude);
+    const fullAddress = resolved?.fullAddress || profile?.location || 'Current location';
+    const shortLabel = resolved?.shortLabel || shortAddress(fullAddress);
+    setDisplayLocation({ shortLabel, fullAddress });
+    await persistLiveLocation(nextCoords, fullAddress);
+  };
+
+  const handleBrowserLocationFailure = () => {
+    setLocationLoading(false);
+    if (typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number') {
+      const savedCoords = { latitude: profile.latitude, longitude: profile.longitude };
+      setUserLocation(savedCoords);
+      setLocationCoords(savedCoords);
+      setLocationSource('saved-profile');
+      const full = profile.location || 'Saved location';
+      setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
+      setLocationError('Location permission denied. Using your saved profile location.');
+    } else if (manualLocationLabel.trim()) {
+      setUserLocation(null);
+      setLocationSource('manual');
+      setDisplayLocation({ shortLabel: shortAddress(manualLocationLabel.trim()), fullAddress: manualLocationLabel.trim() });
+      setLocationCoords(null);
+      setLocationError('Location permission denied. Using your manual location fallback.');
+    } else {
+      setUserLocation(null);
+      setLocationSource('none');
+      setLocationCoords(null);
+      const full = profile?.location || DEFAULT_LOCATION;
+      setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
+      setLocationError('Location permission denied. Add or save a location to see nearby chefs accurately.');
+    }
+  };
+
+  const startWatchingLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationLoading(false);
       setLocationError('Browser location is unavailable. Using saved profile location if available.');
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const nextCoords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
-        setLocationCoords(nextCoords);
-        setLocationSource('browser');
-        setLocationError('');
+    setLocationLoading(true);
 
-        const resolved = await reverseGeocode(nextCoords.latitude, nextCoords.longitude);
-        const fullAddress = resolved?.fullAddress || profile?.location || 'Current location';
-        const shortLabel = resolved?.shortLabel || shortAddress(fullAddress);
-        setDisplayLocation({ shortLabel, fullAddress });
+    if (watchIdRef.current != null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
 
-        if (user?.id) {
-          try {
-            await supabase.from('user_profiles').update({ location: fullAddress, latitude: nextCoords.latitude, longitude: nextCoords.longitude, updated_at: new Date().toISOString() }).eq('id', user.id);
-          } catch {}
-        }
-      },
-      () => {
-        if (typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number') {
-          setLocationCoords({ latitude: profile.latitude, longitude: profile.longitude });
-          setLocationSource('saved-profile');
-          const full = profile.location || 'Saved location';
-          setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
-          setLocationError('Location permission denied. Using your saved profile location.');
-        } else if (manualLocationLabel.trim()) {
-          setLocationSource('manual');
-          setDisplayLocation({ shortLabel: shortAddress(manualLocationLabel.trim()), fullAddress: manualLocationLabel.trim() });
-          setLocationCoords(null);
-          setLocationError('Location permission denied. Using your manual location fallback.');
-        } else {
-          setLocationSource('none');
-          setLocationCoords(null);
-          const full = profile?.location || DEFAULT_LOCATION;
-          setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
-          setLocationError('Location permission denied. Add or save a location to see nearby chefs accurately.');
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      handleBrowserLocationSuccess,
+      handleBrowserLocationFailure,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
     );
   };
 
@@ -559,6 +584,7 @@ export default function NearbyPage() {
           </div>
         </div>
 
+        {locationLoading && <p className="text-xs text-muted-foreground mt-2 mb-3">Finding chefs near you...</p>}
         {locationError && <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 mb-3">{locationError}</p>}
 
         <div className="relative mb-3 mt-2">
