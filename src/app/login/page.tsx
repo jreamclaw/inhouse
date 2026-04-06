@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export default function LoginPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const { signIn, getPostLoginRoute } = useAuth();
+  const { signIn, getPostLoginRoute, user, profile, loading: authLoading } = useAuth();
   const supabase = createClient();
 
   const [email, setEmail] = useState('');
@@ -23,6 +23,16 @@ export default function LoginPage() {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [error, setError] = useState('');
   const [routingStatus, setRoutingStatus] = useState('');
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) return;
+
+    const destination = getPostLoginRoute(profile ?? null);
+    if (destination && destination !== pathname) {
+      window.location.replace(destination);
+    }
+  }, [authLoading, user, profile, getPostLoginRoute, pathname]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

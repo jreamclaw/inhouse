@@ -317,6 +317,23 @@ export default function NearbyPage() {
   }, [user?.id]);
 
   useEffect(() => {
+    const handleFocus = () => {
+      requestBrowserLocation();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') handleFocus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user?.id, profile?.id, manualLocationLabel]);
+
+  useEffect(() => {
     loadVendors();
   }, [profile?.id, locationCoords?.latitude, locationCoords?.longitude, customerRadiusMiles, manualLocationLabel]);
 

@@ -94,9 +94,18 @@ export default function SearchPage() {
         ) : results.length > 0 ? (
           <div className="space-y-3">
             {results.map((person) => {
-              const href = person.role === 'chef' ? `/vendor-profile?id=${person.id}` : `/profile-screen?userId=${person.id}`;
+              const href = person.role === 'chef' ? `/vendor-profile?id=${person.id}` : '#';
               return (
-                <Link key={person.id} href={href} className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all">
+                <Link
+                  key={person.id}
+                  href={href}
+                  onClick={(e) => {
+                    if (person.role !== 'chef') {
+                      e.preventDefault();
+                    }
+                  }}
+                  className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all"
+                >
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center">
                       {person.avatar_url ? (
@@ -115,6 +124,7 @@ export default function SearchPage() {
                       </div>
                       {person.username && <p className="text-xs text-muted-foreground mt-0.5">@{person.username}</p>}
                       {person.bio && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{person.bio}</p>}
+                      {person.role !== 'chef' && <p className="text-[11px] text-muted-foreground mt-2">Public customer profiles are coming next.</p>}
                     </div>
                   </div>
                 </Link>
