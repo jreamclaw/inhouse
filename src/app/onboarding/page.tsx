@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { reverseGeocode } from '@/lib/location/geocode';
+import { authDebug } from '@/lib/auth/debug';
 import AppLogo from '@/components/ui/AppLogo';
 import { ChefHat, ShoppingBag, ArrowRight, MapPin, Users, Star, Utensils, Heart, Loader2, CheckCircle } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
@@ -25,8 +26,46 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    authDebug('onboarding.page-entry', {
+      pathname: '/onboarding',
+      sessionExists: !!user,
+      userId: resolvedUserId,
+      profileRole: profile?.role ?? null,
+      onboardingComplete: profile?.onboarding_complete ?? null,
+      vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+      redirectTarget: null,
+      loading,
+      profilePresent: !!profile,
+    });
+
+    if (!loading && !user) {
+      authDebug('onboarding.redirect-no-session', {
+        pathname: '/onboarding',
+        sessionExists: false,
+        userId: null,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: '/login',
+      });
+      router.replace('/login');
+      return;
+    }
+
+    if (!loading && user && !profile?.role) {
+      authDebug('onboarding.redirect-missing-role', {
+        pathname: '/onboarding',
+        sessionExists: true,
+        userId: resolvedUserId,
+        profileRole: null,
+        onboardingComplete: profile?.onboarding_complete ?? null,
+        vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+        redirectTarget: '/role-selection',
+        profilePresent: !!profile,
+      });
+      router.replace('/role-selection');
+    }
+  }, [loading, user, profile, router, resolvedUserId]);
 
   const handleRequestLocation = () => {
     setLocationLoading(true);
@@ -64,7 +103,7 @@ export default function OnboardingPage() {
     } catch (err: any) { setError(err?.message || 'Something went wrong. Please try again.'); setSaving(false); }
   };
 
-  if (loading || !user) {
+  if (loading || !user || !profile?.role) {
     return <div className="min-h-screen bg-background flex items-center justify-center px-4"><div className="flex items-center gap-3 text-muted-foreground"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /><span className="text-sm">Loading onboarding...</span></div></div>;
   }
 
