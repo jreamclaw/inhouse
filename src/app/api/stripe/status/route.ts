@@ -35,6 +35,18 @@ export async function POST() {
       .eq('id', user.id)
       .maybeSingle();
 
+    if (profileError && String(profileError.message || '').includes('stripe_account_id')) {
+      return NextResponse.json({
+        connected: false,
+        stripe_account_id: null,
+        charges_enabled: false,
+        payouts_enabled: false,
+        details_submitted: false,
+        onboarding_complete: false,
+        error: 'Stripe payout fields are not live in the database yet.',
+      });
+    }
+
     if (profileError) {
       return NextResponse.json({ error: profileError.message || 'Failed to load profile.' }, { status: 500 });
     }

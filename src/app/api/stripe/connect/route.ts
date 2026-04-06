@@ -57,6 +57,10 @@ export async function POST() {
       .eq('id', user.id)
       .maybeSingle();
 
+    if (stripeFieldLookup.error && String(stripeFieldLookup.error.message || '').includes('stripe_account_id')) {
+      return NextResponse.json({ error: 'Stripe payout fields are not live in the database yet. Apply the Stripe profile migrations first.' }, { status: 500 });
+    }
+
     if (!stripeFieldLookup.error) {
       stripeAccountId = stripeFieldLookup.data?.stripe_account_id ?? null;
     }

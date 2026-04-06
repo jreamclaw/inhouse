@@ -143,13 +143,31 @@ export default function ChefMenuPage() {
   const loadChefData = async () => {
     if (!user) return;
     try {
-      const [{ data: profileRow }, { data: mealRows }, { data: revenueRows }] = await Promise.all([
-        supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count').eq('id', user.id).single(),
+      const profileSelect = 'delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count';
+      let profileResult = await supabase.from('user_profiles').select(profileSelect).eq('id', user.id).single();
+
+      if (profileResult.error && String(profileResult.error.message || '').includes('stripe_')) {
+        profileResult = await supabase
+          .from('user_profiles')
+          .select('delivery_enabled, delivery_fee, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count')
+          .eq('id', user.id)
+          .single();
+      }
+
+      const [{ data: mealRows }, { data: revenueRows }] = await Promise.all([
         supabase.from('meals').select('id, title, description, price, category, available, image_url, modifier_groups').eq('chef_id', user.id).order('created_at', { ascending: false }),
         supabase.from('order_revenue').select('total, chef_earnings, delivery_fee, status').eq('chef_id', user.id),
       ]);
 
-      setStripeState(profileRow || null);
+      const profileRow = (profileResult.data || {}) as any;
+
+      setStripeState({
+        stripe_account_id: profileRow?.stripe_account_id ?? null,
+        stripe_onboarding_complete: profileRow?.stripe_onboarding_complete ?? false,
+        stripe_charges_enabled: profileRow?.stripe_charges_enabled ?? false,
+        stripe_payouts_enabled: profileRow?.stripe_payouts_enabled ?? false,
+        ...profileRow,
+      });
       setMeals(mealRows || []);
 
       const summaryRows = (revenueRows as any[] | null) ?? [];
