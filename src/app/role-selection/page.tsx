@@ -224,8 +224,9 @@ export default function RoleSelectionPage() {
         redirectTarget,
       });
 
-      router.replace(redirectTarget);
       refreshProfile().catch(() => undefined);
+      window.location.href = redirectTarget;
+      return;
     } catch (err: any) {
       setError(err?.message || 'Failed to save your role. Please try again.');
     } finally {
