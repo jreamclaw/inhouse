@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown } from 'lucide-react';
+import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin } from 'lucide-react';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import { toast } from 'sonner';
 
@@ -52,6 +52,17 @@ interface DbSavedPost {
   } | null;
 }
 
+interface SavedVendor {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  location: string | null;
+  bio: string | null;
+  followers_count: number | null;
+  following_id: string;
+}
+
 type CartItem = { id: string; title: string; price: number; qty: number };
 
 export default function ProfileTabs() {
@@ -68,6 +79,7 @@ export default function ProfileTabs() {
   const [dbPosts, setDbPosts] = useState<DbPost[]>([]);
   const [dbMeals, setDbMeals] = useState<DbMeal[]>([]);
   const [savedPosts, setSavedPosts] = useState<DbSavedPost[]>([]);
+  const [savedVendors, setSavedVendors] = useState<SavedVendor[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [mealsLoading, setMealsLoading] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
@@ -96,7 +108,10 @@ export default function ProfileTabs() {
     if (user?.id) {
       loadPosts();
       if (isVendor) loadMeals();
-      if (!isVendor) loadSavedPosts();
+      if (!isVendor) {
+        loadSavedPosts();
+        loadSavedVendors();
+      }
     }
   }, [user?.id, isVendor, refreshKey]);
 
@@ -160,6 +175,52 @@ export default function ProfileTabs() {
       // no-op
     } finally {
       setSavedLoading(false);
+    }
+  };
+
+  const loadSavedVendors = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_follows')
+        .select(`
+          following_id,
+          user_profiles:following_id (
+            id,
+            full_name,
+            username,
+            avatar_url,
+            location,
+            bio,
+            followers_count,
+            role
+          )
+        `)
+        .eq('follower_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const normalized = (data || [])
+        .map((row: any) => {
+          const vendor = Array.isArray(row.user_profiles) ? row.user_profiles[0] : row.user_profiles;
+          if (!vendor || vendor.role !== 'chef') return null;
+          return {
+            id: vendor.id,
+            full_name: vendor.full_name,
+            username: vendor.username,
+            avatar_url: vendor.avatar_url,
+            location: vendor.location,
+            bio: vendor.bio,
+            followers_count: vendor.followers_count,
+            following_id: row.following_id,
+          } as SavedVendor;
+        })
+        .filter(Boolean) as SavedVendor[];
+
+      setSavedVendors(normalized);
+    } catch {
+      setSavedVendors([]);
     }
   };
 
@@ -299,12 +360,13 @@ export default function ProfileTabs() {
                 <span className="text-sm font-medium text-foreground">My Orders</span>
               </button>
             </Link>
-            <Link href="/nearby">
-              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left">
-                <Bookmark className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">Saved Vendors</span>
-              </button>
-            </Link>
+            <button
+              onClick={() => setActiveTab('saved')}
+              className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left"
+            >
+              <Bookmark className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <span className="text-sm font-medium text-foreground">Saved Vendors</span>
+            </button>
             <Link href="/settings">
               <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-muted hover:bg-muted/80 border border-border transition-colors text-left">
                 <Settings className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -564,52 +626,101 @@ export default function ProfileTabs() {
 
       {/* Saved Tab (Customer only) */}
       {activeTab === 'saved' && !isVendor && (
-        <div className="p-4">
-          {savedLoading ? (
-            <PostFeedSkeleton count={2} />
-          ) : savedPosts.length > 0 ? (
-            <div className="grid grid-cols-3 gap-1.5">
-              {savedPosts.map((savedPost) => {
-                const post = savedPost.posts;
-                if (!post) return null;
-                const orderedMedia = (post.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
-                const coverMedia = orderedMedia[0] || { media_url: post.media_url, media_type: post.media_type, sort_order: 0 };
-                return (
-                  <div key={savedPost.id} className="relative aspect-square overflow-hidden bg-muted rounded-lg">
-                    {coverMedia.media_type === 'video' ? (
-                      <video src={coverMedia.media_url} className="w-full h-full object-cover" muted />
-                    ) : (
-                      <img src={coverMedia.media_url} alt={post.caption || 'Saved post'} className="w-full h-full object-cover" loading="lazy" />
-                    )}
-                  </div>
-                );
-              })}
+        <div className="p-4 space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <ChefHat className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Saved Vendors</h3>
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 gap-0 text-center px-4">
-              <div className="relative mb-6">
-                <div className="w-44 h-44 flex items-center justify-center">
-                  <img
-                    src="/assets/chef-empty-state.svg"
-                    alt="Friendly chef holding a steaming bowl"
-                    className="w-full h-full object-contain drop-shadow-lg"
-                  />
-                </div>
+
+            {savedLoading ? (
+              <PostFeedSkeleton count={2} />
+            ) : savedVendors.length > 0 ? (
+              <div className="space-y-3">
+                {savedVendors.map((vendor) => (
+                  <Link key={vendor.following_id} href={`/vendor-profile?id=${vendor.id}`}>
+                    <div className="rounded-2xl border border-border bg-card p-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start gap-3">
+                        {vendor.avatar_url ? (
+                          <img src={vendor.avatar_url} alt={vendor.full_name || 'Vendor'} className="w-14 h-14 rounded-2xl object-cover" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {(vendor.full_name || vendor.username || 'V').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground truncate">{vendor.full_name || 'Unnamed vendor'}</p>
+                            <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
+                              Chef
+                            </span>
+                          </div>
+                          {vendor.username && (
+                            <p className="text-sm text-muted-foreground truncate">@{vendor.username}</p>
+                          )}
+                          {vendor.location && (
+                            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground truncate">
+                              <MapPin className="w-3 h-3" />
+                              {vendor.location}
+                            </p>
+                          )}
+                          {vendor.bio && (
+                            <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{vendor.bio}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2 leading-snug">
-                Nothing saved yet
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-                Save your favourite chefs and posts here so you can find them again fast.
-              </p>
-              <Link href="/nearby">
-                <button className="flex items-center gap-2 bg-primary text-white text-sm font-bold px-7 py-3 rounded-full shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 transition-all duration-150">
-                  <Heart className="w-4 h-4" />
-                  Explore &amp; Discover
-                </button>
-              </Link>
+            ) : (
+              <div className="rounded-2xl border border-border bg-card p-6 text-center">
+                <h4 className="text-base font-bold text-foreground">No saved vendors yet</h4>
+                <p className="mt-2 text-sm text-muted-foreground max-w-xs mx-auto">
+                  Follow chefs you like and they&apos;ll show up here for quick access.
+                </p>
+                <Link href="/nearby">
+                  <button className="mt-4 inline-flex items-center gap-2 bg-primary text-white text-sm font-bold px-5 py-2.5 rounded-full hover:bg-primary/90 transition-colors">
+                    <Heart className="w-4 h-4" />
+                    Explore chefs
+                  </button>
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Bookmark className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Saved Posts</h3>
             </div>
-          )}
+
+            {savedLoading ? (
+              <PostFeedSkeleton count={2} />
+            ) : savedPosts.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1.5">
+                {savedPosts.map((savedPost) => {
+                  const post = savedPost.posts;
+                  if (!post) return null;
+                  const orderedMedia = (post.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+                  const coverMedia = orderedMedia[0] || { media_url: post.media_url, media_type: post.media_type, sort_order: 0 };
+                  return (
+                    <div key={savedPost.id} className="relative aspect-square overflow-hidden bg-muted rounded-lg">
+                      {coverMedia.media_type === 'video' ? (
+                        <video src={coverMedia.media_url} className="w-full h-full object-cover" muted />
+                      ) : (
+                        <img src={coverMedia.media_url} alt={post.caption || 'Saved post'} className="w-full h-full object-cover" loading="lazy" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border bg-card p-6 text-center">
+                <p className="text-sm text-muted-foreground">No saved posts yet.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

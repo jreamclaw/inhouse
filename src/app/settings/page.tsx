@@ -300,7 +300,7 @@ export default function SettingsPage() {
               </div>
               <div className="bg-muted/40 rounded-2xl border border-border/60 overflow-hidden divide-y divide-border/60">
                 <button
-                  onClick={() => router.push('/forgot-password')}
+                  onClick={() => router.push('/change-password')}
                   className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted/60 transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
