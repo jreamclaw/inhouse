@@ -118,18 +118,10 @@ export default function SearchPage() {
                 </div>
               );
 
-              if (person.role === 'chef') {
-                return (
-                  <Link key={person.id} href={`/vendor-profile?id=${person.id}`} className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all">
-                    {cardInner}
-                  </Link>
-                );
-              }
-
               return (
-                <div key={person.id} className="rounded-2xl border border-border bg-card p-4 opacity-90">
+                <Link key={person.id} href={`/profile/${person.id}`} className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all">
                   {cardInner}
-                </div>
+                </Link>
               );
             })}
           </div>
