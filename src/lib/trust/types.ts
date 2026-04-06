@@ -42,6 +42,7 @@ export interface TrustScoreBreakdownItem {
   label: string;
   points: number;
   earned: boolean;
+  description?: string;
 }
 
 export interface TrustScoreResult {

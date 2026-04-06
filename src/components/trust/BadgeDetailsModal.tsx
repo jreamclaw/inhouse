@@ -44,6 +44,11 @@ export default function BadgeDetailsModal({ badge, onClose }: { badge: BadgeDeta
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground mb-2">Reward</p>
+            <p className="text-sm text-muted-foreground">Earning this badge strengthens the chef profile and helps increase visible trust signals on InHouse.</p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-4">
             <p className="text-sm font-semibold text-foreground mb-2">What to do next</p>
             {badge.nextSteps.length > 0 ? (
               <ul className="space-y-2 text-sm text-muted-foreground">

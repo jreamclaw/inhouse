@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, Eye, Loader2, ShieldX, X } from 'lucide-react';
+import { Check, Eye, Loader2, ShieldX, X, FileWarning } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -165,13 +165,23 @@ export default function AdminCredentialReviewPage() {
                   </button>
                 </div>
 
-                <textarea
-                  value={notesById[credential.id] || ''}
-                  onChange={(e) => setNotesById((prev) => ({ ...prev, [credential.id]: e.target.value }))}
-                  rows={3}
-                  placeholder="Review notes"
-                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground"
-                />
+                <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <FileWarning className="w-4 h-4 text-primary" />
+                    Review notes / rejection reason
+                  </div>
+                  <textarea
+                    value={notesById[credential.id] || ''}
+                    onChange={(e) => setNotesById((prev) => ({ ...prev, [credential.id]: e.target.value }))}
+                    rows={3}
+                    placeholder="Add review notes or a rejection reason"
+                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground"
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 px-4 py-3 text-xs text-muted-foreground">
+                  Approving a credential updates its status immediately. Trust score and badge unlocks are recalculated by the live trust system after approval.
+                </div>
 
                 <div className="flex flex-wrap gap-3">
                   <button

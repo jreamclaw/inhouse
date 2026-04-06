@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { FileBadge2, FileCheck2, FileText, ShieldCheck } from 'lucide-react';
 import TrustBadgeRow from './TrustBadgeRow';
 import TrustMeter from './TrustMeter';
+import TrustActionChecklist from './TrustActionChecklist';
 import { CredentialStatus, TrustCredentialShape, TrustProfileShape, TrustScoreResult } from '@/lib/trust/types';
 import { isCredentialExpired } from '@/lib/trust/score';
+import { getNextTrustStep } from '@/lib/trust/progress';
 
 function statusLabel(status: CredentialStatus | string, expirationDate?: string | null) {
   if (status === 'approved' && isCredentialExpired(expirationDate)) return 'expired';
@@ -22,6 +24,7 @@ export default function TrustVerificationSection({
   profile?: TrustProfileShape;
 }) {
   const approvedCredentials = credentials.filter((credential) => credential.status === 'approved' && !isCredentialExpired(credential.expiration_date));
+  const nextStep = getNextTrustStep(score);
 
   return (
     <section className="rounded-3xl border border-border bg-card p-5 space-y-5">
@@ -47,7 +50,7 @@ export default function TrustVerificationSection({
         </div>
         <TrustBadgeRow badges={score.badges} showLocked profile={profile} credentials={credentials} />
       </div>
-      <TrustMeter score={score.score} label={score.label} />
+      <TrustMeter score={score.score} label={score.label} hint={nextStep ? `Next best move: ${nextStep.label} (+${nextStep.points})` : 'All current trust actions are complete.'} />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard icon={<ShieldCheck className="w-4 h-4" />} label="Trust label" value={score.label} />
@@ -57,19 +60,7 @@ export default function TrustVerificationSection({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-2xl border border-border bg-muted/20 p-4">
-          <p className="text-sm font-semibold text-foreground mb-3">Verification checklist</p>
-          <div className="space-y-2.5">
-            {score.checklist.map((item) => (
-              <div key={item.key} className="flex items-center justify-between gap-3">
-                <p className="text-sm text-foreground">{item.label}</p>
-                <span className={`text-xs font-semibold ${item.earned ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                  {item.earned ? `+${item.points}` : '+0'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TrustActionChecklist score={score} manageHref={canManage ? '/chef-menu?section=trust' : '/badges'} />
 
         <div className="rounded-2xl border border-border bg-muted/20 p-4">
           <p className="text-sm font-semibold text-foreground mb-3">Approved credentials</p>
