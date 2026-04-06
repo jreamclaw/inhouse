@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { authDebug } from '@/lib/auth/debug';
 import AppLogo from '@/components/ui/AppLogo';
 import { Loader2, ChefHat, ShoppingBag, ArrowRight } from 'lucide-react';
 
@@ -56,8 +57,39 @@ export default function RoleSelectionPage() {
   const [error, setError] = useState('');
 
   const handleContinue = async () => {
-    if (!selectedRole) return;
+    authDebug('role-selection.continue-clicked', {
+      pathname: '/role-selection',
+      sessionExists: !!user,
+      userId: user?.id ?? null,
+      profileRole: selectedRole,
+      onboardingComplete: null,
+      vendorOnboardingComplete: null,
+      redirectTarget: null,
+    });
+
+    if (!selectedRole) {
+      authDebug('role-selection.continue-blocked-no-role', {
+        pathname: '/role-selection',
+        sessionExists: !!user,
+        userId: user?.id ?? null,
+        profileRole: null,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+      });
+      return;
+    }
+
     if (!user) {
+      authDebug('role-selection.continue-blocked-no-user', {
+        pathname: '/role-selection',
+        sessionExists: false,
+        userId: null,
+        profileRole: selectedRole,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: '/login',
+      });
       router.replace('/login');
       return;
     }
@@ -66,14 +98,63 @@ export default function RoleSelectionPage() {
     setError('');
 
     try {
-      const { error: updateError } = await supabase
+      authDebug('role-selection.update-start', {
+        pathname: '/role-selection',
+        sessionExists: true,
+        userId: user.id,
+        profileRole: selectedRole,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget: null,
+      });
+
+      const { data: updatedRows, error: updateError } = await supabase
         .from('user_profiles')
-        .update({ role: selectedRole })
-        .eq('id', user.id);
+        .update({ role: selectedRole, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .select('id, role');
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        authDebug('role-selection.update-failed', {
+          pathname: '/role-selection',
+          sessionExists: true,
+          userId: user.id,
+          profileRole: selectedRole,
+          onboardingComplete: null,
+          vendorOnboardingComplete: null,
+          redirectTarget: null,
+          reason: updateError.message,
+        });
+        throw updateError;
+      }
 
-      router.replace(selectedRole === 'chef' ? '/vendor-onboarding' : '/onboarding');
+      if (!updatedRows || updatedRows.length === 0) {
+        authDebug('role-selection.update-no-rows', {
+          pathname: '/role-selection',
+          sessionExists: true,
+          userId: user.id,
+          profileRole: selectedRole,
+          onboardingComplete: null,
+          vendorOnboardingComplete: null,
+          redirectTarget: null,
+        });
+        throw new Error('Could not find your profile to save your role. Please try again.');
+      }
+
+      const redirectTarget = selectedRole === 'chef' ? '/vendor-onboarding' : '/onboarding';
+
+      authDebug('role-selection.update-success', {
+        pathname: '/role-selection',
+        sessionExists: true,
+        userId: user.id,
+        profileRole: updatedRows[0]?.role ?? selectedRole,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget,
+        rowsUpdated: updatedRows.length,
+      });
+
+      router.replace(redirectTarget);
     } catch (err: any) {
       setError(err?.message || 'Failed to save your role. Please try again.');
     } finally {
@@ -105,7 +186,18 @@ export default function RoleSelectionPage() {
             return (
               <button
                 key={option.id}
-                onClick={() => setSelectedRole(option.id)}
+                onClick={() => {
+                  authDebug('role-selection.role-picked', {
+                    pathname: '/role-selection',
+                    sessionExists: !!user,
+                    userId: user?.id ?? null,
+                    profileRole: option.id,
+                    onboardingComplete: null,
+                    vendorOnboardingComplete: null,
+                    redirectTarget: null,
+                  });
+                  setSelectedRole(option.id);
+                }}
                 className={`relative text-left rounded-3xl border-2 p-6 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   isSelected
                     ? `${option.borderColor} ${option.selectedBg} shadow-lg scale-[1.02]`
