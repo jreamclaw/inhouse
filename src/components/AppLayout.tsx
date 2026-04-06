@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Icon from '@/components/ui/AppIcon';
-import { Bell, Sun, Moon } from 'lucide-react';
+import { Bell, Sun, Moon, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProfileCompletionBanner from '@/components/ProfileCompletionBanner';
 
@@ -72,7 +72,9 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
           <div className="flex items-center gap-1">
             <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Toggle theme">{mounted && (isDark ? <Sun className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /> : <Moon className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />)}</button>
             <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /></Link>
-            <Link href="/profile-screen"><div className="w-8 h-8 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-white/15 hover:border-[#F97316] transition-colors ml-0.5 bg-[#F7F7F7] dark:bg-white/5 flex items-center justify-center">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-xs font-700 text-[#555555] dark:text-[#E5E7EB]">{displayName.charAt(0).toUpperCase()}</span>}</div></Link>
+            <Link href="/nearby" className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Search chefs">
+              <Search className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />
+            </Link>
           </div>
         </div>
       </header>

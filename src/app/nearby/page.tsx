@@ -37,6 +37,8 @@ interface Vendor {
   imageAlt: string;
   avatar: string;
   bio?: string | null;
+  business_hours?: string | null;
+  availability_override?: 'open' | 'closed' | null;
   rating: number;
   reviewCount: number;
   distance: number;
@@ -44,6 +46,7 @@ interface Vendor {
   deliveryFee: number;
   priceRange: '$' | '$$' | '$$$';
   isOpen: boolean;
+  openLabel: string;
   knownFor: string;
   locationLabel: string;
   serviceRadiusMiles: number;
@@ -68,6 +71,7 @@ interface DbVendorRow {
   latitude: number | null;
   longitude: number | null;
   service_radius_miles: number | null;
+  business_hours?: string | null;
   availability_override?: 'open' | 'closed' | null;
   trust_score?: number | null;
   trust_label?: string | null;
@@ -143,6 +147,35 @@ function shortAddress(label: string) {
   return value.split(',')[0]?.trim() || value;
 }
 
+function getVendorOpenState(hoursText?: string | null, availabilityOverride?: 'open' | 'closed' | null) {
+  if (availabilityOverride === 'open') return { label: 'Open now', isOpen: true };
+  if (availabilityOverride === 'closed') return { label: 'Closed manually', isOpen: false };
+  if (!hoursText || hoursText.toLowerCase().includes('closed all week')) return { label: 'Closed now', isOpen: false };
+
+  const [daysPart = '', timePart = ''] = hoursText.split('•').map((part) => part.trim());
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+  const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
+
+  if (!openDays.includes(today)) return { label: 'Closed today', isOpen: false };
+
+  const timeMatch = timePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+  if (!timeMatch) return { label: 'Open today', isOpen: true };
+
+  const toMinutes = (value: string) => {
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const openMinutes = toMinutes(timeMatch[1]);
+  const closeMinutes = toMinutes(timeMatch[2]);
+
+  if (nowMinutes >= openMinutes && nowMinutes < closeMinutes) return { label: 'Open now', isOpen: true };
+  if (nowMinutes < openMinutes) return { label: `Opens at ${timeMatch[1]}`, isOpen: false };
+  return { label: 'Closed now', isOpen: false };
+}
+
 function VendorCard({ vendor }: { vendor: Vendor }) {
   return (
     <div className="bg-card rounded-2xl overflow-hidden border border-border/50 hover:border-primary/25 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-250 active:scale-[0.99] group shadow-subtle">
@@ -209,6 +242,9 @@ function VendorCard({ vendor }: { vendor: Vendor }) {
               <Shield className="w-3.5 h-3.5 text-primary" />
               <span>{vendor.trustLabel}</span>
             </div>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${vendor.isOpen ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
+              {vendor.openLabel}
+            </span>
             {vendor.approvedCredentialsCount > 0 && (
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
                 <Eye className="w-3.5 h-3.5" />
@@ -337,7 +373,7 @@ export default function NearbyPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
+        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, business_hours, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
         .eq('role', 'chef')
         .eq('vendor_onboarding_complete', true)
         .not('latitude', 'is', null)
@@ -371,6 +407,7 @@ export default function NearbyPage() {
             row.is_top_rated ? 'top_rated' : null,
             row.is_pro_chef ? 'pro_chef' : null,
           ].filter(Boolean) as Vendor['badges'];
+          const openState = getVendorOpenState(row.business_hours || null, row.availability_override || null);
 
           return {
             id: row.id,
@@ -381,13 +418,16 @@ export default function NearbyPage() {
             imageAlt: `${row.full_name || 'Chef'} profile preview`,
             avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
             bio: row.bio,
+            business_hours: row.business_hours || null,
+            availability_override: row.availability_override || null,
             rating: Number(row.trust_score ? row.rating_avg || 0 : row.rating_avg || 0),
             reviewCount: Number(row.rating_count || 0),
             distance: distance == null ? 0 : Number(distance.toFixed(1)),
             deliveryTime: '25–35 min',
             deliveryFee: 0,
             priceRange: '$$',
-            isOpen: row.availability_override === 'closed' ? false : true,
+            isOpen: openState.isOpen,
+            openLabel: openState.label,
             knownFor: inferKnownFor(row),
             locationLabel: row.privacy_show_location === false ? 'Location private' : (row.location || 'Location unavailable'),
             serviceRadiusMiles: chefServiceRadius,
