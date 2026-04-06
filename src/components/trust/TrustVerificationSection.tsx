@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { FileBadge2, FileCheck2, FileText, ShieldCheck } from 'lucide-react';
 import TrustBadgeRow from './TrustBadgeRow';
 import TrustMeter from './TrustMeter';
-import { CredentialStatus, TrustCredentialShape, TrustScoreResult } from '@/lib/trust/types';
+import { CredentialStatus, TrustCredentialShape, TrustProfileShape, TrustScoreResult } from '@/lib/trust/types';
 import { isCredentialExpired } from '@/lib/trust/score';
 
 function statusLabel(status: CredentialStatus | string, expirationDate?: string | null) {
@@ -14,10 +14,12 @@ export default function TrustVerificationSection({
   score,
   credentials,
   canManage,
+  profile,
 }: {
   score: TrustScoreResult;
   credentials: Array<TrustCredentialShape & { id?: string; title?: string | null; issued_by?: string | null; expiration_date?: string | null }>;
   canManage?: boolean;
+  profile?: TrustProfileShape;
 }) {
   const approvedCredentials = credentials.filter((credential) => credential.status === 'approved' && !isCredentialExpired(credential.expiration_date));
 
@@ -38,7 +40,13 @@ export default function TrustVerificationSection({
         )}
       </div>
 
-      <TrustBadgeRow badges={score.badges} />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm font-semibold text-foreground">Badges</p>
+          <Link href="/badges" className="text-xs font-semibold text-primary hover:underline">View all badges</Link>
+        </div>
+        <TrustBadgeRow badges={score.badges} showLocked profile={profile} credentials={credentials} />
+      </div>
       <TrustMeter score={score.score} label={score.label} />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

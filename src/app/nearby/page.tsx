@@ -36,6 +36,7 @@ interface Vendor {
   image: string;
   imageAlt: string;
   avatar: string;
+  bio?: string | null;
   rating: number;
   reviewCount: number;
   distance: number;
@@ -48,6 +49,11 @@ interface Vendor {
   serviceRadiusMiles: number;
   trustScore: number;
   trustLabel: string;
+  email_verified?: boolean | null;
+  phone_verified?: boolean | null;
+  identity_verified?: boolean | null;
+  completed_orders?: number | null;
+  complaints_count?: number | null;
   badges: Array<'verified_identity' | 'certified' | 'licensed_business' | 'top_rated' | 'pro_chef' | 'new_chef'>;
   approvedCredentialsCount: number;
 }
@@ -66,6 +72,13 @@ interface DbVendorRow {
   trust_score?: number | null;
   trust_label?: string | null;
   approved_credentials_count?: number | null;
+  email_verified?: boolean | null;
+  phone_verified?: boolean | null;
+  identity_verified?: boolean | null;
+  completed_orders?: number | null;
+  complaints_count?: number | null;
+  rating_avg?: number | null;
+  rating_count?: number | null;
   is_verified?: boolean | null;
   is_certified?: boolean | null;
   is_licensed?: boolean | null;
@@ -192,7 +205,20 @@ function VendorCard({ vendor }: { vendor: Vendor }) {
               </span>
             )}
           </div>
-          <TrustBadgeRow badges={vendor.badges} compact />
+          <div className="space-y-2">
+            <TrustBadgeRow badges={vendor.badges} compact showLocked profile={{
+              avatar_url: vendor.avatar,
+              bio: vendor.bio,
+              email_verified: vendor.email_verified,
+              phone_verified: vendor.phone_verified,
+              identity_verified: vendor.identity_verified,
+              completed_orders: vendor.completed_orders,
+              complaints_count: vendor.complaints_count,
+              rating_avg: vendor.rating,
+              rating_count: vendor.reviewCount,
+            }} credentials={[]} limit={3} />
+            <Link href="/badges" className="inline-flex text-[11px] font-semibold text-primary hover:underline">See all badges</Link>
+          </div>
         </div>
 
         <Link href={`/vendor-profile?id=${vendor.id}`} className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-700 transition-all duration-200 tracking-snug bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20 active:scale-[0.98] shadow-sm shadow-primary/15">
@@ -308,7 +334,7 @@ export default function NearbyPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, availability_override, trust_score, trust_label, approved_credentials_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
+        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
         .eq('role', 'chef')
         .eq('vendor_onboarding_complete', true)
         .not('latitude', 'is', null)
@@ -351,8 +377,9 @@ export default function NearbyPage() {
             image: row.avatar_url || VENDOR_AVATAR_FALLBACK,
             imageAlt: `${row.full_name || 'Chef'} profile preview`,
             avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
-            rating: 0,
-            reviewCount: 0,
+            bio: row.bio,
+            rating: Number(row.trust_score ? row.rating_avg || 0 : row.rating_avg || 0),
+            reviewCount: Number(row.rating_count || 0),
             distance: distance == null ? 0 : Number(distance.toFixed(1)),
             deliveryTime: '25–35 min',
             deliveryFee: 0,
@@ -363,6 +390,11 @@ export default function NearbyPage() {
             serviceRadiusMiles: chefServiceRadius,
             trustScore: row.trust_score || 0,
             trustLabel: row.trust_label || 'Low trust',
+            email_verified: row.email_verified || false,
+            phone_verified: row.phone_verified || false,
+            identity_verified: row.identity_verified || false,
+            completed_orders: row.completed_orders || 0,
+            complaints_count: row.complaints_count || 0,
             badges,
             approvedCredentialsCount: row.approved_credentials_count || 0,
           };

@@ -2403,7 +2403,17 @@ function VendorProfileContent() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <TrustVerificationSection score={trustScore} credentials={vendorCredentials} canManage={isOwnVendorProfile} />
+              <TrustVerificationSection score={trustScore} credentials={vendorCredentials} canManage={isOwnVendorProfile} profile={{
+                avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
+                bio: vendor.bio,
+                email_verified: (vendorOverride as any)?.email_verified ?? false,
+                phone_verified: (vendorOverride as any)?.phone_verified ?? false,
+                identity_verified: (vendorOverride as any)?.identity_verified ?? false,
+                completed_orders: (vendorOverride as any)?.completed_orders ?? 0,
+                complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
+                rating_avg: vendor.rating,
+                rating_count: vendor.reviewCount,
+              }} />
             </div>
 
             <p className="text-[14px] text-muted-foreground leading-relaxed">{vendor.bio}</p>

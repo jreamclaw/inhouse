@@ -572,7 +572,20 @@ export default function ChefMenuPage() {
                   <p className="text-sm font-700 text-foreground">Trust & Verification</p>
                   <p className="text-xs text-muted-foreground">Upload credentials for InHouse review and premium trust badges.</p>
                 </div>
-                <TrustBadgeRow badges={trustScore.badges} compact />
+                <TrustBadgeRow badges={trustScore.badges} compact showLocked profile={{
+                  avatar_url: profile?.avatar_url,
+                  bio: profile?.bio,
+                  email_verified: stripeState?.email_verified ?? profile?.email_verified,
+                  phone_verified: stripeState?.phone_verified ?? profile?.phone_verified,
+                  identity_verified: stripeState?.identity_verified ?? profile?.identity_verified,
+                  completed_orders: stripeState?.completed_orders ?? earningsSummary.completedOrders,
+                  complaints_count: stripeState?.complaints_count ?? profile?.complaints_count,
+                  rating_avg: stripeState?.rating_avg ?? profile?.rating_avg,
+                  rating_count: stripeState?.rating_count ?? profile?.rating_count,
+                }} credentials={credentials} />
+                <div className="pt-1">
+                  <Link href="/badges" className="text-xs font-semibold text-primary hover:underline">View all badges and requirements</Link>
+                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
