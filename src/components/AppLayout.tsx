@@ -72,7 +72,7 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
           <div className="flex items-center gap-1">
             <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Toggle theme">{mounted && (isDark ? <Sun className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /> : <Moon className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />)}</button>
             <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /></Link>
-            <Link href="/nearby" className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Search chefs">
+            <Link href="/search" className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Search people">
               <Search className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />
             </Link>
           </div>
