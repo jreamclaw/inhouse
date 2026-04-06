@@ -142,7 +142,7 @@ export default function PublicProfilePage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count, business_hours, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count')
+        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count')
         .eq('id', profileId)
         .maybeSingle();
 
@@ -157,6 +157,18 @@ export default function PublicProfilePage() {
       }
 
       const nextProfile = data as PublicProfile;
+
+      if (nextProfile.role === 'chef') {
+        const { data: chefExtras } = await supabase
+          .from('user_profiles')
+          .select('business_hours, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count')
+          .eq('id', profileId)
+          .maybeSingle();
+
+        if (chefExtras) {
+          Object.assign(nextProfile, chefExtras);
+        }
+      }
 
       if (isOwnProfile) {
         setRedirectTarget('/profile-screen');
