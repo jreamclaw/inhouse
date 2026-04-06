@@ -31,6 +31,7 @@ export default function BadgeDetailsModal({ badge, onClose }: { badge: BadgeDeta
             <p className={`mt-2 text-sm font-semibold ${badge.earned ? 'text-emerald-600' : 'text-muted-foreground'}`}>
               {badge.earned ? 'Earned' : 'Locked'}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">{badge.progressText}</p>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-4">

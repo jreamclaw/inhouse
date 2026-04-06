@@ -10,6 +10,7 @@ export interface BadgeDetail {
   earned: boolean;
   requirements: string[];
   nextSteps: string[];
+  progressText: string;
   className: string;
   mutedClassName: string;
 }
@@ -53,6 +54,7 @@ export function getAllBadgeDetails(profile: TrustProfileShape, credentials: Trus
         !profile.phone_verified ? 'Verify phone number' : '',
         !profile.identity_verified ? 'Complete identity verification' : '',
       ].filter(Boolean),
+      progressText: identityReady ? '3/3 checks complete' : `${Number(!!profile.email_verified) + Number(!!profile.phone_verified) + Number(!!profile.identity_verified)}/3 checks complete`,
       className: 'bg-slate-900 text-white dark:bg-white dark:text-slate-900',
       mutedClassName: 'bg-muted text-muted-foreground border border-border',
     },
@@ -65,6 +67,7 @@ export function getAllBadgeDetails(profile: TrustProfileShape, credentials: Trus
       earned: approvedCertificates >= 1,
       requirements: ['At least 1 approved certificate'],
       nextSteps: approvedCertificates >= 1 ? [] : ['Upload and get 1 certificate approved'],
+      progressText: `${Math.min(approvedCertificates, 1)}/1 approved certificate`,
       className: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20',
       mutedClassName: 'bg-muted text-muted-foreground border border-border',
     },
@@ -77,6 +80,7 @@ export function getAllBadgeDetails(profile: TrustProfileShape, credentials: Trus
       earned: approvedLicenses >= 1,
       requirements: ['At least 1 approved license, permit, or insurance document'],
       nextSteps: approvedLicenses >= 1 ? [] : ['Upload a license, permit, or insurance document'],
+      progressText: `${Math.min(approvedLicenses, 1)}/1 approved license or permit`,
       className: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20',
       mutedClassName: 'bg-muted text-muted-foreground border border-border',
     },
@@ -92,6 +96,7 @@ export function getAllBadgeDetails(profile: TrustProfileShape, credentials: Trus
         ratingCount < 10 ? `Get ${10 - ratingCount} more ratings` : '',
         ratingAvg < 4.7 ? 'Raise average rating to 4.7+' : '',
       ].filter(Boolean),
+      progressText: `${Math.min(ratingCount, 10)}/10 ratings • ${ratingAvg.toFixed(1)}/4.7`,
       className: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20',
       mutedClassName: 'bg-muted text-muted-foreground border border-border',
     },
@@ -109,6 +114,7 @@ export function getAllBadgeDetails(profile: TrustProfileShape, credentials: Trus
         completedOrders < 15 ? `Complete ${15 - completedOrders} more orders` : '',
         ratingAvg < 4.7 ? 'Raise average rating to 4.7+' : '',
       ].filter(Boolean),
+      progressText: `${Math.min(approvedCredentials, 2)}/2 credentials • ${Math.min(completedOrders, 15)}/15 orders • ${ratingAvg.toFixed(1)}/4.7`,
       className: 'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20',
       mutedClassName: 'bg-muted text-muted-foreground border border-border',
     },
@@ -121,6 +127,7 @@ export function getAllBadgeDetails(profile: TrustProfileShape, credentials: Trus
       earned: completedOrders < 15,
       requirements: ['Fewer than 15 completed orders'],
       nextSteps: completedOrders < 15 ? ['Keep completing orders to unlock higher-tier badges'] : ['This badge rolls off after 15 completed orders'],
+      progressText: completedOrders < 15 ? `${completedOrders}/15 orders completed` : 'Completed 15+ orders',
       className: 'bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700',
       mutedClassName: 'bg-muted text-muted-foreground border border-border',
     },

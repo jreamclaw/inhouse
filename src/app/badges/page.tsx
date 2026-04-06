@@ -49,6 +49,7 @@ export default function BadgesPage() {
                       {badge.label}
                     </div>
                     <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{badge.description}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{badge.progressText}</p>
                   </div>
                   <span className={`text-xs font-semibold ${badge.earned ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                     {badge.earned ? 'Earned' : 'Locked'}
