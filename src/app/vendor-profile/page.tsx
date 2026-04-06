@@ -2065,7 +2065,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }, { data: credentials }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee')
           .eq('id', vendorId)
           .single(),
         supabase
@@ -2089,7 +2089,16 @@ function VendorProfileContent() {
         return;
       }
 
-      const dbVendor = profile as DbVendorProfile;
+      const { data: profileExtras } = await supabase
+        .from('user_profiles')
+        .select('business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count')
+        .eq('id', vendorId)
+        .maybeSingle();
+
+      const dbVendor = {
+        ...(profile as DbVendorProfile),
+        ...(profileExtras || {}),
+      } as DbVendorProfile;
       const dbMeals = (meals as DbMeal[] | null) ?? [];
       setVendorCredentials(credentials || []);
 
