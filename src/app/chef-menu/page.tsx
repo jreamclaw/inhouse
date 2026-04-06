@@ -81,6 +81,7 @@ export default function ChefMenuPage() {
   const [stripeState, setStripeState] = useState<any>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
   const [stripeSyncing, setStripeSyncing] = useState(false);
+  const [stripeError, setStripeError] = useState('');
   const [activeSection, setActiveSection] = useState<string>('overview');
   const [showMealForm, setShowMealForm] = useState(false);
   const [savingMeal, setSavingMeal] = useState(false);
@@ -212,9 +213,13 @@ export default function ChefMenuPage() {
   const syncStripeStatus = async () => {
     try {
       setStripeSyncing(true);
+      setStripeError('');
       const response = await fetch('/api/stripe/status', { method: 'POST' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || 'Unable to check payout status.');
+      if (payload?.error) {
+        setStripeError(payload.error);
+      }
       setStripeState((prev: any) => ({
         ...prev,
         stripe_account_id: payload?.stripe_account_id ?? prev?.stripe_account_id ?? null,
@@ -222,8 +227,9 @@ export default function ChefMenuPage() {
         stripe_charges_enabled: !!payload?.charges_enabled,
         stripe_payouts_enabled: !!payload?.payouts_enabled,
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setStripeError(error?.message || 'Unable to check payout status.');
     } finally {
       setStripeSyncing(false);
     }
@@ -232,12 +238,15 @@ export default function ChefMenuPage() {
   const handleStripeConnect = async () => {
     try {
       setStripeLoading(true);
+      setStripeError('');
       const response = await fetch('/api/stripe/connect', { method: 'POST' });
       const payload = await response.json();
       if (!response.ok || !payload?.url) throw new Error(payload?.error || 'Unable to start Stripe setup.');
       window.location.href = payload.url;
     } catch (error: any) {
-      toast.error(error?.message || 'Unable to connect Stripe right now.');
+      const message = error?.message || 'Unable to connect Stripe right now.';
+      setStripeError(message);
+      toast.error(message);
       setStripeLoading(false);
     }
   };
@@ -530,6 +539,7 @@ export default function ChefMenuPage() {
             <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
               <div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div>
               <p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeState?.stripe_onboarding_complete ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeState?.stripe_account_id ? 'Your Stripe account exists, but onboarding is not complete yet.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p>
+              {stripeError && <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">{stripeError}</div>}
               <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeState?.stripe_onboarding_complete ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeState?.stripe_account_id ? 'Resume payout setup' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
             </div>
 
