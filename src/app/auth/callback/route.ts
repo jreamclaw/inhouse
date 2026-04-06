@@ -211,6 +211,17 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  authDebug('auth-callback.route-input', {
+    pathname,
+    sessionExists: !!exchangedSession,
+    userId,
+    profileRole: profile?.role ?? null,
+    onboardingComplete: profile?.onboarding_complete ?? null,
+    vendorOnboardingComplete: profile?.vendor_onboarding_complete ?? null,
+    redirectTarget: next,
+    profilePresent: !!profile,
+  });
+
   const { destination, reason } = next === 'role-based'
     ? resolvePostLoginRoute(profile)
     : { destination: next, reason: 'explicit-next' };
