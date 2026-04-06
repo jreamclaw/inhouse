@@ -49,7 +49,7 @@ const roleOptions: RoleOption[] = [
 
 export default function RoleSelectionPage() {
   const router = useRouter();
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, getCurrentUser } = useAuth();
   const supabase = createClient();
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -58,10 +58,20 @@ export default function RoleSelectionPage() {
   const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
 
   const handleContinue = async () => {
+    let activeUser = user;
+
+    if (!activeUser) {
+      try {
+        activeUser = await getCurrentUser();
+      } catch (sessionError: any) {
+        console.log('ROLE_CURRENT_USER_ERROR', sessionError?.message || sessionError);
+      }
+    }
+
     authDebug('role-selection.continue-clicked', {
       pathname: '/role-selection',
-      sessionExists: !!user,
-      userId: user?.id ?? null,
+      sessionExists: !!activeUser,
+      userId: activeUser?.id ?? null,
       profileRole: selectedRole,
       onboardingComplete: null,
       vendorOnboardingComplete: null,
@@ -69,7 +79,7 @@ export default function RoleSelectionPage() {
     });
     setDebugInfo({
       selectedRole,
-      userIdPresent: !!user?.id,
+      userIdPresent: !!activeUser?.id,
       profileCheckResult: null,
       bootstrapInsertResult: null,
       roleUpdateResult: null,
@@ -80,8 +90,8 @@ export default function RoleSelectionPage() {
     if (!selectedRole) {
       authDebug('role-selection.continue-blocked-no-role', {
         pathname: '/role-selection',
-        sessionExists: !!user,
-        userId: user?.id ?? null,
+        sessionExists: !!activeUser,
+        userId: activeUser?.id ?? null,
         profileRole: null,
         onboardingComplete: null,
         vendorOnboardingComplete: null,
@@ -90,7 +100,8 @@ export default function RoleSelectionPage() {
       return;
     }
 
-    if (!user) {
+    if (!activeUser) {
+      const missingUserMessage = 'No authenticated user found. Please sign in again.';
       authDebug('role-selection.continue-blocked-no-user', {
         pathname: '/role-selection',
         sessionExists: false,
@@ -99,8 +110,14 @@ export default function RoleSelectionPage() {
         onboardingComplete: null,
         vendorOnboardingComplete: null,
         redirectTarget: '/login',
+        reason: missingUserMessage,
       });
-      router.replace('/login');
+      setError(missingUserMessage);
+      setDebugInfo((prev) => ({
+        ...prev,
+        userIdPresent: false,
+        errorText: missingUserMessage,
+      }));
       return;
     }
 
@@ -111,7 +128,7 @@ export default function RoleSelectionPage() {
       authDebug('role-selection.update-start', {
         pathname: '/role-selection',
         sessionExists: true,
-        userId: user.id,
+        userId: activeUser.id,
         profileRole: selectedRole,
         onboardingComplete: null,
         vendorOnboardingComplete: null,
@@ -121,7 +138,7 @@ export default function RoleSelectionPage() {
       const profileCheckResponse = await supabase
         .from('user_profiles')
         .select('id')
-        .eq('id', user.id)
+        .eq('id', activeUser.id)
         .limit(1);
 
       console.log('ROLE_PROFILE_CHECK', profileCheckResponse);
@@ -141,7 +158,7 @@ export default function RoleSelectionPage() {
         authDebug('role-selection.profile-check-failed', {
           pathname: '/role-selection',
           sessionExists: true,
-          userId: user.id,
+          userId: activeUser.id,
           profileRole: selectedRole,
           onboardingComplete: null,
           vendorOnboardingComplete: null,
@@ -156,7 +173,7 @@ export default function RoleSelectionPage() {
         authDebug('role-selection.profile-bootstrap-start', {
           pathname: '/role-selection',
           sessionExists: true,
-          userId: user.id,
+          userId: activeUser.id,
           profileRole: selectedRole,
           onboardingComplete: null,
           vendorOnboardingComplete: null,
@@ -166,11 +183,11 @@ export default function RoleSelectionPage() {
         const bootstrapResponse = await supabase
           .from('user_profiles')
           .upsert({
-            id: user.id,
-            email: user.email ?? '',
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
-            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-            username: user.user_metadata?.username || user.email?.split('@')[0] || '',
+            id: activeUser.id,
+            email: activeUser.email ?? '',
+            full_name: activeUser.user_metadata?.full_name || activeUser.user_metadata?.name || activeUser.email?.split('@')[0] || '',
+            avatar_url: activeUser.user_metadata?.avatar_url || activeUser.user_metadata?.picture || '',
+            username: activeUser.user_metadata?.username || activeUser.email?.split('@')[0] || '',
             role: null,
             onboarding_complete: false,
             vendor_onboarding_complete: false,
@@ -194,7 +211,7 @@ export default function RoleSelectionPage() {
           authDebug('role-selection.profile-bootstrap-failed', {
             pathname: '/role-selection',
             sessionExists: true,
-            userId: user.id,
+            userId: activeUser.id,
             profileRole: selectedRole,
             onboardingComplete: null,
             vendorOnboardingComplete: null,
@@ -209,7 +226,7 @@ export default function RoleSelectionPage() {
       const roleUpdateResponse = await supabase
         .from('user_profiles')
         .update({ role: selectedRole, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
+        .eq('id', activeUser.id)
         .select('id, role');
 
       console.log('ROLE_UPDATE_RESULT', roleUpdateResponse);
@@ -229,7 +246,7 @@ export default function RoleSelectionPage() {
         authDebug('role-selection.update-failed', {
           pathname: '/role-selection',
           sessionExists: true,
-          userId: user.id,
+          userId: activeUser.id,
           profileRole: selectedRole,
           onboardingComplete: null,
           vendorOnboardingComplete: null,
@@ -244,7 +261,7 @@ export default function RoleSelectionPage() {
         authDebug('role-selection.update-no-rows', {
           pathname: '/role-selection',
           sessionExists: true,
-          userId: user.id,
+          userId: activeUser.id,
           profileRole: selectedRole,
           onboardingComplete: null,
           vendorOnboardingComplete: null,
@@ -264,7 +281,7 @@ export default function RoleSelectionPage() {
       authDebug('role-selection.update-success', {
         pathname: '/role-selection',
         sessionExists: true,
-        userId: user.id,
+        userId: activeUser.id,
         profileRole: updatedRows[0]?.role ?? selectedRole,
         onboardingComplete: null,
         vendorOnboardingComplete: null,
@@ -274,7 +291,7 @@ export default function RoleSelectionPage() {
 
       console.log('ROLE_SAVE_SUCCESS', {
         selectedRole,
-        userId: user.id,
+        userId: activeUser.id,
         data: updatedRows,
       });
 
