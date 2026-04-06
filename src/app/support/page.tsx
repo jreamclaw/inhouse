@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
-import { ArrowLeft, Mail, ShieldAlert, HelpCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Mail, ShieldAlert, HelpCircle, Trash2, FileText } from 'lucide-react';
 
 export default function SupportPage() {
   return (
@@ -69,6 +69,21 @@ export default function SupportPage() {
               <div>
                 <h2 className="text-sm font-700 text-foreground">Account deletion</h2>
                 <p className="text-sm text-muted-foreground mt-1">Right now account deletion is handled through support so we can verify ownership and avoid accidental removal.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-700 text-foreground">Legal</h2>
+                <div className="mt-2 flex flex-col gap-2 text-sm">
+                  <Link href="/terms-of-service" className="text-primary font-700 hover:text-primary/80 transition-colors">Terms of Service</Link>
+                  <Link href="/privacy-policy" className="text-primary font-700 hover:text-primary/80 transition-colors">Privacy Policy</Link>
+                </div>
               </div>
             </div>
           </div>

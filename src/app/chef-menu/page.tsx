@@ -37,6 +37,12 @@ type ChefCredentialRow = {
   created_at: string;
 };
 
+async function openCredentialPreview(supabase: ReturnType<typeof createClient>, credential: Pick<ChefCredentialRow, 'file_bucket' | 'file_path'>) {
+  const signed = await supabase.storage.from(credential.file_bucket).createSignedUrl(credential.file_path, 60 * 10);
+  if (signed.error || !signed.data?.signedUrl) throw signed.error || new Error('Could not open credential file.');
+  window.open(signed.data.signedUrl, '_blank', 'noopener,noreferrer');
+}
+
 const CATEGORIES = ['Starters', 'Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Drinks', 'Sides'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const makeId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `id-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -335,16 +341,13 @@ export default function ChefMenuPage() {
       const uploadResult = await supabase.storage.from(config.bucket).upload(filePath, credentialFile, { upsert: false });
       if (uploadResult.error) throw uploadResult.error;
 
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage.from(config.bucket).createSignedUrl(filePath, 60 * 60 * 24 * 7);
-      if (signedUrlError) throw signedUrlError;
-
       const insertResult = await supabase
         .from('chef_credentials')
         .insert({
           chef_id: user.id,
           credential_type: credentialType,
           title: credentialTitle.trim(),
-          file_url: signedUrlData.signedUrl,
+          file_url: '',
           file_name: credentialFile.name,
           file_path: filePath,
           file_bucket: config.bucket,
@@ -649,10 +652,10 @@ export default function ChefMenuPage() {
                         <p className="text-xs text-muted-foreground mt-1">{credential.credential_type.replaceAll('_', ' ')} • {credential.issued_by || 'Issued credential'}</p>
                         {credential.review_notes && <p className="text-xs text-muted-foreground mt-2">Review notes: {credential.review_notes}</p>}
                       </div>
-                      <a href={credential.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+                      <button onClick={() => openCredentialPreview(supabase, credential).catch((error: any) => toast.error(error?.message || 'Could not open credential file.'))} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
                         <Eye className="w-4 h-4" />
                         View file
-                      </a>
+                      </button>
                     </div>
                   ))}
                 </div>

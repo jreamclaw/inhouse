@@ -13,6 +13,8 @@ interface ReviewCredentialRow {
   title: string;
   file_url: string;
   file_name: string;
+  file_path: string;
+  file_bucket: string;
   status: 'pending' | 'approved' | 'rejected' | 'expired';
   issued_by: string | null;
   issue_date: string | null;
@@ -56,6 +58,8 @@ export default function AdminCredentialReviewPage() {
           title,
           file_url,
           file_name,
+          file_path,
+          file_bucket,
           status,
           issued_by,
           issue_date,
@@ -80,6 +84,12 @@ export default function AdminCredentialReviewPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCredentialPreview = async (credential: ReviewCredentialRow) => {
+    const signed = await supabase.storage.from(credential.file_bucket).createSignedUrl(credential.file_path, 60 * 10);
+    if (signed.error || !signed.data?.signedUrl) throw signed.error || new Error('Could not open credential file.');
+    window.open(signed.data.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const updateStatus = async (credentialId: string, status: 'approved' | 'rejected') => {
@@ -149,10 +159,10 @@ export default function AdminCredentialReviewPage() {
                     </div>
                   </div>
 
-                  <a href={credential.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
+                  <button onClick={() => openCredentialPreview(credential).catch((error: any) => toast.error(error?.message || 'Could not open credential file.'))} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
                     <Eye className="w-4 h-4" />
                     Preview file
-                  </a>
+                  </button>
                 </div>
 
                 <textarea
