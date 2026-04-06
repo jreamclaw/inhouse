@@ -57,6 +57,7 @@ export default function PublicProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
 
   const isOwnProfile = !!user?.id && !!profileId && user.id === profileId;
 
@@ -65,11 +66,17 @@ export default function PublicProfilePage() {
     void loadProfile();
   }, [profileId, user?.id]);
 
+  useEffect(() => {
+    if (!redirectTarget) return;
+    router.replace(redirectTarget);
+  }, [redirectTarget, router]);
+
   const loadProfile = async () => {
     if (!profileId) return;
 
     setLoading(true);
     setNotFound(false);
+    setRedirectTarget(null);
 
     try {
       const { data, error } = await supabase
@@ -89,12 +96,12 @@ export default function PublicProfilePage() {
       const nextProfile = data as PublicProfile;
 
       if (isOwnProfile) {
-        router.replace('/profile-screen');
+        setRedirectTarget('/profile-screen');
         return;
       }
 
       if (nextProfile.role === 'chef') {
-        router.replace(`/vendor-profile?id=${nextProfile.id}`);
+        setRedirectTarget(`/vendor-profile?id=${nextProfile.id}`);
         return;
       }
 
@@ -214,7 +221,7 @@ export default function PublicProfilePage() {
 
   const initials = useMemo(() => (profile?.full_name || profile?.username || 'U').charAt(0).toUpperCase(), [profile?.full_name, profile?.username]);
 
-  if (loading) {
+  if (loading || redirectTarget) {
     return (
       <AppLayout>
         <div className="min-h-screen flex items-center justify-center">
