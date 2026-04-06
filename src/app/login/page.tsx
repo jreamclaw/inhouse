@@ -27,8 +27,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) return;
+    if (!profile) return;
 
-    const destination = getPostLoginRoute(profile ?? null);
+    const destination = getPostLoginRoute(profile);
     if (destination && destination !== pathname) {
       window.location.replace(destination);
     }

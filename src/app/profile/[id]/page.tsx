@@ -20,9 +20,6 @@ interface PublicProfile {
   role: 'chef' | 'customer' | null;
   followers_count: number | null;
   following_count: number | null;
-  privacy_show_location?: boolean | null;
-  privacy_public_profile?: boolean | null;
-  privacy_show_activity?: boolean | null;
 }
 
 interface PublicPost {
@@ -77,7 +74,7 @@ export default function PublicProfilePage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count, privacy_show_location, privacy_public_profile, privacy_show_activity')
+        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count')
         .eq('id', profileId)
         .maybeSingle();
 
@@ -103,11 +100,7 @@ export default function PublicProfilePage() {
 
       setProfile(nextProfile);
 
-      if (nextProfile.privacy_public_profile === false) {
-        setPosts([]);
-      } else {
-        await loadPosts(nextProfile.id, nextProfile.privacy_show_activity !== false);
-      }
+      await loadPosts(nextProfile.id, true);
 
       if (user?.id) {
         await loadFollowState(nextProfile.id);
@@ -250,8 +243,8 @@ export default function PublicProfilePage() {
   }
 
   const displayName = profile.full_name || profile.username || 'User';
-  const locationLabel = profile.privacy_show_location === false ? 'Location private' : (profile.location || 'Location unavailable');
-  const canShowPosts = profile.privacy_public_profile !== false && profile.privacy_show_activity !== false;
+  const locationLabel = profile.location || 'Location unavailable';
+  const canShowPosts = true;
 
   return (
     <AppLayout>
