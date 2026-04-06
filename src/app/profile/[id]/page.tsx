@@ -538,9 +538,9 @@ export default function PublicProfilePage() {
                           <span className={`text-[11px] font-semibold ${meal.available ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                             {meal.available ? 'Available' : 'Sold out'}
                           </span>
-                          <Link href={`/vendor-profile?id=${profile.id}`} className="text-xs font-semibold text-primary hover:underline">
-                            Open business page
-                          </Link>
+                          <span className="text-xs font-semibold text-primary">
+                            {meal.available ? 'View menu' : 'View details'}
+                          </span>
                         </div>
                       </div>
                     </div>
