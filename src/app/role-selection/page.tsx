@@ -214,8 +214,6 @@ export default function RoleSelectionPage() {
         rowsUpdated: updatedRows.length,
       });
 
-      await refreshProfile();
-
       authDebug('role-selection.redirect-start', {
         pathname: '/role-selection',
         sessionExists: true,
@@ -227,6 +225,7 @@ export default function RoleSelectionPage() {
       });
 
       router.replace(redirectTarget);
+      refreshProfile().catch(() => undefined);
     } catch (err: any) {
       setError(err?.message || 'Failed to save your role. Please try again.');
     } finally {
@@ -321,6 +320,7 @@ export default function RoleSelectionPage() {
 
         {/* Continue Button */}
         <button
+          type="button"
           onClick={handleContinue}
           disabled={!selectedRole || loading}
           className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/25 text-base"
