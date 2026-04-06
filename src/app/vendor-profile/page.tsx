@@ -416,6 +416,7 @@ function VendorProfileContent() {
   const [vendorCredentials, setVendorCredentials] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [contentTab, setContentTab] = useState<'posts' | 'kitchen'>('posts');
   const businessHours = resolveBusinessHours(vendor as any);
   const openState = getTodayOpenState(businessHours, (vendor as any)?.availability_override || null);
   const isOwnVendorProfile = !!user?.id && !!vendor?.id && user.id === vendor.id;
@@ -751,6 +752,7 @@ function VendorProfileContent() {
                   <span>{vendor.reviewCount} reviews</span>
                 </div>
               </div>
+              <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2">{vendor.bio}</p>
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -823,6 +825,70 @@ function VendorProfileContent() {
         </div>
 
         <div className="px-4 pt-4 space-y-4">
+          <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
+            <div className="flex items-center gap-2 rounded-2xl bg-muted p-1">
+              <button
+                onClick={() => setContentTab('posts')}
+                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${contentTab === 'posts' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+              >
+                Posts
+              </button>
+              <button
+                onClick={() => setContentTab('kitchen')}
+                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${contentTab === 'kitchen' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+              >
+                Kitchen
+              </button>
+            </div>
+
+            {vendorPosts.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {(contentTab === 'posts' ? vendorPosts.filter((post) => post.media_type !== 'video') : vendorPosts.filter((post) => post.media_type === 'video')).slice(0, 6).map((post) => (
+                  <button
+                    key={post.id}
+                    onClick={() => window.alert(post.caption || (contentTab === 'kitchen' ? 'Kitchen clip' : 'Post'))}
+                    className="aspect-square overflow-hidden rounded-2xl bg-muted"
+                  >
+                    {post.media_type === 'video' ? (
+                      <video src={post.media_url} className="w-full h-full object-cover" muted playsInline />
+                    ) : (
+                      <img src={post.media_url} alt={post.caption || 'Chef post'} className="w-full h-full object-cover" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-muted/50 px-4 py-5 text-center text-sm text-muted-foreground">
+                No {contentTab} yet.
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
+            <div>
+              <h2 className="text-base font-700 text-foreground">Featured dishes</h2>
+              <p className="text-sm text-muted-foreground mt-1">Popular items people will want first.</p>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+              {vendor.menu.slice(0, 8).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => item.availability !== 'sold_out' && openCustomization(item)}
+                  className="w-44 shrink-0 rounded-2xl border border-border bg-card overflow-hidden text-left"
+                >
+                  <div className="aspect-[4/3] bg-muted">
+                    <img src={item.image} alt={item.imageAlt} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-700 text-foreground line-clamp-1">{item.title}</p>
+                    <p className="text-sm text-primary font-semibold mt-1">${item.price}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
           <section id="vendor-menu" className="rounded-3xl border border-border bg-card overflow-hidden">
             <div className="px-5 pt-5 pb-3">
               <h2 className="text-base font-700 text-foreground">Menu</h2>
@@ -999,38 +1065,10 @@ function VendorProfileContent() {
           <section className="rounded-3xl border border-border bg-card p-5 space-y-4">
             <div>
               <h2 className="text-base font-700 text-foreground">About</h2>
-              <p className="text-sm text-muted-foreground mt-1">Chef details, location, hours, and recent activity.</p>
+              <p className="text-sm text-muted-foreground mt-1">Chef details, location, and hours.</p>
             </div>
 
             <p className="text-[14px] text-muted-foreground leading-relaxed">{vendor.bio}</p>
-
-            {vendorPosts.length > 0 ? (
-              <div className="space-y-3">
-                {vendorPosts.slice(0, 3).map((post) => (
-                  <article key={post.id} className="border border-border rounded-2xl overflow-hidden">
-                    <div className="aspect-square bg-muted">
-                      {post.media_type === 'video' ? (
-                        <video src={post.media_url} className="w-full h-full object-cover" controls />
-                      ) : (
-                        <img src={post.media_url} alt={post.caption || 'Chef post'} className="w-full h-full object-cover" />
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{post.caption || 'No caption'}</p>
-                      <div className="mt-2 text-xs text-muted-foreground flex items-center gap-3">
-                        <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                        <span>{post.likes_count || 0} likes</span>
-                        <span>{post.comments_count || 0} comments</span>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-muted/50 px-4 py-5 text-center text-sm text-muted-foreground">
-                No public posts yet.
-              </div>
-            )}
           </section>
 
           <section className="rounded-3xl border border-border bg-card p-5 space-y-4">
@@ -1069,9 +1107,17 @@ function VendorProfileContent() {
         </div>
       </div>
 
-      {cartCount > 0 &&
       <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-transparent pointer-events-none">
-          <div className="max-w-2xl mx-auto pointer-events-auto">
+          <div className="max-w-2xl mx-auto pointer-events-auto space-y-3">
+            <button
+              onClick={() => document.getElementById('vendor-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="w-full flex items-center justify-center gap-2 bg-foreground text-background px-5 py-3.5 rounded-2xl shadow-elevated"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              {cartCount > 0 ? 'Order Now' : 'View Menu'}
+            </button>
+
+            {cartCount > 0 &&
             <button
             onClick={() => setShowCart(true)}
             className="w-full flex items-center justify-between bg-primary text-white px-5 py-3.5 rounded-2xl shadow-elevated shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all">
@@ -1083,9 +1129,9 @@ function VendorProfileContent() {
               </div>
               <span className="font-700 font-tabular">${cartTotal.toFixed(2)}</span>
             </button>
+            }
           </div>
         </div>
-      }
 
       {customizingItem &&
       <CustomizationModal
