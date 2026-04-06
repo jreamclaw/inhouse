@@ -6,15 +6,36 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2, Loader2, ImagePlus, X, Clock3, DollarSign, CalendarDays } from 'lucide-react';
+import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2, Loader2, ImagePlus, X, Clock3, DollarSign, CalendarDays, ShieldCheck, Upload, FileText, Eye } from 'lucide-react';
 import { getChefReadiness } from '@/lib/chef/readiness';
 import { toast } from 'sonner';
 import OrdersTab from '@/app/vendor-profile/components/OrdersTab';
+import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
+import TrustMeter from '@/components/trust/TrustMeter';
+import { CREDENTIAL_TYPE_OPTIONS, ALLOWED_CREDENTIAL_FILE_TYPES, MAX_CREDENTIAL_FILE_SIZE_BYTES } from '@/lib/trust/config';
+import { calculateTrustScore } from '@/lib/trust/score';
+import type { CredentialStatus, CredentialType, TrustCredentialShape } from '@/lib/trust/types';
 
 type ModifierOption = { id: string; label: string; priceAdd: number };
 type ModifierGroup = { id: string; name: string; required: boolean; multiSelect: boolean; minSelect?: number; maxSelect?: number; options: ModifierOption[] };
 type Meal = { id: string; title: string; description: string | null; price: number; category: string; available: boolean; image_url: string | null; modifier_groups?: ModifierGroup[] };
 type BusinessHourRow = { day: string; open: boolean; openTime: string; closeTime: string };
+type ChefCredentialRow = {
+  id: string;
+  chef_id: string;
+  credential_type: CredentialType;
+  title: string;
+  file_url: string;
+  file_name: string;
+  file_path: string;
+  file_bucket: string;
+  status: CredentialStatus;
+  issued_by: string | null;
+  issue_date: string | null;
+  expiration_date: string | null;
+  review_notes: string | null;
+  created_at: string;
+};
 
 const CATEGORIES = ['Starters', 'Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Drinks', 'Sides'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -69,6 +90,16 @@ export default function ChefMenuPage() {
   const [availabilityOverride, setAvailabilityOverride] = useState<'open' | 'closed' | null>(null);
   const [savingBusinessHours, setSavingBusinessHours] = useState(false);
   const [earningsSummary, setEarningsSummary] = useState({ gross: 0, net: 0, deliveryFees: 0, completedOrders: 0, pendingPayout: 0 });
+  const [credentials, setCredentials] = useState<ChefCredentialRow[]>([]);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
+  const [uploadingCredential, setUploadingCredential] = useState(false);
+  const [credentialType, setCredentialType] = useState<CredentialType>('food_safety_certificate');
+  const [credentialTitle, setCredentialTitle] = useState('');
+  const [credentialIssuedBy, setCredentialIssuedBy] = useState('');
+  const [credentialIssueDate, setCredentialIssueDate] = useState('');
+  const [credentialExpirationDate, setCredentialExpirationDate] = useState('');
+  const [credentialFile, setCredentialFile] = useState<File | null>(null);
+  const [credentialError, setCredentialError] = useState('');
 
   const isChef = profile?.role === 'chef';
   const vendorReady = !!profile?.vendor_onboarding_complete;
@@ -80,6 +111,7 @@ export default function ChefMenuPage() {
       setActiveSection(section === 'menu-manager' ? 'menu' : section);
       if (section === 'menu-manager') setShowMealForm(true);
       if (section === 'payouts') syncStripeStatus();
+      if (section === 'trust') loadCredentials();
     }
   }, []);
 
@@ -98,6 +130,7 @@ export default function ChefMenuPage() {
     }
     if (!authLoading && user && profile?.role === 'chef' && profile.vendor_onboarding_complete) {
       loadChefData();
+      loadCredentials();
     }
   }, [authLoading, user, profile, router]);
 
@@ -105,7 +138,7 @@ export default function ChefMenuPage() {
     if (!user) return;
     try {
       const [{ data: profileRow }, { data: mealRows }, { data: revenueRows }] = await Promise.all([
-        supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days, availability_override').eq('id', user.id).single(),
+        supabase.from('user_profiles').select('delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count').eq('id', user.id).single(),
         supabase.from('meals').select('id, title, description, price, category, available, image_url, modifier_groups').eq('chef_id', user.id).order('created_at', { ascending: false }),
         supabase.from('order_revenue').select('total, chef_earnings, delivery_fee, status').eq('chef_id', user.id),
       ]);
@@ -130,6 +163,25 @@ export default function ChefMenuPage() {
       setAvailabilityOverride((profileRow?.availability_override as 'open' | 'closed' | null) || null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCredentials = async () => {
+    if (!user) return;
+    setLoadingCredentials(true);
+    try {
+      const { data, error } = await supabase
+        .from('chef_credentials')
+        .select('id, chef_id, credential_type, title, file_url, file_name, file_path, file_bucket, status, issued_by, issue_date, expiration_date, review_notes, created_at')
+        .eq('chef_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCredentials((data || []) as ChefCredentialRow[]);
+    } catch {
+      setCredentials([]);
+    } finally {
+      setLoadingCredentials(false);
     }
   };
 
@@ -244,6 +296,83 @@ export default function ChefMenuPage() {
     }
   };
 
+  const handleCredentialFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setCredentialError('');
+
+    if (!file) {
+      setCredentialFile(null);
+      return;
+    }
+
+    if (!ALLOWED_CREDENTIAL_FILE_TYPES.includes(file.type)) {
+      setCredentialError('Only PDF, JPG, PNG, and WEBP files are allowed.');
+      setCredentialFile(null);
+      return;
+    }
+
+    if (file.size > MAX_CREDENTIAL_FILE_SIZE_BYTES) {
+      setCredentialError('File must be 10 MB or smaller.');
+      setCredentialFile(null);
+      return;
+    }
+
+    setCredentialFile(file);
+  };
+
+  const handleCredentialUpload = async () => {
+    if (!user) return;
+    if (!credentialTitle.trim()) return setCredentialError('Credential title is required.');
+    if (!credentialFile) return setCredentialError('Upload a credential file.');
+
+    setUploadingCredential(true);
+    setCredentialError('');
+
+    try {
+      const config = CREDENTIAL_TYPE_OPTIONS.find((item) => item.value === credentialType) || CREDENTIAL_TYPE_OPTIONS[0];
+      const extension = credentialFile.name.split('.').pop() || 'pdf';
+      const filePath = `${user.id}/${Date.now()}-${credentialType}.${extension}`;
+      const uploadResult = await supabase.storage.from(config.bucket).upload(filePath, credentialFile, { upsert: false });
+      if (uploadResult.error) throw uploadResult.error;
+
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage.from(config.bucket).createSignedUrl(filePath, 60 * 60 * 24 * 7);
+      if (signedUrlError) throw signedUrlError;
+
+      const insertResult = await supabase
+        .from('chef_credentials')
+        .insert({
+          chef_id: user.id,
+          credential_type: credentialType,
+          title: credentialTitle.trim(),
+          file_url: signedUrlData.signedUrl,
+          file_name: credentialFile.name,
+          file_path: filePath,
+          file_bucket: config.bucket,
+          status: 'pending',
+          issued_by: credentialIssuedBy.trim() || null,
+          issue_date: credentialIssueDate || null,
+          expiration_date: credentialExpirationDate || null,
+        })
+        .select('id, chef_id, credential_type, title, file_url, file_name, file_path, file_bucket, status, issued_by, issue_date, expiration_date, review_notes, created_at')
+        .single();
+
+      if (insertResult.error) throw insertResult.error;
+
+      setCredentials((prev) => [insertResult.data as ChefCredentialRow, ...prev]);
+      setCredentialTitle('');
+      setCredentialIssuedBy('');
+      setCredentialIssueDate('');
+      setCredentialExpirationDate('');
+      setCredentialFile(null);
+      toast.success('Credential uploaded for review');
+      refreshProfile().catch(() => undefined);
+    } catch (error: any) {
+      setCredentialError(error?.message || 'Could not upload credential.');
+    } finally {
+      setUploadingCredential(false);
+    }
+  };
+
   const saveBusinessHours = async () => {
     if (!user) return;
     setSavingBusinessHours(true);
@@ -288,6 +417,22 @@ export default function ChefMenuPage() {
     business_hours: stripeState?.business_hours || (profile as any)?.business_hours || null,
   });
 
+  const trustScore = calculateTrustScore(
+    {
+      avatar_url: profile?.avatar_url,
+      bio: profile?.bio,
+      email_verified: (stripeState as any)?.email_verified ?? profile?.email_verified,
+      phone_verified: (stripeState as any)?.phone_verified ?? profile?.phone_verified,
+      identity_verified: (stripeState as any)?.identity_verified ?? profile?.identity_verified,
+      completed_orders: (stripeState as any)?.completed_orders ?? profile?.completed_orders ?? earningsSummary.completedOrders,
+      complaints_count: (stripeState as any)?.complaints_count ?? profile?.complaints_count,
+      rating_avg: (stripeState as any)?.rating_avg ?? profile?.rating_avg,
+      rating_count: (stripeState as any)?.rating_count ?? profile?.rating_count,
+    },
+    credentials as TrustCredentialShape[],
+    meals.filter((meal) => !!meal.image_url).length,
+  );
+
   const missingItems = readiness.items.filter((item) => !item.complete);
 
   return (
@@ -307,6 +452,7 @@ export default function ChefMenuPage() {
           <button onClick={() => setActiveSection('orders')} className={`rounded-2xl border p-3 text-left ${activeSection === 'orders' ? 'border-amber-500 bg-amber-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Orders</p><p className="text-sm font-700 text-foreground mt-1">Incoming orders</p></button>
           <button onClick={() => { setActiveSection('payouts'); syncStripeStatus(); }} className={`rounded-2xl border p-3 text-left ${activeSection === 'payouts' ? 'border-green-500 bg-green-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Payouts</p><p className="text-sm font-700 text-foreground mt-1">Earnings</p></button>
           <button onClick={() => setActiveSection('hours')} className={`rounded-2xl border p-3 text-left ${activeSection === 'hours' ? 'border-blue-500 bg-blue-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Hours</p><p className="text-sm font-700 text-foreground mt-1">Business hours</p></button>
+          <button onClick={() => setActiveSection('trust')} className={`rounded-2xl border p-3 text-left ${activeSection === 'trust' ? 'border-slate-900 bg-slate-900/5 dark:border-white dark:bg-white/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Trust</p><p className="text-sm font-700 text-foreground mt-1">Verification</p></button>
         </div>
 
         {activeSection === 'overview' && (
@@ -409,6 +555,108 @@ export default function ChefMenuPage() {
                 </table>
               </div>
               <div className="flex items-center justify-between gap-3 mt-4"><div className="text-xs text-muted-foreground flex items-center gap-2"><CalendarDays className="w-4 h-4" />Display summary: {formatBusinessHours(businessHoursRows)}</div><button onClick={saveBusinessHours} disabled={savingBusinessHours} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingBusinessHours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock3 className="w-4 h-4" />}Save hours</button></div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'trust' && (
+          <div className="space-y-4">
+            <TrustMeter score={trustScore.score} label={trustScore.label} />
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-700 text-foreground">Trust & Verification</p>
+                  <p className="text-xs text-muted-foreground">Upload credentials for InHouse review and premium trust badges.</p>
+                </div>
+                <TrustBadgeRow badges={trustScore.badges} compact />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {trustScore.checklist.map((item) => (
+                  <div key={item.key} className="rounded-2xl border border-border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <p className={`mt-1 text-sm font-semibold ${item.earned ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {item.earned ? `+${item.points} pts` : 'Pending'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div>
+                <p className="text-sm font-700 text-foreground">Upload credentials</p>
+                <p className="text-xs text-muted-foreground mt-1">Accepted: PDF, JPG, PNG, WEBP. Max 10 MB.</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select value={credentialType} onChange={(e) => setCredentialType(e.target.value as CredentialType)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background">
+                  {CREDENTIAL_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <input value={credentialTitle} onChange={(e) => setCredentialTitle(e.target.value)} placeholder="Credential title" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                <input value={credentialIssuedBy} onChange={(e) => setCredentialIssuedBy(e.target.value)} placeholder="Issued by" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="date" value={credentialIssueDate} onChange={(e) => setCredentialIssueDate(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                  <input type="date" value={credentialExpirationDate} onChange={(e) => setCredentialExpirationDate(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                </div>
+              </div>
+
+              <label className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-4 cursor-pointer hover:border-primary/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Upload className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{credentialFile ? credentialFile.name : 'Upload file'}</p>
+                    <p className="text-xs text-muted-foreground">Secure upload for review</p>
+                  </div>
+                </div>
+                <input type="file" accept=".pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={handleCredentialFileChange} />
+              </label>
+
+              {credentialError && <div className="rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{credentialError}</div>}
+
+              <button onClick={handleCredentialUpload} disabled={uploadingCredential} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2.5 rounded-full hover:bg-primary/90 transition-colors disabled:opacity-60">
+                {uploadingCredential ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {uploadingCredential ? 'Uploading...' : 'Submit for review'}
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-sm font-700 text-foreground">Submitted credentials</p>
+                  <p className="text-xs text-muted-foreground">Pending, approved, rejected, or expired documents.</p>
+                </div>
+              </div>
+
+              {loadingCredentials ? (
+                <div className="text-sm text-muted-foreground">Loading credentials...</div>
+              ) : credentials.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">No credentials uploaded yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {credentials.map((credential) => (
+                    <div key={credential.id} className="rounded-2xl border border-border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold text-foreground">{credential.title}</p>
+                          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground capitalize">{credential.status}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{credential.credential_type.replaceAll('_', ' ')} • {credential.issued_by || 'Issued credential'}</p>
+                        {credential.review_notes && <p className="text-xs text-muted-foreground mt-2">Review notes: {credential.review_notes}</p>}
+                      </div>
+                      <a href={credential.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+                        <Eye className="w-4 h-4" />
+                        View file
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

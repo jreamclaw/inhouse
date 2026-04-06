@@ -16,7 +16,10 @@ import {
   Home,
   Briefcase,
   Plus,
+  Shield,
+  Eye,
 } from 'lucide-react';
+import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { milesBetween } from '@/lib/location/distance';
@@ -43,6 +46,10 @@ interface Vendor {
   knownFor: string;
   locationLabel: string;
   serviceRadiusMiles: number;
+  trustScore: number;
+  trustLabel: string;
+  badges: Array<'verified_identity' | 'certified' | 'licensed_business' | 'top_rated' | 'pro_chef' | 'new_chef'>;
+  approvedCredentialsCount: number;
 }
 
 interface DbVendorRow {
@@ -56,6 +63,14 @@ interface DbVendorRow {
   longitude: number | null;
   service_radius_miles: number | null;
   availability_override?: 'open' | 'closed' | null;
+  trust_score?: number | null;
+  trust_label?: string | null;
+  approved_credentials_count?: number | null;
+  is_verified?: boolean | null;
+  is_certified?: boolean | null;
+  is_licensed?: boolean | null;
+  is_top_rated?: boolean | null;
+  is_pro_chef?: boolean | null;
 }
 
 interface SavedAddressOption {
@@ -154,9 +169,30 @@ function VendorCard({ vendor }: { vendor: Vendor }) {
           </span>
         </div>
 
-        <div className="rounded-xl bg-muted/60 px-3 py-2.5 mb-3">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-700 mb-1">Known for</p>
-          <p className="text-[13px] text-foreground font-600 leading-snug">{vendor.knownFor}</p>
+        <div className="rounded-xl bg-muted/60 px-3 py-2.5 mb-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-700 mb-1">Known for</p>
+              <p className="text-[13px] text-foreground font-600 leading-snug">{vendor.knownFor}</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Trust</p>
+              <p className="text-sm font-bold text-foreground">{vendor.trustScore}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+              <span>{vendor.trustLabel}</span>
+            </div>
+            {vendor.approvedCredentialsCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+                <Eye className="w-3.5 h-3.5" />
+                View Credentials
+              </span>
+            )}
+          </div>
+          <TrustBadgeRow badges={vendor.badges} compact />
         </div>
 
         <Link href={`/vendor-profile?id=${vendor.id}`} className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-700 transition-all duration-200 tracking-snug bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20 active:scale-[0.98] shadow-sm shadow-primary/15">
@@ -272,7 +308,7 @@ export default function NearbyPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, availability_override')
+        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, availability_override, trust_score, trust_label, approved_credentials_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
         .eq('role', 'chef')
         .eq('vendor_onboarding_complete', true)
         .not('latitude', 'is', null)
@@ -299,6 +335,14 @@ export default function NearbyPage() {
             if (!rowLocation.includes(normalizedManual)) return null;
           }
 
+          const badges = [
+            row.is_verified ? 'verified_identity' : null,
+            row.is_certified ? 'certified' : null,
+            row.is_licensed ? 'licensed_business' : null,
+            row.is_top_rated ? 'top_rated' : null,
+            row.is_pro_chef ? 'pro_chef' : null,
+          ].filter(Boolean) as Vendor['badges'];
+
           return {
             id: row.id,
             name: row.full_name || 'Chef',
@@ -317,6 +361,10 @@ export default function NearbyPage() {
             knownFor: inferKnownFor(row),
             locationLabel: row.privacy_show_location === false ? 'Location private' : (row.location || 'Location unavailable'),
             serviceRadiusMiles: chefServiceRadius,
+            trustScore: row.trust_score || 0,
+            trustLabel: row.trust_label || 'Low trust',
+            badges,
+            approvedCredentialsCount: row.approved_credentials_count || 0,
           };
         })
         .filter((row): row is Vendor => Boolean(row));

@@ -28,6 +28,9 @@ import CustomizationModal, {
 import CartDrawer from './components/CartDrawer';
 import OrdersTab from './components/OrdersTab';
 import ChefReviews, { MOCK_REVIEWS } from './components/ChefReviews';
+import TrustVerificationSection from '@/components/trust/TrustVerificationSection';
+import { calculateTrustScore } from '@/lib/trust/score';
+import type { TrustCredentialShape } from '@/lib/trust/types';
 
 interface DbMeal {
   id: string;
@@ -54,6 +57,21 @@ interface DbVendorProfile {
   business_hours?: string | null;
   closed_days?: string[] | null;
   availability_override?: 'open' | 'closed' | null;
+  email_verified?: boolean | null;
+  phone_verified?: boolean | null;
+  identity_verified?: boolean | null;
+  is_verified?: boolean | null;
+  is_certified?: boolean | null;
+  is_licensed?: boolean | null;
+  is_top_rated?: boolean | null;
+  is_pro_chef?: boolean | null;
+  trust_score?: number | null;
+  trust_label?: string | null;
+  rating_avg?: number | null;
+  rating_count?: number | null;
+  completed_orders?: number | null;
+  complaints_count?: number | null;
+  approved_credentials_count?: number | null;
 }
 
 function parseBusinessHoursFromBio(bio?: string | null) {
@@ -2016,6 +2034,7 @@ function VendorProfileContent() {
   const [showCart, setShowCart] = useState(false);
   const [activeTab, setActiveTab] = useState<'menu' | 'posts' | 'orders' | 'reviews'>('menu');
   const [vendorPosts, setVendorPosts] = useState<any[]>([]);
+  const [vendorCredentials, setVendorCredentials] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const businessHours = resolveBusinessHours(vendor as any);
@@ -2039,16 +2058,22 @@ function VendorProfileContent() {
         return;
       }
 
-      const [{ data: profile, error: profileError }, { data: meals, error: mealsError }] = await Promise.all([
+      const [{ data: profile, error: profileError }, { data: meals, error: mealsError }, { data: credentials }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee, business_hours, closed_days, availability_override')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count')
           .eq('id', vendorId)
           .single(),
         supabase
           .from('meals')
           .select('id, title, description, price, image_url, category, available, modifier_groups')
           .eq('chef_id', vendorId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('chef_credentials')
+          .select('id, credential_type, title, issued_by, expiration_date, status')
+          .eq('chef_id', vendorId)
+          .eq('status', 'approved')
           .order('created_at', { ascending: false }),
       ]);
 
@@ -2061,6 +2086,7 @@ function VendorProfileContent() {
 
       const dbVendor = profile as DbVendorProfile;
       const dbMeals = (meals as DbMeal[] | null) ?? [];
+      setVendorCredentials(credentials || []);
 
       const mappedMenu: MenuItem[] = dbMeals.map((meal) => ({
         id: meal.id,
@@ -2083,8 +2109,8 @@ function VendorProfileContent() {
         coverAlt: `${dbVendor.full_name || 'Chef'} profile`,
         cuisine: 'Local Chef',
         bio: dbVendor.bio || 'Local chef on InHouse.',
-        rating: 0,
-        reviewCount: 0,
+        rating: Number(dbVendor.rating_avg || 0),
+        reviewCount: Number(dbVendor.rating_count || 0),
         followers: dbVendor.followers_count || 0,
         location: dbVendor.privacy_show_location === false ? 'Location private' : (dbVendor.location || 'Location unavailable'),
         distance: undefined,
@@ -2273,6 +2299,22 @@ function VendorProfileContent() {
     }
   };
 
+  const trustScore = calculateTrustScore(
+    {
+      avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
+      bio: vendor.bio,
+      email_verified: (vendorOverride as any)?.email_verified ?? false,
+      phone_verified: (vendorOverride as any)?.phone_verified ?? false,
+      identity_verified: (vendorOverride as any)?.identity_verified ?? false,
+      completed_orders: (vendorOverride as any)?.completed_orders ?? 0,
+      complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
+      rating_avg: vendor.rating,
+      rating_count: vendor.reviewCount,
+    },
+    vendorCredentials as TrustCredentialShape[],
+    vendor.menu.filter((item) => !!item.image).length,
+  );
+
   // Determine back link — go to /nearby if vendor is a marketplace vendor
   const nearbyVendorIds = ['wing-queen', 'sweet-tooth', 'rolling-smoke', 'taco-loco', 'ocean-catch', 'green-bowl', 'mama-soul'];
   const backHref = nearbyVendorIds.includes(vendorId) ? '/nearby' : '/home-feed';
@@ -2358,6 +2400,10 @@ function VendorProfileContent() {
                 </span>
               </div>
               <p className="text-[13px] font-semibold text-foreground">@{vendor.username}</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <TrustVerificationSection score={trustScore} credentials={vendorCredentials} canManage={isOwnVendorProfile} />
             </div>
 
             <p className="text-[14px] text-muted-foreground leading-relaxed">{vendor.bio}</p>
