@@ -49,7 +49,7 @@ const roleOptions: RoleOption[] = [
 
 export default function RoleSelectionPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const supabase = createClient();
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -108,6 +108,66 @@ export default function RoleSelectionPage() {
         redirectTarget: null,
       });
 
+      const { data: existingProfileRows, error: existingProfileError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .limit(1);
+
+      if (existingProfileError) {
+        authDebug('role-selection.profile-check-failed', {
+          pathname: '/role-selection',
+          sessionExists: true,
+          userId: user.id,
+          profileRole: selectedRole,
+          onboardingComplete: null,
+          vendorOnboardingComplete: null,
+          redirectTarget: null,
+          reason: existingProfileError.message,
+        });
+        throw existingProfileError;
+      }
+
+      if (!existingProfileRows || existingProfileRows.length === 0) {
+        authDebug('role-selection.profile-bootstrap-start', {
+          pathname: '/role-selection',
+          sessionExists: true,
+          userId: user.id,
+          profileRole: selectedRole,
+          onboardingComplete: null,
+          vendorOnboardingComplete: null,
+          redirectTarget: null,
+        });
+
+        const { error: bootstrapError } = await supabase
+          .from('user_profiles')
+          .upsert({
+            id: user.id,
+            email: user.email ?? '',
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
+            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+            username: user.user_metadata?.username || user.email?.split('@')[0] || '',
+            role: null,
+            onboarding_complete: false,
+            vendor_onboarding_complete: false,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+
+        if (bootstrapError) {
+          authDebug('role-selection.profile-bootstrap-failed', {
+            pathname: '/role-selection',
+            sessionExists: true,
+            userId: user.id,
+            profileRole: selectedRole,
+            onboardingComplete: null,
+            vendorOnboardingComplete: null,
+            redirectTarget: null,
+            reason: bootstrapError.message,
+          });
+          throw bootstrapError;
+        }
+      }
+
       const { data: updatedRows, error: updateError } = await supabase
         .from('user_profiles')
         .update({ role: selectedRole, updated_at: new Date().toISOString() })
@@ -152,6 +212,18 @@ export default function RoleSelectionPage() {
         vendorOnboardingComplete: null,
         redirectTarget,
         rowsUpdated: updatedRows.length,
+      });
+
+      await refreshProfile();
+
+      authDebug('role-selection.redirect-start', {
+        pathname: '/role-selection',
+        sessionExists: true,
+        userId: user.id,
+        profileRole: updatedRows[0]?.role ?? selectedRole,
+        onboardingComplete: null,
+        vendorOnboardingComplete: null,
+        redirectTarget,
       });
 
       router.replace(redirectTarget);
