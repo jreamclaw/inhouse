@@ -595,7 +595,7 @@ export default function PublicProfilePage() {
           <FollowListSheet
             open={!!sheetMode}
             onOpenChange={(open) => !open && setSheetMode(null)}
-            userId={profile.id}
+            targetUserId={profile.id}
             mode={sheetMode}
             title={sheetMode === 'followers' ? 'Followers' : 'Following'}
             onCountsChange={(counts) => {

@@ -20,7 +20,7 @@ interface FollowListUser {
 interface FollowListSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userId: string;
+  targetUserId: string;
   mode: FollowListMode;
   title?: string;
   onCountsChange?: (counts: { followers?: number; following?: number }) => void;
@@ -48,7 +48,7 @@ async function syncFollowerCounts(supabase: ReturnType<typeof createClient>, fol
 export default function FollowListSheet({
   open,
   onOpenChange,
-  userId,
+  targetUserId,
   mode,
   title,
   onCountsChange,
@@ -68,11 +68,12 @@ export default function FollowListSheet({
 
   useEffect(() => {
     if (!open) return;
+    console.log('FOLLOW_LIST_SHEET_OPEN', { targetUserId, mode });
     setItems([]);
     setHasMore(true);
     void loadPage(0, true);
     void loadFollowingMap();
-  }, [open, userId, mode]);
+  }, [open, targetUserId, mode]);
 
   const loadFollowingMap = async () => {
     if (!user?.id) {
@@ -109,7 +110,7 @@ export default function FollowListSheet({
       const { data, error } = await supabase
         .from('user_follows')
         .select(`${relationColumn}, user_profiles:${idColumn} (id, full_name, username, avatar_url, role)`)
-        .eq(isFollowers ? 'following_id' : 'follower_id', userId)
+        .eq(isFollowers ? 'following_id' : 'follower_id', targetUserId)
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1);
 
@@ -119,6 +120,12 @@ export default function FollowListSheet({
         .map((row: any) => row.user_profiles)
         .filter(Boolean) as FollowListUser[];
 
+      console.log('FOLLOW_LIST_SHEET_RESULT', {
+        targetUserId,
+        mode,
+        offset,
+        countReturned: mapped.length,
+      });
       setItems((prev) => (reset ? mapped : [...prev, ...mapped.filter((item) => !prev.some((existing) => existing.id === item.id))]));
       setHasMore(mapped.length === PAGE_SIZE);
     } catch {
@@ -187,11 +194,11 @@ export default function FollowListSheet({
         syncFollowerCounts(supabase, user.id, target.id),
       ]);
 
-      if (user.id === userId) {
+      if (user.id === targetUserId) {
         onCountsChange?.({ following: viewerCounts.following, followers: viewerCounts.followers });
       }
 
-      if (target.id === userId) {
+      if (target.id === targetUserId) {
         onCountsChange?.({ followers: targetCounts.followers, following: targetCounts.following });
       }
     } catch {

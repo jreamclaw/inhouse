@@ -32,6 +32,7 @@ import CartDrawer from './components/CartDrawer';
 import OrdersTab from './components/OrdersTab';
 import ChefReviews, { MOCK_REVIEWS } from './components/ChefReviews';
 import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
+import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
 import { calculateTrustScore } from '@/lib/trust/score';
 import type { TrustCredentialShape } from '@/lib/trust/types';
 
@@ -452,6 +453,7 @@ function VendorProfileContent() {
   const [vendorCredentials, setVendorCredentials] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
   const [hoursSheetOpen, setHoursSheetOpen] = useState(false);
   const [activePublicTab, setActivePublicTab] = useState<'menu' | 'posts' | 'reviews' | 'about'>('menu');
   const [contentTab, setContentTab] = useState<'posts' | 'kitchen'>('posts');
@@ -850,14 +852,14 @@ function VendorProfileContent() {
                 <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.menu.length}</p>
                 <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Menu</p>
               </div>
-              <div className="text-center">
+              <button onClick={() => vendor?.id && setSheetMode('followers')} className="text-center rounded-xl hover:bg-muted/40 transition-colors py-1">
                 <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.followers >= 1000 ? `${(vendor.followers / 1000).toFixed(1)}k` : vendor.followers}</p>
                 <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Followers</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.reviewCount}</p>
-                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Reviews</p>
-              </div>
+              </button>
+              <button onClick={() => vendor?.id && setSheetMode('following')} className="text-center rounded-xl hover:bg-muted/40 transition-colors py-1">
+                <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{(vendorOverride as any)?.following_count ?? 0}</p>
+                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Following</p>
+              </button>
             </div>
           </div>
 
@@ -1269,6 +1271,23 @@ function VendorProfileContent() {
           )}
         </div>
       </div>
+
+      {vendor?.id && sheetMode && (
+        <FollowListSheet
+          open={!!sheetMode}
+          onOpenChange={(open) => !open && setSheetMode(null)}
+          targetUserId={vendor.id}
+          mode={sheetMode}
+          title={sheetMode === 'followers' ? 'Followers' : 'Following'}
+          onCountsChange={(counts) => {
+            setVendorOverride((prev) => prev ? {
+              ...prev,
+              followers: typeof counts.followers === 'number' ? counts.followers : prev.followers,
+              following_count: typeof counts.following === 'number' ? counts.following : (prev as any).following_count,
+            } as any : prev);
+          }}
+        />
+      )}
 
       {hoursSheetOpen && (
         <div className="fixed inset-0 z-[85]">
