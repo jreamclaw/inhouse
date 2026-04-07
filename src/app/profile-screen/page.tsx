@@ -32,7 +32,7 @@ export default function ProfileScreenPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto xl:max-w-screen-lg xl:mx-0 xl:px-6 2xl:px-10">
+      <div className="max-w-2xl mx-auto pt-3 xl:max-w-screen-lg xl:mx-0 xl:px-6 2xl:px-10">
         <ProfileHeader />
         <ProfileTabs />
       </div>
