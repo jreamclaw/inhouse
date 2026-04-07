@@ -460,7 +460,6 @@ function VendorProfileContent() {
       ]);
 
       if (profileError) throw profileError;
-      if (mealsError) throw mealsError;
       if (!profile) {
         setVendorOverride(null);
         setVendorNotFound(true);
@@ -477,7 +476,7 @@ function VendorProfileContent() {
         ...(profile as DbVendorProfile),
         ...(profileExtras || {}),
       } as DbVendorProfile;
-      const dbMeals = (meals as DbMeal[] | null) ?? [];
+      const dbMeals = mealsError ? [] : ((meals as DbMeal[] | null) ?? []);
       setVendorCredentials(credentials || []);
 
       const mappedMenu: MenuItem[] = dbMeals.map((meal) => ({
