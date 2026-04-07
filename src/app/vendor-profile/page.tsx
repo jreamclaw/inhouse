@@ -82,6 +82,11 @@ function parseBusinessHoursFromBio(bio?: string | null) {
   return match?.[1]?.trim() || null;
 }
 
+function stripBusinessHoursFromBio(bio?: string | null) {
+  if (!bio) return '';
+  return bio.replace(/\s*Hours:\s*[^\n]+/i, '').trim();
+}
+
 function resolveBusinessHours(vendor: Partial<DbVendorProfile> & { bio?: string | null }) {
   return vendor.business_hours || parseBusinessHoursFromBio(vendor.bio) || null;
 }
@@ -844,7 +849,7 @@ function VendorProfileContent() {
                   <span>{vendor.reviewCount} reviews</span>
                 </div>
               </div>
-              <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2 mt-1">{vendor.bio}</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2 mt-1">{stripBusinessHoursFromBio(vendor.bio)}</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
@@ -852,11 +857,14 @@ function VendorProfileContent() {
                 <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 <span>{headerSummary}</span>
               </div>
-              {vendor.minOrder > 0 && (
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[12px] text-muted-foreground">
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>From ${vendor.minOrder}</span>
-                </div>
+              {businessHours && (
+                <button
+                  onClick={() => setActivePublicTab('about')}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-muted/80 transition-colors"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Hours</span>
+                </button>
               )}
             </div>
           </div>
