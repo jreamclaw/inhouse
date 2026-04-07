@@ -117,7 +117,7 @@ export default function ProfileHeader() {
   };
 
   return (
-    <div className="bg-card border border-[#E5E5E5] dark:border-white/15 rounded-2xl overflow-hidden">
+    <div className="bg-card border border-[#E5E5E5] dark:border-white/15 rounded-2xl overflow-hidden mt-3">
       <div className="relative h-32 sm:h-36 overflow-hidden bg-[#F7F7F7] dark:bg-white/5">
         {coverUrl ? (
           <img src={coverUrl} alt={`${displayName} cover`} className="w-full h-full object-cover object-center" />
@@ -140,7 +140,7 @@ export default function ProfileHeader() {
       <div className="px-4 pb-4 pt-3">
         <div className="flex items-start gap-3 -mt-7 sm:-mt-8 mb-3">
           <div className="relative shrink-0">
-            <div className={`w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-2xl overflow-hidden border-[3px] ${isChef ? 'border-[#F97316]' : 'border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated`}>
+            <div className={`w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-full overflow-hidden border-[3px] ${isChef ? 'border-[#F97316]' : 'border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated`}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" />
               ) : (
