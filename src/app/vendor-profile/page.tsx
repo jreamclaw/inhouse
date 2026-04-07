@@ -769,13 +769,15 @@ function VendorProfileContent() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto xl:max-w-screen-md pb-32">
-        <div className="relative h-52 sm:h-64 overflow-hidden bg-muted">
-          <img
-            src={vendor.coverImage}
-            alt={vendor.coverAlt}
-            className="w-full h-full object-cover" />
+        <div className="relative h-36 sm:h-40 overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-700">
+          {vendor.coverImage ? (
+            <img
+              src={vendor.coverImage}
+              alt={vendor.coverAlt}
+              className="w-full h-full object-cover object-center" />
+          ) : null}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-black/10" />
 
           <Link href={backHref} className="absolute top-4 left-4">
             <button
@@ -796,9 +798,9 @@ function VendorProfileContent() {
         </div>
 
         <div className="px-4 pb-4 bg-card border-b border-border/50">
-          <div className="flex items-end gap-4 -mt-8 sm:-mt-10 mb-3.5">
+          <div className="flex items-end gap-3 -mt-7 sm:-mt-8 mb-2.5">
             <div className="relative shrink-0">
-              <div className="w-[76px] h-[76px] sm:w-[84px] sm:h-[84px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated bg-card">
+              <div className="w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated bg-card">
                 <img src={vendor.avatar} alt={`${vendor.name} chef avatar`} className="w-full h-full object-cover" />
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border-2 border-card text-xs shadow-sm">
@@ -806,7 +808,7 @@ function VendorProfileContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-2">
+            <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-1">
               <div className="text-center">
                 <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.menu.length}</p>
                 <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Menu</p>
@@ -822,7 +824,7 @@ function VendorProfileContent() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-[18px] sm:text-[20px] font-700 text-foreground leading-tight tracking-snug">{vendor.name}</h1>
@@ -831,7 +833,7 @@ function VendorProfileContent() {
                 </span>
               </div>
               <p className="text-[13px] font-semibold text-foreground">@{vendor.username}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5">
                   <Star className="w-3.5 h-3.5 text-primary" />
                   <span>{vendor.rating > 0 ? `${vendor.rating.toFixed(1)} rating` : 'No ratings yet'}</span>
@@ -841,10 +843,10 @@ function VendorProfileContent() {
                   <span>{vendor.reviewCount} reviews</span>
                 </div>
               </div>
-              <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2">{vendor.bio}</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2 mt-1">{vendor.bio}</p>
             </div>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
               <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                 <MapPin className="w-3.5 h-3.5 text-primary" />
                 <span>{vendor.location}</span>
@@ -863,7 +865,7 @@ function VendorProfileContent() {
             </div>
 
             {businessHours && (
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <div className="flex flex-wrap items-center gap-2 pt-0">
                 <div className="inline-flex items-center gap-2 text-[12px] text-muted-foreground bg-muted px-3 py-2 rounded-xl">
                   <Clock className="w-3.5 h-3.5 text-primary" />
                   <span>{businessHours}</span>
@@ -876,7 +878,7 @@ function VendorProfileContent() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-3.5 flex-wrap">
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
             <button
               suppressHydrationWarning
               onClick={() => document.getElementById('vendor-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
