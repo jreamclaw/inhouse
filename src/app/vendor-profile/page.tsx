@@ -417,8 +417,8 @@ function VendorProfileContent() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [contentTab, setContentTab] = useState<'posts' | 'kitchen'>('posts');
-  const businessHours = resolveBusinessHours(vendor as any);
-  const openState = getTodayOpenState(businessHours, (vendor as any)?.availability_override || null);
+  const businessHours = vendor ? resolveBusinessHours(vendor as any) : null;
+  const openState = getTodayOpenState(businessHours, vendor ? ((vendor as any)?.availability_override || null) : null);
   const isOwnVendorProfile = !!user?.id && !!vendor?.id && user.id === vendor.id;
 
   useEffect(() => {
