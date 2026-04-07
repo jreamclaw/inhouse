@@ -443,9 +443,9 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }, { data: credentials }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee, role')
           .eq('id', vendorId)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('meals')
           .select('id, title, description, price, image_url, category, available, modifier_groups')
@@ -459,8 +459,37 @@ function VendorProfileContent() {
           .order('created_at', { ascending: false }),
       ]);
 
-      if (profileError) throw profileError;
+      console.log('VENDOR_PROFILE_LOAD', {
+        vendorId,
+        profile,
+        profileError,
+      });
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
+
       if (!profile) {
+        console.log('VENDOR_PROFILE_ROLE_CHECK', {
+          vendorId,
+          rolePassed: false,
+          reason: 'no-profile-row',
+        });
+        setVendorOverride(null);
+        setVendorNotFound(true);
+        return;
+      }
+
+      const profileRole = (profile as DbVendorProfile & { role?: string | null }).role;
+      const isChefRole = profileRole === 'chef' || profileRole === 'vendor';
+
+      console.log('VENDOR_PROFILE_ROLE_CHECK', {
+        vendorId,
+        profileRole,
+        rolePassed: isChefRole,
+      });
+
+      if (!isChefRole) {
         setVendorOverride(null);
         setVendorNotFound(true);
         return;
