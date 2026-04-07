@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ChefHat, MapPin, Settings, Share2, ShoppingBag, BookOpen, LogOut, UserPlus, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
 
 function parseHoursFromBio(bio?: string | null) {
   if (!bio) return { cleanBio: '', hours: null };
@@ -66,7 +67,9 @@ function getTodayStatus(hours?: string | null, availabilityOverride?: 'open' | '
 export default function ProfileHeader() {
   const { profile, user, signOut } = useAuth();
   const router = useRouter();
-  const [followerCount] = useState<number>(profile?.followers_count ?? 0);
+  const [followerCount, setFollowerCount] = useState<number>(profile?.followers_count ?? 0);
+  const [followingCount, setFollowingCount] = useState<number>(profile?.following_count ?? 0);
+  const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
 
   const isChef = profile?.role === 'chef';
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
@@ -132,14 +135,14 @@ export default function ProfileHeader() {
               <p className="text-[18px] font-700 text-[#111111] dark:text-white font-tabular tracking-snug">{profile?.posts_count ?? 0}</p>
               <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] font-medium mt-0.5">Posts</p>
             </div>
-            <div className="text-center">
+            <button onClick={() => setSheetMode('followers')} className="text-center rounded-xl hover:bg-[#F7F7F7] dark:hover:bg-white/5 transition-colors py-1">
               <p className="text-[18px] font-700 text-[#111111] dark:text-white font-tabular tracking-snug">{(followerCount >= 1000) ? `${(followerCount / 1000).toFixed(1)}k` : followerCount}</p>
               <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] font-medium mt-0.5">Followers</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[18px] font-700 text-[#111111] dark:text-white font-tabular tracking-snug">{profile?.following_count ?? 0}</p>
+            </button>
+            <button onClick={() => setSheetMode('following')} className="text-center rounded-xl hover:bg-[#F7F7F7] dark:hover:bg-white/5 transition-colors py-1">
+              <p className="text-[18px] font-700 text-[#111111] dark:text-white font-tabular tracking-snug">{followingCount}</p>
               <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] font-medium mt-0.5">Following</p>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -219,6 +222,19 @@ export default function ProfileHeader() {
           </div>
         )}
       </div>
+      {profile?.id && sheetMode && (
+        <FollowListSheet
+          open={!!sheetMode}
+          onOpenChange={(open) => !open && setSheetMode(null)}
+          userId={profile.id}
+          mode={sheetMode}
+          title={sheetMode === 'followers' ? 'Followers' : 'Following'}
+          onCountsChange={(counts) => {
+            if (typeof counts.followers === 'number') setFollowerCount(counts.followers);
+            if (typeof counts.following === 'number') setFollowingCount(counts.following);
+          }}
+        />
+      )}
     </div>
   );
 }

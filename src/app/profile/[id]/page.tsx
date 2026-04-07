@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import TrustVerificationSection from '@/components/trust/TrustVerificationSection';
+import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
 import { calculateTrustScore } from '@/lib/trust/score';
 import type { TrustCredentialShape } from '@/lib/trust/types';
 
@@ -118,6 +119,7 @@ export default function PublicProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
   const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
 
   const isOwnProfile = !!user?.id && !!profileId && user.id === profileId;
@@ -405,14 +407,14 @@ export default function PublicProfilePage() {
               )}
             </div>
             <div className={`grid gap-3 flex-1 ${isChef ? 'grid-cols-3' : 'grid-cols-2'}`}>
-              <div className="rounded-2xl bg-card border border-border px-4 py-3 text-center">
+              <button onClick={() => setSheetMode('followers')} className="rounded-2xl bg-card border border-border px-4 py-3 text-center hover:bg-muted/40 transition-colors">
                 <p className="text-lg font-700 text-foreground">{profile.followers_count ?? 0}</p>
                 <p className="text-[11px] text-muted-foreground">Followers</p>
-              </div>
-              <div className="rounded-2xl bg-card border border-border px-4 py-3 text-center">
+              </button>
+              <button onClick={() => setSheetMode('following')} className="rounded-2xl bg-card border border-border px-4 py-3 text-center hover:bg-muted/40 transition-colors">
                 <p className="text-lg font-700 text-foreground">{profile.following_count ?? 0}</p>
                 <p className="text-[11px] text-muted-foreground">Following</p>
-              </div>
+              </button>
               {isChef && (
                 <div className="rounded-2xl bg-card border border-border px-4 py-3 text-center">
                   <p className="text-lg font-700 text-foreground">{meals.length}</p>
@@ -589,6 +591,22 @@ export default function PublicProfilePage() {
             )}
           </div>
         </div>
+        {profile?.id && sheetMode && (
+          <FollowListSheet
+            open={!!sheetMode}
+            onOpenChange={(open) => !open && setSheetMode(null)}
+            userId={profile.id}
+            mode={sheetMode}
+            title={sheetMode === 'followers' ? 'Followers' : 'Following'}
+            onCountsChange={(counts) => {
+              setProfile((prev) => prev ? {
+                ...prev,
+                followers_count: typeof counts.followers === 'number' ? counts.followers : prev.followers_count,
+                following_count: typeof counts.following === 'number' ? counts.following : prev.following_count,
+              } : prev);
+            }}
+          />
+        )}
       </div>
     </AppLayout>
   );
