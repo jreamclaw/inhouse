@@ -66,7 +66,6 @@ interface DbVendorRow {
   full_name: string;
   bio: string | null;
   location: string | null;
-  privacy_show_location?: boolean | null;
   avatar_url: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -415,7 +414,7 @@ export default function NearbyPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, bio, location, privacy_show_location, avatar_url, latitude, longitude, service_radius_miles, business_hours, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
+        .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles, business_hours, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
         .eq('role', 'chef')
         .eq('vendor_onboarding_complete', true)
         .not('latitude', 'is', null)
@@ -471,7 +470,7 @@ export default function NearbyPage() {
             isOpen: openState.isOpen,
             openLabel: openState.label,
             knownFor: inferKnownFor(row),
-            locationLabel: row.privacy_show_location === false ? 'Location private' : (row.location || 'Location unavailable'),
+            locationLabel: row.location || 'Location unavailable',
             serviceRadiusMiles: chefServiceRadius,
             trustScore: row.trust_score || 0,
             trustLabel: row.trust_label || 'Low trust',
