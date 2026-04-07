@@ -844,17 +844,19 @@ function VendorProfileContent() {
             {vendorPosts.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
                 {(contentTab === 'posts' ? vendorPosts.filter((post) => post.media_type !== 'video') : vendorPosts.filter((post) => post.media_type === 'video')).slice(0, 6).map((post) => (
-                  <button
+                  <div
                     key={post.id}
-                    onClick={() => window.alert(post.caption || (contentTab === 'kitchen' ? 'Kitchen clip' : 'Post'))}
-                    className="aspect-square overflow-hidden rounded-2xl bg-muted"
+                    className="aspect-square overflow-hidden rounded-2xl bg-muted relative"
                   >
                     {post.media_type === 'video' ? (
                       <video src={post.media_url} className="w-full h-full object-cover" muted playsInline />
                     ) : (
                       <img src={post.media_url} alt={post.caption || 'Chef post'} className="w-full h-full object-cover" />
                     )}
-                  </button>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                      <p className="text-[11px] text-white line-clamp-2">{post.caption || (contentTab === 'kitchen' ? 'Kitchen clip' : 'Post')}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
