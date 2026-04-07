@@ -803,10 +803,10 @@ function VendorProfileContent() {
           </button>
         </div>
 
-        <div className="px-4 pb-4 bg-card border-b border-border/50">
-          <div className="flex items-end gap-3 -mt-7 sm:-mt-8 mb-2.5">
+        <div className="px-4 pb-4 pt-3 bg-card border-b border-border/50">
+          <div className="flex items-start gap-3 -mt-7 sm:-mt-8 mb-2.5">
             <div className="relative shrink-0">
-              <div className="w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated bg-card">
+              <div className="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated bg-card">
                 <img src={vendor.avatar} alt={`${vendor.name} chef avatar`} className="w-full h-full object-cover" />
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border-2 border-card text-xs shadow-sm">
@@ -814,7 +814,7 @@ function VendorProfileContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-1">
+            <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-5 sm:pt-6">
               <div className="text-center">
                 <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.menu.length}</p>
                 <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Menu</p>

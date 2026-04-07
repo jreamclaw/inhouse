@@ -116,10 +116,10 @@ export default function ProfileHeader() {
         </div>
       </div>
 
-      <div className="px-4 pb-4">
-        <div className="flex items-end gap-4 -mt-8 sm:-mt-10 mb-3.5">
+      <div className="px-4 pb-4 pt-3">
+        <div className="flex items-start gap-4 -mt-8 sm:-mt-9 mb-3.5">
           <div className="relative shrink-0">
-            <div className={`w-[76px] h-[76px] sm:w-[84px] sm:h-[84px] rounded-full overflow-hidden border-[3px] ${isChef ? 'border-[#F97316]' : 'border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated`}>
+            <div className={`w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-full overflow-hidden border-[3px] ${isChef ? 'border-[#F97316]' : 'border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated`}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" />
               ) : (
@@ -130,7 +130,7 @@ export default function ProfileHeader() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-2">
+          <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-6 sm:pt-7">
             <div className="text-center">
               <p className="text-[18px] font-700 text-[#111111] dark:text-white font-tabular tracking-snug">{profile?.posts_count ?? 0}</p>
               <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] font-medium mt-0.5">Posts</p>
