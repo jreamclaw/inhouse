@@ -18,7 +18,9 @@ import {
   Flame,
   Zap,
   CheckCircle,
-  ShieldCheck } from
+  ShieldCheck,
+  Play,
+  Pin } from
 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -416,6 +418,7 @@ function VendorProfileContent() {
   const [vendorCredentials, setVendorCredentials] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [activePublicTab, setActivePublicTab] = useState<'menu' | 'posts' | 'reviews' | 'about'>('menu');
   const [contentTab, setContentTab] = useState<'posts' | 'kitchen'>('posts');
   const [debugInfo, setDebugInfo] = useState({
     vendorId,
@@ -912,468 +915,339 @@ function VendorProfileContent() {
         </div>
 
         <div className="px-4 pt-4 space-y-4">
-          <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
-            <div>
-              <h2 className="text-base font-700 text-foreground">Featured dishes</h2>
-              <p className="text-sm text-muted-foreground mt-1">Popular items people will want first.</p>
-            </div>
-
-            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-              {vendor.menu.slice(0, 8).map((item) => (
+          <section className="rounded-3xl border border-border bg-card p-2">
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { id: 'menu', label: 'Menu' },
+                { id: 'posts', label: 'Posts' },
+                { id: 'reviews', label: 'Reviews' },
+                { id: 'about', label: 'About' },
+              ].map((tab) => (
                 <button
-                  key={item.id}
-                  onClick={() => item.availability !== 'sold_out' && openCustomization(item)}
-                  className="w-44 shrink-0 rounded-2xl border border-border bg-card overflow-hidden text-left"
+                  key={tab.id}
+                  onClick={() => setActivePublicTab(tab.id as 'menu' | 'posts' | 'reviews' | 'about')}
+                  className={`rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${activePublicTab === tab.id ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
                 >
-                  <div className="aspect-[4/3] bg-muted relative">
-                    <img src={item.image} alt={item.imageAlt} className="w-full h-full object-cover" />
-                    <div className="absolute left-2 top-2">
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-600 px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[item.availability]}`}>
-                        {item.availability === 'limited' && <Zap className="w-2.5 h-2.5" />}
-                        {item.availability === 'available' && <CheckCircle className="w-2.5 h-2.5" />}
-                        {item.availability === 'sold_out' ? 'Sold out' : (item.availabilityLabel || 'Available')}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <p className="text-sm font-700 text-foreground line-clamp-1">{item.title}</p>
-                    <p className="text-sm text-primary font-semibold mt-1">${item.price}</p>
-                  </div>
+                  {tab.label}
                 </button>
               ))}
             </div>
           </section>
 
-          <section id="vendor-menu" className="rounded-3xl border border-border bg-card overflow-hidden">
-            <div className="px-5 pt-5 pb-3">
-              <h2 className="text-base font-700 text-foreground">Menu</h2>
-              <p className="text-sm text-muted-foreground mt-1">Tap any item to view details or add it to cart.</p>
-            </div>
-
-            <div className="bg-card border-b border-border/50 px-4 py-3 z-20">
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                {categories.map((cat) => (
-                  <button
-                    suppressHydrationWarning
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-600 transition-all duration-150 tracking-snug ${
-                      activeCategory === cat
-                        ? 'bg-primary text-white shadow-sm shadow-primary/20'
-                        : 'bg-muted text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {cat !== 'all' && <span>{CATEGORY_ICONS[cat] || '🍴'}</span>}
-                    {cat === 'all' ? 'All Items' : cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="divide-y divide-border/40 px-1">
-              {filteredMenu.length === 0 ? (
-                <div className="px-4 py-12 text-center">
-                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                    <ShoppingBag className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-sm font-700 text-foreground mb-1">No menu items yet</h3>
-                  <p className="text-sm text-muted-foreground">This chef has not added meals yet.</p>
+          {activePublicTab === 'menu' && (
+            <>
+              <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
+                <div>
+                  <h2 className="text-base font-700 text-foreground">Featured dishes</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Quick shop the dishes people usually want first.</p>
                 </div>
-              ) : (
-                filteredMenu.map((item) => {
-                  const isSoldOut = item.availability === 'sold_out';
-                  const cartQty = cart
-                    .filter((c) => c.itemId === item.id)
-                    .reduce((sum, c) => sum + c.qty, 0);
 
-                  return (
-                    <div
+                <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-hide">
+                  {vendor.menu.slice(0, 8).map((item) => (
+                    <button
                       key={item.id}
-                      className={`flex gap-4 p-4 bg-card transition-all duration-200 rounded-xl my-0.5 hover:bg-muted/25 ${
-                        isSoldOut ? 'opacity-60' : 'cursor-pointer'
-                      }`}
+                      onClick={() => item.availability !== 'sold_out' && openCustomization(item)}
+                      className="w-44 shrink-0 snap-start rounded-2xl border border-border bg-card overflow-hidden text-left"
                     >
+                      <div className="aspect-[4/3] bg-muted relative">
+                        <img src={item.image} alt={item.imageAlt} className="w-full h-full object-cover" />
+                        <div className="absolute left-2 top-2">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-600 px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[item.availability]}`}>
+                            {item.availability === 'limited' && <Zap className="w-2.5 h-2.5" />}
+                            {item.availability === 'available' && <CheckCircle className="w-2.5 h-2.5" />}
+                            {item.availability === 'sold_out' ? 'Sold out' : (item.availabilityLabel || 'Available')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-sm font-700 text-foreground line-clamp-1">{item.title}</p>
+                        <p className="text-sm text-primary font-semibold mt-1">${item.price}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section id="vendor-menu" className="rounded-3xl border border-border bg-card overflow-hidden">
+                <div className="px-5 pt-5 pb-3">
+                  <h2 className="text-base font-700 text-foreground">Menu</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Tap any item to view details or add it to cart.</p>
+                </div>
+
+                <div className="bg-card border-b border-border/50 px-4 py-3 z-20">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                    {categories.map((cat) => (
                       <button
-                        onClick={() => openCustomization(item)}
-                        disabled={isSoldOut}
-                        className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-muted shrink-0 focus:outline-none group/img"
-                        aria-label={`Customize ${item.title}`}
+                        suppressHydrationWarning
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-600 transition-all duration-150 tracking-snug ${
+                          activeCategory === cat
+                            ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                            : 'bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
                       >
-                        <img
-                          src={item.image}
-                          alt={item.imageAlt}
-                          className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                        {item.popular && (
-                          <div className="absolute top-1.5 left-1.5 bg-amber-400 text-white text-[9px] font-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                            <Flame className="w-2.5 h-2.5" />
-                            Popular
-                          </div>
-                        )}
-                        {cartQty > 0 && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-primary text-white text-[10px] font-700 rounded-full flex items-center justify-center font-tabular">
-                            {cartQty}
-                          </div>
-                        )}
+                        {cat !== 'all' && <span>{CATEGORY_ICONS[cat] || '🍴'}</span>}
+                        {cat === 'all' ? 'All Items' : cat}
                       </button>
+                    ))}
+                  </div>
+                </div>
 
-                      <div className="flex-1 min-w-0">
-                        <button
-                          onClick={() => openCustomization(item)}
-                          disabled={isSoldOut}
-                          className="text-left w-full"
+                <div className="divide-y divide-border/40 px-1">
+                  {filteredMenu.length === 0 ? (
+                    <div className="px-4 py-12 text-center">
+                      <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                        <ShoppingBag className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-sm font-700 text-foreground mb-1">No menu items yet</h3>
+                      <p className="text-sm text-muted-foreground">This chef has not added meals yet.</p>
+                    </div>
+                  ) : (
+                    filteredMenu.map((item) => {
+                      const isSoldOut = item.availability === 'sold_out';
+                      const cartQty = cart
+                        .filter((c) => c.itemId === item.id)
+                        .reduce((sum, c) => sum + c.qty, 0);
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`flex gap-4 p-4 bg-card transition-all duration-200 rounded-xl my-0.5 hover:bg-muted/25 ${
+                            isSoldOut ? 'opacity-60' : 'cursor-pointer'
+                          }`}
                         >
-                          <h3 className="text-[14px] font-700 text-foreground leading-snug tracking-snug">{item.title}</h3>
-                          <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{item.description}</p>
-                        </button>
-
-                        {item.availabilityLabel && (
-                          <div className="mt-2">
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-600 px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[item.availability]}`}>
-                              {item.availability === 'limited' && <Zap className="w-2.5 h-2.5" />}
-                              {item.availability === 'available' && <CheckCircle className="w-2.5 h-2.5" />}
-                              {item.availabilityLabel}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between mt-3">
-                          <div>
-                            <span className="text-[15px] font-700 text-foreground font-tabular tracking-snug">${item.price}</span>
-                            {item.calories && item.calories > 0 && (
-                              <span className="text-[11px] text-muted-foreground ml-1.5">{item.calories} cal</span>
+                          <button
+                            onClick={() => openCustomization(item)}
+                            disabled={isSoldOut}
+                            className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-muted shrink-0 focus:outline-none group/img"
+                            aria-label={`Customize ${item.title}`}
+                          >
+                            <img
+                              src={item.image}
+                              alt={item.imageAlt}
+                              className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                            {item.popular && (
+                              <div className="absolute top-1.5 left-1.5 bg-amber-400 text-white text-[9px] font-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                <Flame className="w-2.5 h-2.5" />
+                                Popular
+                              </div>
                             )}
-                          </div>
+                            {cartQty > 0 && (
+                              <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-primary text-white text-[10px] font-700 rounded-full flex items-center justify-center font-tabular">
+                                {cartQty}
+                              </div>
+                            )}
+                          </button>
 
-                          {isSoldOut ? (
-                            <span className="text-[12px] font-600 text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-                              Sold Out
-                            </span>
-                          ) : (
+                          <div className="flex-1 min-w-0">
                             <button
                               onClick={() => openCustomization(item)}
-                              className={`flex items-center gap-1.5 text-[12px] font-600 px-3.5 py-1.5 rounded-full active:scale-95 transition-all duration-150 shadow-sm shadow-primary/15 ${
-                                cartQty > 0
-                                  ? 'bg-primary/8 text-primary border border-primary/20 hover:bg-primary hover:text-white hover:border-primary'
-                                  : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20'
-                              }`}
+                              disabled={isSoldOut}
+                              className="text-left w-full"
                             >
-                              {cartQty > 0 ? (
-                                <>
-                                  <span className="font-tabular">{cartQty}</span>
-                                  <span>in cart</span>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="text-base leading-none">+</span>
-                                  Add
-                                </>
-                              )}
+                              <h3 className="text-[14px] font-700 text-foreground leading-snug tracking-snug">{item.title}</h3>
+                              <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{item.description}</p>
                             </button>
-                          )}
+
+                            {item.availabilityLabel && (
+                              <div className="mt-2">
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-600 px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[item.availability]}`}>
+                                  {item.availability === 'limited' && <Zap className="w-2.5 h-2.5" />}
+                                  {item.availability === 'available' && <CheckCircle className="w-2.5 h-2.5" />}
+                                  {item.availabilityLabel}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between mt-3">
+                              <div>
+                                <span className="text-[15px] font-700 text-foreground font-tabular tracking-snug">${item.price}</span>
+                                {item.calories && item.calories > 0 && (
+                                  <span className="text-[11px] text-muted-foreground ml-1.5">{item.calories} cal</span>
+                                )}
+                              </div>
+
+                              {isSoldOut ? (
+                                <span className="text-[12px] font-600 text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+                                  Sold Out
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => openCustomization(item)}
+                                  className={`flex items-center gap-1.5 text-[12px] font-600 px-3.5 py-1.5 rounded-full active:scale-95 transition-all duration-150 shadow-sm shadow-primary/15 ${
+                                    cartQty > 0
+                                      ? 'bg-primary/8 text-primary border border-primary/20 hover:bg-primary hover:text-white hover:border-primary'
+                                      : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20'
+                                  }`}
+                                >
+                                  {cartQty > 0 ? (
+                                    <>
+                                      <span className="font-tabular">{cartQty}</span>
+                                      <span>in cart</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="text-base leading-none">+</span>
+                                      Add
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+
+                            {item.modifierGroups && item.modifierGroups.length > 0 && !isSoldOut && (
+                              <p className="text-[10px] text-muted-foreground mt-1.5">
+                                Customizable · {item.modifierGroups.filter((g) => g.required).length > 0 ? 'Required choices' : 'Optional add-ons'}
+                              </p>
+                            )}
+                          </div>
                         </div>
+                      );
+                    })
+                  )}
+                </div>
 
-                        {item.modifierGroups && item.modifierGroups.length > 0 && !isSoldOut && (
-                          <p className="text-[10px] text-muted-foreground mt-1.5">
-                            Customizable · {item.modifierGroups.filter((g) => g.required).length > 0 ? 'Required choices' : 'Optional add-ons'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {isOwnVendorProfile ? (
-              <div className="border-t border-border/50">
-                <OrdersTab />
-              </div>
-            ) : null}
-          </section>
-
-          <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
-            <div className="flex items-center gap-2 rounded-2xl bg-muted p-1">
-              <button
-                onClick={() => setContentTab('posts')}
-                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${contentTab === 'posts' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
-              >
-                Posts
-              </button>
-              <button
-                onClick={() => setContentTab('kitchen')}
-                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${contentTab === 'kitchen' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
-              >
-                Kitchen
-              </button>
-            </div>
-
-            {vendorPosts.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {(contentTab === 'posts' ? vendorPosts.filter((post) => post.media_type !== 'video') : vendorPosts.filter((post) => post.media_type === 'video')).slice(0, 6).map((post) => (
-                  <div
-                    key={post.id}
-                    className="aspect-square overflow-hidden rounded-2xl bg-muted relative"
-                  >
-                    {post.media_type === 'video' ? (
-                      <video src={post.media_url} className="w-full h-full object-cover" muted playsInline />
-                    ) : (
-                      <img src={post.media_url} alt={post.caption || 'Chef post'} className="w-full h-full object-cover" />
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                      <p className="text-[11px] text-white line-clamp-2">{post.caption || (contentTab === 'kitchen' ? 'Kitchen clip' : 'Post')}</p>
-                    </div>
+                {isOwnVendorProfile ? (
+                  <div className="border-t border-border/50">
+                    <OrdersTab />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-muted/50 px-4 py-5 text-center text-sm text-muted-foreground">
-                No {contentTab} yet.
-              </div>
-            )}
-          </section>
+                ) : null}
+              </section>
+            </>
+          )}
 
-          <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
-            <div>
-              <h2 className="text-base font-700 text-foreground">Featured dishes</h2>
-              <p className="text-sm text-muted-foreground mt-1">Popular items people will want first.</p>
-            </div>
-
-            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-              {vendor.menu.slice(0, 8).map((item) => (
+          {activePublicTab === 'posts' && (
+            <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
+              <div className="flex items-center gap-2 rounded-2xl bg-muted p-1">
                 <button
-                  key={item.id}
-                  onClick={() => item.availability !== 'sold_out' && openCustomization(item)}
-                  className="w-44 shrink-0 rounded-2xl border border-border bg-card overflow-hidden text-left"
+                  onClick={() => setContentTab('posts')}
+                  className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${contentTab === 'posts' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
                 >
-                  <div className="aspect-[4/3] bg-muted">
-                    <img src={item.image} alt={item.imageAlt} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-3">
-                    <p className="text-sm font-700 text-foreground line-clamp-1">{item.title}</p>
-                    <p className="text-sm text-primary font-semibold mt-1">${item.price}</p>
-                  </div>
+                  Posts
                 </button>
-              ))}
-            </div>
-          </section>
-
-          <section id="vendor-menu" className="rounded-3xl border border-border bg-card overflow-hidden">
-            <div className="px-5 pt-5 pb-3">
-              <h2 className="text-base font-700 text-foreground">Menu</h2>
-              <p className="text-sm text-muted-foreground mt-1">Tap any item to view details or add it to cart.</p>
-            </div>
-
-            <div className="bg-card border-b border-border/50 px-4 py-3 z-20">
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                {categories.map((cat) => (
-                  <button
-                    suppressHydrationWarning
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-600 transition-all duration-150 tracking-snug ${
-                      activeCategory === cat
-                        ? 'bg-primary text-white shadow-sm shadow-primary/20'
-                        : 'bg-muted text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {cat !== 'all' && <span>{CATEGORY_ICONS[cat] || '🍴'}</span>}
-                    {cat === 'all' ? 'All Items' : cat}
-                  </button>
-                ))}
+                <button
+                  onClick={() => setContentTab('kitchen')}
+                  className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${contentTab === 'kitchen' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Kitchen
+                </button>
               </div>
-            </div>
 
-            <div className="divide-y divide-border/40 px-1">
-              {filteredMenu.length === 0 ? (
-                <div className="px-4 py-12 text-center">
-                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                    <ShoppingBag className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-sm font-700 text-foreground mb-1">No menu items yet</h3>
-                  <p className="text-sm text-muted-foreground">This chef has not added meals yet.</p>
+              {vendorPosts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  {(contentTab === 'posts' ? vendorPosts.filter((post) => post.media_type !== 'video') : vendorPosts.filter((post) => post.media_type === 'video')).slice(0, 12).map((post, index) => (
+                    <button
+                      key={post.id}
+                      onClick={() => toast.message(post.caption || 'Post opened')}
+                      className="aspect-square overflow-hidden rounded-2xl bg-muted relative"
+                    >
+                      {post.media_type === 'video' ? (
+                        <video src={post.media_url} className="w-full h-full object-cover" muted playsInline />
+                      ) : (
+                        <img src={post.media_url} alt={post.caption || 'Chef post'} className="w-full h-full object-cover" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                      {post.media_type === 'video' && (
+                        <div className="absolute top-2 right-2 rounded-full bg-black/55 p-1.5">
+                          <Play className="w-3.5 h-3.5 text-white fill-white" />
+                        </div>
+                      )}
+                      {index === 0 && (
+                        <div className="absolute top-2 left-2 rounded-full bg-black/55 p-1.5">
+                          <Pin className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
                 </div>
               ) : (
-                filteredMenu.map((item) => {
-                  const isSoldOut = item.availability === 'sold_out';
-                  const cartQty = cart
-                    .filter((c) => c.itemId === item.id)
-                    .reduce((sum, c) => sum + c.qty, 0);
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={`flex gap-4 p-4 bg-card transition-all duration-200 rounded-xl my-0.5 hover:bg-muted/25 ${
-                        isSoldOut ? 'opacity-60' : 'cursor-pointer'
-                      }`}
-                    >
-                      <button
-                        onClick={() => openCustomization(item)}
-                        disabled={isSoldOut}
-                        className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-muted shrink-0 focus:outline-none group/img"
-                        aria-label={`Customize ${item.title}`}
-                      >
-                        <img
-                          src={item.image}
-                          alt={item.imageAlt}
-                          className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                        {item.popular && (
-                          <div className="absolute top-1.5 left-1.5 bg-amber-400 text-white text-[9px] font-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                            <Flame className="w-2.5 h-2.5" />
-                            Popular
-                          </div>
-                        )}
-                        {cartQty > 0 && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-primary text-white text-[10px] font-700 rounded-full flex items-center justify-center font-tabular">
-                            {cartQty}
-                          </div>
-                        )}
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        <button
-                          onClick={() => openCustomization(item)}
-                          disabled={isSoldOut}
-                          className="text-left w-full"
-                        >
-                          <h3 className="text-[14px] font-700 text-foreground leading-snug tracking-snug">{item.title}</h3>
-                          <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{item.description}</p>
-                        </button>
-
-                        {item.availabilityLabel && (
-                          <div className="mt-2">
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-600 px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[item.availability]}`}>
-                              {item.availability === 'limited' && <Zap className="w-2.5 h-2.5" />}
-                              {item.availability === 'available' && <CheckCircle className="w-2.5 h-2.5" />}
-                              {item.availabilityLabel}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between mt-3">
-                          <div>
-                            <span className="text-[15px] font-700 text-foreground font-tabular tracking-snug">${item.price}</span>
-                            {item.calories && item.calories > 0 && (
-                              <span className="text-[11px] text-muted-foreground ml-1.5">{item.calories} cal</span>
-                            )}
-                          </div>
-
-                          {isSoldOut ? (
-                            <span className="text-[12px] font-600 text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-                              Sold Out
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => openCustomization(item)}
-                              className={`flex items-center gap-1.5 text-[12px] font-600 px-3.5 py-1.5 rounded-full active:scale-95 transition-all duration-150 shadow-sm shadow-primary/15 ${
-                                cartQty > 0
-                                  ? 'bg-primary/8 text-primary border border-primary/20 hover:bg-primary hover:text-white hover:border-primary'
-                                  : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20'
-                              }`}
-                            >
-                              {cartQty > 0 ? (
-                                <>
-                                  <span className="font-tabular">{cartQty}</span>
-                                  <span>in cart</span>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="text-base leading-none">+</span>
-                                  Add
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-
-                        {item.modifierGroups && item.modifierGroups.length > 0 && !isSoldOut && (
-                          <p className="text-[10px] text-muted-foreground mt-1.5">
-                            Customizable · {item.modifierGroups.filter((g) => g.required).length > 0 ? 'Required choices' : 'Optional add-ons'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+                <div className="rounded-2xl bg-muted/50 px-4 py-8 text-center text-sm text-muted-foreground">
+                  No {contentTab} yet.
+                </div>
               )}
-            </div>
+            </section>
+          )}
 
-            {isOwnVendorProfile ? (
-              <div className="border-t border-border/50">
-                <OrdersTab />
+          {activePublicTab === 'reviews' && (
+            <section id="vendor-reviews" className="rounded-3xl border border-border bg-card p-5">
+              <div className="mb-4">
+                <h2 className="text-base font-700 text-foreground">Reviews</h2>
+                <p className="text-sm text-muted-foreground mt-1">What customers are saying.</p>
               </div>
-            ) : null}
-          </section>
 
-          <section id="vendor-reviews" className="rounded-3xl border border-border bg-card p-5">
-            <div className="mb-4">
-              <h2 className="text-base font-700 text-foreground">Reviews</h2>
-              <p className="text-sm text-muted-foreground mt-1">What customers are saying.</p>
-            </div>
-
-            {vendor.reviewCount > 0 ? (
-              <ChefReviews
-                chefName={vendor.name}
-                aggregateRating={vendor.rating}
-                reviewCount={vendor.reviewCount}
-                reviews={MOCK_REVIEWS}
-              />
-            ) : (
-              <div className="py-8 text-center">
-                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Star className="w-6 h-6 text-muted-foreground" />
+              {vendor.reviewCount > 0 ? (
+                <ChefReviews
+                  chefName={vendor.name}
+                  aggregateRating={vendor.rating}
+                  reviewCount={vendor.reviewCount}
+                  reviews={MOCK_REVIEWS}
+                />
+              ) : (
+                <div className="py-8 text-center">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                    <Star className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-sm font-700 text-foreground mb-1">No reviews yet</h3>
+                  <p className="text-sm text-muted-foreground">This chef has not received any reviews yet.</p>
                 </div>
-                <h3 className="text-sm font-700 text-foreground mb-1">No reviews yet</h3>
-                <p className="text-sm text-muted-foreground">This chef has not received any reviews yet.</p>
-              </div>
-            )}
-          </section>
+              )}
+            </section>
+          )}
 
-          <section className="rounded-3xl border border-border bg-card p-5 space-y-4">
-            <div>
-              <h2 className="text-base font-700 text-foreground">Trust</h2>
-              <p className="text-sm text-muted-foreground mt-1">Simple verification signals for customers.</p>
-            </div>
+          {activePublicTab === 'about' && (
+            <section className="rounded-3xl border border-border bg-card p-5 space-y-4">
+              <div>
+                <h2 className="text-base font-700 text-foreground">About</h2>
+                <p className="text-sm text-muted-foreground mt-1">Chef details and light trust info.</p>
+              </div>
 
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-600 text-foreground">Verified</span>
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.email_verified || (vendorOverride as any)?.phone_verified || (vendorOverride as any)?.identity_verified ? 'Yes' : 'No'}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-600 text-foreground">Certified</span>
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_certified ? 'Yes' : 'No'}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-600 text-foreground">Licensed</span>
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_licensed ? 'Yes' : 'No'}</span>
-              </div>
-            </div>
+              <p className="text-[14px] text-muted-foreground leading-relaxed">{vendor.bio}</p>
 
-            <TrustBadgeRow badges={trustScore.badges} compact showLocked={false} profile={{
-              avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
-              bio: vendor.bio,
-              email_verified: (vendorOverride as any)?.email_verified ?? false,
-              phone_verified: (vendorOverride as any)?.phone_verified ?? false,
-              identity_verified: (vendorOverride as any)?.identity_verified ?? false,
-              completed_orders: (vendorOverride as any)?.completed_orders ?? 0,
-              complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
-              rating_avg: vendor.rating,
-              rating_count: vendor.reviewCount,
-            }} credentials={vendorCredentials} limit={3} />
-          </section>
+              <div className="grid gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> <span>{vendor.location}</span></div>
+                {businessHours && <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> <span>{businessHours}</span></div>}
+              </div>
+
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-600 text-foreground">Verified</span>
+                  </div>
+                  <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.email_verified || (vendorOverride as any)?.phone_verified || (vendorOverride as any)?.identity_verified ? 'Yes' : 'No'}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-600 text-foreground">Certified</span>
+                  </div>
+                  <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_certified ? 'Yes' : 'No'}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-600 text-foreground">Licensed</span>
+                  </div>
+                  <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_licensed ? 'Yes' : 'No'}</span>
+                </div>
+              </div>
+
+              <TrustBadgeRow badges={trustScore.badges} compact showLocked={false} profile={{
+                avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
+                bio: vendor.bio,
+                email_verified: (vendorOverride as any)?.email_verified ?? false,
+                phone_verified: (vendorOverride as any)?.phone_verified ?? false,
+                identity_verified: (vendorOverride as any)?.identity_verified ?? false,
+                completed_orders: (vendorOverride as any)?.completed_orders ?? 0,
+                complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
+                rating_avg: vendor.rating,
+                rating_count: vendor.reviewCount,
+              }} credentials={vendorCredentials} limit={3} />
+            </section>
+          )}
         </div>
       </div>
 
