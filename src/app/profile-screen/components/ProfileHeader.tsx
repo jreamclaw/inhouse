@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChefHat, MapPin, Settings, Share2, ShoppingBag, BookOpen, LogOut, UserPlus, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
 
 function parseHoursFromBio(bio?: string | null) {
@@ -67,6 +68,7 @@ function getTodayStatus(hours?: string | null, availabilityOverride?: 'open' | '
 export default function ProfileHeader() {
   const { profile, user, signOut } = useAuth();
   const router = useRouter();
+  const supabase = createClient();
   const [followerCount, setFollowerCount] = useState<number>(profile?.followers_count ?? 0);
   const [followingCount, setFollowingCount] = useState<number>(profile?.following_count ?? 0);
   const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
@@ -80,6 +82,25 @@ export default function ProfileHeader() {
 
   const { cleanBio, hours } = useMemo(() => parseHoursFromBio(profile?.bio), [profile?.bio]);
   const openState = useMemo(() => getTodayStatus(hours, profile?.availability_override || null), [hours, profile?.availability_override]);
+
+  useEffect(() => {
+    const syncCounts = async () => {
+      if (!profile?.id) return;
+      try {
+        const [{ count: followersCount }, { count: followingCount }] = await Promise.all([
+          supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+          supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
+        ]);
+
+        setFollowerCount(followersCount || 0);
+        setFollowingCount(followingCount || 0);
+      } catch {
+        // keep existing counts if sync fails
+      }
+    };
+
+    void syncCounts();
+  }, [profile?.id, supabase]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -97,13 +118,13 @@ export default function ProfileHeader() {
 
   return (
     <div className="bg-card border border-[#E5E5E5] dark:border-white/15 rounded-2xl overflow-hidden">
-      <div className="relative h-20 sm:h-24 overflow-hidden bg-[#F7F7F7] dark:bg-white/5">
+      <div className="relative h-32 sm:h-36 overflow-hidden bg-[#F7F7F7] dark:bg-white/5">
         {coverUrl ? (
-          <img src={coverUrl} alt={`${displayName} cover`} className="w-full h-full object-cover" />
+          <img src={coverUrl} alt={`${displayName} cover`} className="w-full h-full object-cover object-center" />
         ) : (
           <div className={`w-full h-full ${isChef ? 'bg-gradient-to-br from-orange-400 to-amber-500' : 'bg-gradient-to-br from-violet-400 to-purple-500'}`} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
         <div className="absolute top-2.5 right-2.5 flex items-center gap-2">
           <button onClick={handleLogout} className="w-8 h-8 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/50 transition-all duration-150 active:scale-95" aria-label="Log out" title="Log out">
             <LogOut className="w-3.5 h-3.5 text-white" />
@@ -117,9 +138,9 @@ export default function ProfileHeader() {
       </div>
 
       <div className="px-4 pb-4 pt-3">
-        <div className="flex items-start gap-4 -mt-8 sm:-mt-9 mb-3.5">
+        <div className="flex items-start gap-3 -mt-7 sm:-mt-8 mb-3">
           <div className="relative shrink-0">
-            <div className={`w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-full overflow-hidden border-[3px] ${isChef ? 'border-[#F97316]' : 'border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated`}>
+            <div className={`w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-2xl overflow-hidden border-[3px] ${isChef ? 'border-[#F97316]' : 'border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated`}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" />
               ) : (
@@ -130,10 +151,10 @@ export default function ProfileHeader() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-6 sm:pt-7">
+          <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-5 sm:pt-6">
             <div className="text-center">
               <p className="text-[18px] font-700 text-[#111111] dark:text-white font-tabular tracking-snug">{profile?.posts_count ?? 0}</p>
-              <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] font-medium mt-0.5">Posts</p>
+              <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] font-medium mt-0.5">{isChef ? 'Menu' : 'Posts'}</p>
             </div>
             <button onClick={() => setSheetMode('followers')} className="text-center rounded-xl hover:bg-[#F7F7F7] dark:hover:bg-white/5 transition-colors py-1">
               <p className="text-[18px] font-700 text-[#111111] dark:text-white font-tabular tracking-snug">{(followerCount >= 1000) ? `${(followerCount / 1000).toFixed(1)}k` : followerCount}</p>
@@ -186,13 +207,9 @@ export default function ProfileHeader() {
 
           {isChef && hours && (
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              <div className="inline-flex items-center gap-2 text-[12px] text-[#555555] dark:text-[#E5E7EB] bg-muted px-3 py-2 rounded-xl border border-border">
-                <Clock3 className="w-3.5 h-3.5 text-[#F97316]" />
-                <span>{hours}</span>
-              </div>
-              <div className={`inline-flex items-center gap-2 text-[12px] px-3 py-2 rounded-xl font-700 border ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}>
+              <div className={`inline-flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-full font-700 border ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}>
                 <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                {openState.label}
+                {profile?.location ? `${profile.location} • ${openState.label}` : openState.label}
               </div>
             </div>
           )}
