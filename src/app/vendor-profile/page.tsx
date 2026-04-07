@@ -17,7 +17,8 @@ import {
   Users,
   Flame,
   Zap,
-  CheckCircle } from
+  CheckCircle,
+  ShieldCheck } from
 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,7 +29,6 @@ import CustomizationModal, {
 import CartDrawer from './components/CartDrawer';
 import OrdersTab from './components/OrdersTab';
 import ChefReviews, { MOCK_REVIEWS } from './components/ChefReviews';
-import TrustVerificationSection from '@/components/trust/TrustVerificationSection';
 import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import { calculateTrustScore } from '@/lib/trust/score';
 import type { TrustCredentialShape } from '@/lib/trust/types';
@@ -876,12 +876,21 @@ function VendorProfileContent() {
           <div className="flex items-center gap-2 mt-3.5 flex-wrap">
             <button
               suppressHydrationWarning
+              onClick={() => document.getElementById('vendor-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-primary text-white text-[13px] font-600 px-4 py-2.5 rounded-xl active:scale-95 transition-all duration-200 shadow-sm hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20"
+              aria-label="Order now"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              Order Now
+            </button>
+            <button
+              suppressHydrationWarning
               onClick={handleFollow}
               disabled={followLoading}
               className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 text-[13px] font-600 px-4 py-2.5 rounded-xl active:scale-95 transition-all duration-200 shadow-sm ${
               isFollowing ?
               'bg-muted text-muted-foreground border border-border/60 hover:border-red-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20' :
-              'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20'} ${
+              'bg-card text-foreground border border-border hover:bg-muted'} ${
               followLoading ? 'opacity-70 cursor-not-allowed' : ''}`}>
               {followLoading ?
               <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> :
@@ -895,22 +904,195 @@ function VendorProfileContent() {
               suppressHydrationWarning
               onClick={() => document.getElementById('vendor-reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               className="h-[42px] px-4 border border-border rounded-xl flex items-center justify-center gap-1.5 hover:bg-muted transition-colors text-[13px] font-600"
-              aria-label="View rating">
+              aria-label="View reviews">
               <Star className="w-4 h-4 text-foreground" />
-              Rating
-            </button>
-            <button
-              suppressHydrationWarning
-              onClick={() => document.getElementById('vendor-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="h-[42px] px-4 border border-border rounded-xl flex items-center justify-center gap-1.5 hover:bg-muted transition-colors text-[13px] font-600"
-              aria-label="View menu">
-              <ShoppingBag className="w-4 h-4 text-foreground" />
-              View Menu
+              Reviews
             </button>
           </div>
         </div>
 
         <div className="px-4 pt-4 space-y-4">
+          <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
+            <div>
+              <h2 className="text-base font-700 text-foreground">Featured dishes</h2>
+              <p className="text-sm text-muted-foreground mt-1">Popular items people will want first.</p>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+              {vendor.menu.slice(0, 8).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => item.availability !== 'sold_out' && openCustomization(item)}
+                  className="w-44 shrink-0 rounded-2xl border border-border bg-card overflow-hidden text-left"
+                >
+                  <div className="aspect-[4/3] bg-muted relative">
+                    <img src={item.image} alt={item.imageAlt} className="w-full h-full object-cover" />
+                    <div className="absolute left-2 top-2">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-600 px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[item.availability]}`}>
+                        {item.availability === 'limited' && <Zap className="w-2.5 h-2.5" />}
+                        {item.availability === 'available' && <CheckCircle className="w-2.5 h-2.5" />}
+                        {item.availability === 'sold_out' ? 'Sold out' : (item.availabilityLabel || 'Available')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-700 text-foreground line-clamp-1">{item.title}</p>
+                    <p className="text-sm text-primary font-semibold mt-1">${item.price}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section id="vendor-menu" className="rounded-3xl border border-border bg-card overflow-hidden">
+            <div className="px-5 pt-5 pb-3">
+              <h2 className="text-base font-700 text-foreground">Menu</h2>
+              <p className="text-sm text-muted-foreground mt-1">Tap any item to view details or add it to cart.</p>
+            </div>
+
+            <div className="bg-card border-b border-border/50 px-4 py-3 z-20">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {categories.map((cat) => (
+                  <button
+                    suppressHydrationWarning
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-600 transition-all duration-150 tracking-snug ${
+                      activeCategory === cat
+                        ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                        : 'bg-muted text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {cat !== 'all' && <span>{CATEGORY_ICONS[cat] || '🍴'}</span>}
+                    {cat === 'all' ? 'All Items' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="divide-y divide-border/40 px-1">
+              {filteredMenu.length === 0 ? (
+                <div className="px-4 py-12 text-center">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                    <ShoppingBag className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-sm font-700 text-foreground mb-1">No menu items yet</h3>
+                  <p className="text-sm text-muted-foreground">This chef has not added meals yet.</p>
+                </div>
+              ) : (
+                filteredMenu.map((item) => {
+                  const isSoldOut = item.availability === 'sold_out';
+                  const cartQty = cart
+                    .filter((c) => c.itemId === item.id)
+                    .reduce((sum, c) => sum + c.qty, 0);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex gap-4 p-4 bg-card transition-all duration-200 rounded-xl my-0.5 hover:bg-muted/25 ${
+                        isSoldOut ? 'opacity-60' : 'cursor-pointer'
+                      }`}
+                    >
+                      <button
+                        onClick={() => openCustomization(item)}
+                        disabled={isSoldOut}
+                        className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-muted shrink-0 focus:outline-none group/img"
+                        aria-label={`Customize ${item.title}`}
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.imageAlt}
+                          className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                        {item.popular && (
+                          <div className="absolute top-1.5 left-1.5 bg-amber-400 text-white text-[9px] font-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                            <Flame className="w-2.5 h-2.5" />
+                            Popular
+                          </div>
+                        )}
+                        {cartQty > 0 && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-primary text-white text-[10px] font-700 rounded-full flex items-center justify-center font-tabular">
+                            {cartQty}
+                          </div>
+                        )}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <button
+                          onClick={() => openCustomization(item)}
+                          disabled={isSoldOut}
+                          className="text-left w-full"
+                        >
+                          <h3 className="text-[14px] font-700 text-foreground leading-snug tracking-snug">{item.title}</h3>
+                          <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{item.description}</p>
+                        </button>
+
+                        {item.availabilityLabel && (
+                          <div className="mt-2">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-600 px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[item.availability]}`}>
+                              {item.availability === 'limited' && <Zap className="w-2.5 h-2.5" />}
+                              {item.availability === 'available' && <CheckCircle className="w-2.5 h-2.5" />}
+                              {item.availabilityLabel}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between mt-3">
+                          <div>
+                            <span className="text-[15px] font-700 text-foreground font-tabular tracking-snug">${item.price}</span>
+                            {item.calories && item.calories > 0 && (
+                              <span className="text-[11px] text-muted-foreground ml-1.5">{item.calories} cal</span>
+                            )}
+                          </div>
+
+                          {isSoldOut ? (
+                            <span className="text-[12px] font-600 text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+                              Sold Out
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => openCustomization(item)}
+                              className={`flex items-center gap-1.5 text-[12px] font-600 px-3.5 py-1.5 rounded-full active:scale-95 transition-all duration-150 shadow-sm shadow-primary/15 ${
+                                cartQty > 0
+                                  ? 'bg-primary/8 text-primary border border-primary/20 hover:bg-primary hover:text-white hover:border-primary'
+                                  : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20'
+                              }`}
+                            >
+                              {cartQty > 0 ? (
+                                <>
+                                  <span className="font-tabular">{cartQty}</span>
+                                  <span>in cart</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-base leading-none">+</span>
+                                  Add
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        {item.modifierGroups && item.modifierGroups.length > 0 && !isSoldOut && (
+                          <p className="text-[10px] text-muted-foreground mt-1.5">
+                            Customizable · {item.modifierGroups.filter((g) => g.required).length > 0 ? 'Required choices' : 'Optional add-ons'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {isOwnVendorProfile ? (
+              <div className="border-t border-border/50">
+                <OrdersTab />
+              </div>
+            ) : null}
+          </section>
+
           <section className="rounded-3xl border border-border bg-card p-4 space-y-4">
             <div className="flex items-center gap-2 rounded-2xl bg-muted p-1">
               <button
@@ -1152,35 +1334,35 @@ function VendorProfileContent() {
 
           <section className="rounded-3xl border border-border bg-card p-5 space-y-4">
             <div>
-              <h2 className="text-base font-700 text-foreground">About</h2>
-              <p className="text-sm text-muted-foreground mt-1">Chef details, location, and hours.</p>
+              <h2 className="text-base font-700 text-foreground">Trust</h2>
+              <p className="text-sm text-muted-foreground mt-1">Simple verification signals for customers.</p>
             </div>
 
-            <p className="text-[14px] text-muted-foreground leading-relaxed">{vendor.bio}</p>
-          </section>
-
-          <section className="rounded-3xl border border-border bg-card p-5 space-y-4">
-            <div>
-              <h2 className="text-base font-700 text-foreground">Trust & badges</h2>
-              <p className="text-sm text-muted-foreground mt-1">Verification details and earned badges.</p>
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-600 text-foreground">Verified</span>
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.email_verified || (vendorOverride as any)?.phone_verified || (vendorOverride as any)?.identity_verified ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-600 text-foreground">Certified</span>
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_certified ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-600 text-foreground">Licensed</span>
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_licensed ? 'Yes' : 'No'}</span>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <TrustBadgeRow badges={trustScore.badges} compact showLocked profile={{
-                avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
-                bio: vendor.bio,
-                email_verified: (vendorOverride as any)?.email_verified ?? false,
-                phone_verified: (vendorOverride as any)?.phone_verified ?? false,
-                identity_verified: (vendorOverride as any)?.identity_verified ?? false,
-                completed_orders: (vendorOverride as any)?.completed_orders ?? 0,
-                complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
-                rating_avg: vendor.rating,
-                rating_count: vendor.reviewCount,
-              }} credentials={vendorCredentials} limit={3} />
-              <Link href="/badges" className="inline-flex items-center text-[11px] font-semibold text-primary hover:underline">View badge requirements</Link>
-            </div>
-
-            <TrustVerificationSection score={trustScore} credentials={vendorCredentials} canManage={isOwnVendorProfile} profile={{
+            <TrustBadgeRow badges={trustScore.badges} compact showLocked={false} profile={{
               avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
               bio: vendor.bio,
               email_verified: (vendorOverride as any)?.email_verified ?? false,
@@ -1190,7 +1372,7 @@ function VendorProfileContent() {
               complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
               rating_avg: vendor.rating,
               rating_count: vendor.reviewCount,
-            }} />
+            }} credentials={vendorCredentials} limit={3} />
           </section>
         </div>
       </div>
