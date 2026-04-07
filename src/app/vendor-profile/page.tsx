@@ -433,6 +433,7 @@ function VendorProfileContent() {
   });
   const businessHours = vendor ? resolveBusinessHours(vendor as any) : null;
   const openState = getTodayOpenState(businessHours, vendor ? ((vendor as any)?.availability_override || null) : null);
+  const headerSummary = [vendor?.location, openState.label].filter(Boolean).join(' • ');
   const isOwnVendorProfile = !!user?.id && !!vendor?.id && user.id === vendor.id;
 
   useEffect(() => {
@@ -846,36 +847,18 @@ function VendorProfileContent() {
               <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2 mt-1">{vendor.bio}</p>
             </div>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                <MapPin className="w-3.5 h-3.5 text-primary" />
-                <span>{vendor.location}</span>
-                {vendor.distance && <span className="text-primary font-500">· {vendor.distance}</span>}
-              </div>
-              <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" />
-                <span>{vendor.deliveryTime === 'TBD' ? 'Pickup / delivery details coming soon' : vendor.deliveryTime}</span>
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                <span>{headerSummary}</span>
               </div>
               {vendor.minOrder > 0 && (
-                <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[12px] text-muted-foreground">
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>From ${vendor.minOrder}</span>
                 </div>
               )}
             </div>
-
-            {businessHours && (
-              <div className="flex flex-wrap items-center gap-2 pt-0">
-                <div className="inline-flex items-center gap-2 text-[12px] text-muted-foreground bg-muted px-3 py-2 rounded-xl">
-                  <Clock className="w-3.5 h-3.5 text-primary" />
-                  <span>{businessHours}</span>
-                </div>
-                <div className={`inline-flex items-center gap-2 text-[12px] px-3 py-2 rounded-xl font-700 ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
-                  <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                  {openState.label}
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -904,14 +887,6 @@ function VendorProfileContent() {
                   {isFollowing ? 'Following' : 'Follow'}
                 </>
               }
-            </button>
-            <button
-              suppressHydrationWarning
-              onClick={() => document.getElementById('vendor-reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="h-[42px] px-4 border border-border rounded-xl flex items-center justify-center gap-1.5 hover:bg-muted transition-colors text-[13px] font-600"
-              aria-label="View reviews">
-              <Star className="w-4 h-4 text-foreground" />
-              Reviews
             </button>
           </div>
         </div>
