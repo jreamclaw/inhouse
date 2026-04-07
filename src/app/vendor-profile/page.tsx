@@ -454,7 +454,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }, { data: credentials }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, privacy_show_location, followers_count, delivery_fee, role')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, delivery_fee, role')
           .eq('id', vendorId)
           .maybeSingle(),
         supabase
