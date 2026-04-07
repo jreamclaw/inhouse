@@ -91,17 +91,46 @@ function resolveBusinessHours(vendor: Partial<DbVendorProfile> & { bio?: string 
   return vendor.business_hours || parseBusinessHoursFromBio(vendor.bio) || null;
 }
 
+function formatHourLabel(value: string) {
+  const [hoursText, minutesText] = value.split(':');
+  const hours = Number(hoursText);
+  const minutes = Number(minutesText || '0');
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const normalizedHour = hours % 12 === 0 ? 12 : hours % 12;
+  return `${normalizedHour}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
+
+function parseWeeklyHours(hoursText?: string | null) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  if (!hoursText) {
+    return days.map((day) => ({ day, hours: 'Unavailable', isToday: false }));
+  }
+
+  const [daysPart = '', timePart = ''] = hoursText.split('•').map((part) => part.trim());
+  const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
+  const timeMatch = timePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+  const rangeLabel = timeMatch ? `${formatHourLabel(timeMatch[1])} – ${formatHourLabel(timeMatch[2])}` : (timePart || 'Unavailable');
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+
+  return days.map((day) => ({
+    day,
+    hours: openDays.includes(day) ? rangeLabel : 'Closed',
+    isToday: day === today,
+  }));
+}
+
 function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'open' | 'closed' | null) {
   if (availabilityOverride === 'open') {
-    return { label: 'Open now', isOpen: true };
+    return { label: 'Open now', isOpen: true, summary: 'Open now' };
   }
 
   if (availabilityOverride === 'closed') {
-    return { label: 'Closed manually', isOpen: false };
+    return { label: 'Closed manually', isOpen: false, summary: 'Closed · Opens later' };
   }
 
   if (!hoursText || hoursText.toLowerCase().includes('closed all week')) {
-    return { label: 'Closed now', isOpen: false };
+    return { label: 'Closed now', isOpen: false, summary: 'Closed · Opens later' };
   }
 
   const [daysPart = '', timePart = ''] = hoursText.split('•').map((part) => part.trim());
@@ -109,12 +138,12 @@ function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'op
   const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
 
   if (!openDays.includes(today)) {
-    return { label: 'Closed now', isOpen: false };
+    return { label: 'Closed now', isOpen: false, summary: 'Closed · Opens later' };
   }
 
   const timeMatch = timePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
   if (!timeMatch) {
-    return { label: 'Open today', isOpen: true };
+    return { label: 'Open today', isOpen: true, summary: 'Open now' };
   }
 
   const toMinutes = (value: string) => {
@@ -129,14 +158,14 @@ function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'op
   const isOpenNow = nowMinutes >= openMinutes && nowMinutes < closeMinutes;
 
   if (isOpenNow) {
-    return { label: 'Open now', isOpen: true };
+    return { label: 'Open now', isOpen: true, summary: `Open now · Closes ${formatHourLabel(timeMatch[2])}` };
   }
 
   if (nowMinutes < openMinutes) {
-    return { label: `Opens at ${timeMatch[1]}`, isOpen: false };
+    return { label: `Opens at ${timeMatch[1]}`, isOpen: false, summary: `Closed · Opens ${formatHourLabel(timeMatch[1])}` };
   }
 
-  return { label: 'Closed now', isOpen: false };
+  return { label: 'Closed now', isOpen: false, summary: 'Closed · Opens later' };
 }
 
 interface MenuItem {
@@ -423,6 +452,7 @@ function VendorProfileContent() {
   const [vendorCredentials, setVendorCredentials] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [hoursSheetOpen, setHoursSheetOpen] = useState(false);
   const [activePublicTab, setActivePublicTab] = useState<'menu' | 'posts' | 'reviews' | 'about'>('menu');
   const [contentTab, setContentTab] = useState<'posts' | 'kitchen'>('posts');
   const [debugInfo, setDebugInfo] = useState({
@@ -438,7 +468,8 @@ function VendorProfileContent() {
   });
   const businessHours = vendor ? resolveBusinessHours(vendor as any) : null;
   const openState = getTodayOpenState(businessHours, vendor ? ((vendor as any)?.availability_override || null) : null);
-  const headerSummary = [vendor?.location, openState.label].filter(Boolean).join(' • ');
+  const weeklyHours = parseWeeklyHours(businessHours);
+  const headerSummary = [vendor?.location, openState.summary].filter(Boolean).join(' • ');
   const isOwnVendorProfile = !!user?.id && !!vendor?.id && user.id === vendor.id;
 
   useEffect(() => {
@@ -853,19 +884,13 @@ function VendorProfileContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
+              <button
+                onClick={() => setHoursSheetOpen(true)}
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 hover:opacity-90 transition-opacity ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}
+              >
                 <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 <span>{headerSummary}</span>
-              </div>
-              {businessHours && (
-                <button
-                  onClick={() => setActivePublicTab('about')}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-muted/80 transition-colors"
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Hours</span>
-                </button>
-              )}
+              </button>
             </div>
           </div>
 
@@ -1193,7 +1218,16 @@ function VendorProfileContent() {
 
               <div className="grid gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> <span>{vendor.location}</span></div>
-                {businessHours && <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> <span>{businessHours}</span></div>}
+                {weeklyHours.length > 0 && (
+                  <div className="rounded-2xl bg-muted/50 p-3 space-y-2">
+                    {weeklyHours.map((entry) => (
+                      <div key={entry.day} className={`flex items-center justify-between gap-3 text-sm ${entry.isToday ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
+                        <span>{entry.day}</span>
+                        <span>{entry.hours}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -1235,6 +1269,29 @@ function VendorProfileContent() {
           )}
         </div>
       </div>
+
+      {hoursSheetOpen && (
+        <div className="fixed inset-0 z-[85]">
+          <button className="absolute inset-0 bg-black/45" onClick={() => setHoursSheetOpen(false)} aria-label="Close hours sheet" />
+          <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-card shadow-2xl max-h-[70vh] flex flex-col animate-in slide-in-from-bottom-8 duration-200">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border">
+              <div className="mx-auto h-1.5 w-12 rounded-full bg-muted absolute left-1/2 -translate-x-1/2 top-2" />
+              <h2 className="text-sm font-700 text-foreground">Hours</h2>
+              <button onClick={() => setHoursSheetOpen(false)} className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center">
+                <ChevronLeft className="w-4 h-4 text-muted-foreground rotate-[-90deg]" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2 overflow-y-auto">
+              {weeklyHours.map((entry) => (
+                <div key={entry.day} className={`flex items-center justify-between rounded-2xl px-4 py-3 ${entry.isToday ? 'bg-primary/8 text-foreground border border-primary/15' : 'bg-muted/50 text-muted-foreground'}`}>
+                  <span className="text-sm font-semibold">{entry.day}</span>
+                  <span className="text-sm">{entry.hours}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-transparent pointer-events-none">
           <div className="max-w-2xl mx-auto pointer-events-auto space-y-3">
