@@ -481,6 +481,23 @@ function VendorProfileContent() {
     }
   }, [vendorId, user?.id]);
 
+  const syncVendorFollowCounts = async (targetVendorId: string) => {
+    try {
+      const [{ count: followersCount }, { count: followingCount }] = await Promise.all([
+        supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', targetVendorId),
+        supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', targetVendorId),
+      ]);
+
+      setVendorOverride((prev) => prev ? {
+        ...prev,
+        followers: followersCount || 0,
+        following_count: followingCount || 0,
+      } as any : prev);
+    } catch {
+      // keep existing displayed counts if sync fails
+    }
+  };
+
   const loadVendor = async () => {
     setVendorLoading(true);
     setVendorNotFound(false);
@@ -621,6 +638,7 @@ function VendorProfileContent() {
         rating: Number(dbVendor.rating_avg || 0),
         reviewCount: Number(dbVendor.rating_count || 0),
         followers: dbVendor.followers_count || 0,
+        following_count: (dbVendor as any).following_count || 0,
         location: dbVendor.privacy_show_location === false ? 'Location private' : (dbVendor.location || 'Location unavailable'),
         distance: undefined,
         deliveryFee: Number(dbVendor.delivery_fee || 0),
@@ -628,6 +646,8 @@ function VendorProfileContent() {
         minOrder: mappedMenu.length > 0 ? Math.min(...mappedMenu.map((item) => item.price)) : 0,
         menu: mappedMenu,
       });
+
+      await syncVendorFollowCounts(dbVendor.id);
     } catch {
       setVendorOverride(null);
       if (isUuidVendor) {
