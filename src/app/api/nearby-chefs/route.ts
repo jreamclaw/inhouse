@@ -6,12 +6,8 @@ export async function GET() {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from('user_profiles')
-      .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles, business_hours, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, role, vendor_onboarding_complete, updated_at')
-      .eq('role', 'chef')
-      .eq('vendor_onboarding_complete', true)
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null)
+      .from('public_chef_discovery')
+      .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles, business_hours, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, vendor_onboarding_complete, updated_at')
       .order('updated_at', { ascending: false });
 
     if (error) {
