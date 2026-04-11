@@ -313,7 +313,7 @@ export default function NearbyPage() {
       const full = profile.location || 'Saved location';
       setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
     }
-  }, [profile, locationSource, forceSavedProfileLocation]);
+  }, [profile, locationSource]);
 
   useEffect(() => {
     startWatchingLocation();
