@@ -542,6 +542,15 @@ export default function NearbyPage() {
 
   const activeSortLabel = SORT_OPTIONS.find((s) => s.id === sortBy);
 
+  const locationSheetDebug = {
+    profileLocation: profile?.location || null,
+    manualLocationLabel: manualLocationLabel || null,
+    savedAddressesCount: savedAddresses.length,
+    displayFullAddress: displayLocation.fullAddress || null,
+    locationSource,
+    hasCoords: typeof locationCoords?.latitude === 'number' && typeof locationCoords?.longitude === 'number',
+  };
+
   const headerLocation = (
     <button onClick={() => setShowLocationSheet(true)} className="max-w-[170px] sm:max-w-[260px] flex items-center gap-1.5 text-[13px] font-700 text-foreground hover:text-primary transition-colors min-w-0">
       <span className="truncate">{displayLocation.shortLabel}</span>
@@ -705,12 +714,13 @@ export default function NearbyPage() {
 
             <div className="mb-4">
               <div className="rounded-2xl bg-muted/40 px-4 py-3 mb-3">
+                <p className="text-[10px] text-muted-foreground mb-2 break-words">debug: {JSON.stringify(locationSheetDebug)}</p>
                 <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-1">Current address</p>
                 <p className="text-sm text-foreground font-600">{displayLocation.fullAddress}</p>
               </div>
               <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Saved addresses</p>
               <div className="space-y-2">
-                {savedAddresses.length > 0 ? savedAddresses.map((address) => {
+                {Array.isArray(savedAddresses) && savedAddresses.length > 0 ? savedAddresses.map((address) => {
                   const AddressIcon = address.icon === 'home' ? Home : Briefcase;
                   return (
                     <button key={address.id} onClick={() => handleLocationChange(address.value)} className="w-full flex items-center gap-3 rounded-2xl px-1 py-3 text-left hover:bg-muted/40 transition-all">
