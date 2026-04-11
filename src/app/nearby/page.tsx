@@ -288,9 +288,9 @@ export default function NearbyPage() {
   const [locationLoading, setLocationLoading] = useState(true);
   const [forceSavedProfileLocation, setForceSavedProfileLocation] = useState(false);
   const [nearbyDebug, setNearbyDebug] = useState({
-    rawChefCount: 0,
+    serverRawChefCount: 0,
     filteredChefCount: 0,
-    targetChefInRaw: false,
+    targetChefInServerRaw: false,
     targetChefInFiltered: false,
   });
   const watchIdRef = useRef<number | null>(null);
@@ -432,21 +432,14 @@ export default function NearbyPage() {
   const loadVendors = async () => {
     setLoadingVendors(true);
     try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, bio, location, avatar_url, latitude, longitude, service_radius_miles, business_hours, availability_override, trust_score, trust_label, approved_credentials_count, email_verified, phone_verified, identity_verified, completed_orders, complaints_count, rating_avg, rating_count, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef')
-        .eq('role', 'chef')
-        .eq('vendor_onboarding_complete', true)
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
+      const response = await fetch('/api/nearby-chefs', { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'Failed to load nearby chefs.');
 
       const hasCoords = typeof locationCoords?.latitude === 'number' && typeof locationCoords?.longitude === 'number';
       const normalizedManual = manualLocationLabel.trim().toLowerCase();
 
-      const rawRows = ((data as DbVendorRow[] | null) ?? []);
+      const rawRows = ((payload?.chefs as DbVendorRow[] | null) ?? []);
 
       const mapped: Vendor[] = rawRows
         .map((row) => {
@@ -508,17 +501,17 @@ export default function NearbyPage() {
         .filter((row): row is Vendor => Boolean(row));
 
       setNearbyDebug({
-        rawChefCount: rawRows.length,
+        serverRawChefCount: payload?.debug?.rawChefCount ?? rawRows.length,
         filteredChefCount: mapped.length,
-        targetChefInRaw: rawRows.some((row) => row.id === '388eda79-4a09-44f2-88e5-ea1296d47f0d'),
+        targetChefInServerRaw: payload?.debug?.targetChefInServerRaw ?? rawRows.some((row) => row.id === '388eda79-4a09-44f2-88e5-ea1296d47f0d'),
         targetChefInFiltered: mapped.some((row) => row.id === '388eda79-4a09-44f2-88e5-ea1296d47f0d'),
       });
       setVendors(mapped);
     } catch {
       setNearbyDebug({
-        rawChefCount: 0,
+        serverRawChefCount: 0,
         filteredChefCount: 0,
-        targetChefInRaw: false,
+        targetChefInServerRaw: false,
         targetChefInFiltered: false,
       });
       setVendors([]);
@@ -600,9 +593,9 @@ export default function NearbyPage() {
           <p>saved profile latitude: {String(profile?.latitude ?? null)}</p>
           <p>saved profile longitude: {String(profile?.longitude ?? null)}</p>
           <p>customer radius: {customerRadiusMiles}</p>
-          <p>raw chef count: {nearbyDebug.rawChefCount}</p>
+          <p>server raw chef count: {nearbyDebug.serverRawChefCount}</p>
           <p>post-filter chef count: {nearbyDebug.filteredChefCount}</p>
-          <p>target chef in raw: {String(nearbyDebug.targetChefInRaw)}</p>
+          <p>target chef in server raw: {String(nearbyDebug.targetChefInServerRaw)}</p>
           <p>target chef after filter: {String(nearbyDebug.targetChefInFiltered)}</p>
         </div>
 
