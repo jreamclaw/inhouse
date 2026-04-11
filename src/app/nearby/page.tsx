@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { milesBetween } from '@/lib/location/distance';
 import { reverseGeocode } from '@/lib/location/geocode';
+import { getCurrentRuntimeLocation } from '@/lib/location/runtime';
 
 type SortOption = 'distance' | 'rating' | 'delivery' | 'fee';
 type LocationSource = 'browser' | 'saved-profile' | 'manual' | 'none';
@@ -389,24 +390,32 @@ export default function NearbyPage() {
     }
   };
 
-  const startWatchingLocation = () => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      setLocationLoading(false);
-      setLocationError('Browser location is unavailable. Using saved profile location if available.');
-      return;
-    }
-
+  const startWatchingLocation = async () => {
     setLocationLoading(true);
 
-    if (watchIdRef.current != null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
+    try {
+      const position = await getCurrentRuntimeLocation();
+      await handleBrowserLocationSuccess({
+        coords: {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: 0,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+          toJSON() {
+            return this;
+          },
+        },
+        timestamp: Date.now(),
+        toJSON() {
+          return this;
+        },
+      } as GeolocationPosition);
+    } catch {
+      handleBrowserLocationFailure();
     }
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      handleBrowserLocationSuccess,
-      handleBrowserLocationFailure,
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
-    );
   };
 
   const loadVendors = async () => {

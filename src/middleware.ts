@@ -74,7 +74,7 @@ export async function middleware(request: NextRequest) {
         .from('user_profiles')
         .select('role, onboarding_complete, vendor_onboarding_complete')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       const { destination, reason } = resolvePostLoginRoute(profileData ?? null);
 

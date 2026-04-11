@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import AppLogo from '@/components/ui/AppLogo';
+import { getPreferredAuthRedirectUrl } from '@/lib/auth/redirects';
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
@@ -19,7 +20,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/home-feed`,
+        redirectTo: `${getPreferredAuthRedirectUrl('/auth/callback')}?next=/home-feed`,
       });
       if (error) throw error;
       setSent(true);

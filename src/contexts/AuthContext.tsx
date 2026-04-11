@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { authDebug } from '@/lib/auth/debug';
 import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
+import { getPreferredAuthRedirectUrl, isCapacitorLikeRuntime } from '@/lib/auth/redirects';
 
 export interface UserProfile {
   id: string;
@@ -171,6 +172,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(verifiedSession);
           setUser(verifiedUser);
           await fetchProfile(verifiedUser.id);
+
+          if (isCapacitorLikeRuntime()) {
+            authDebug('auth-context.session-init.capacitor-restored', {
+              pathname,
+              sessionExists: true,
+              userId: verifiedUser.id,
+              profileRole: null,
+              onboardingComplete: null,
+              vendorOnboardingComplete: null,
+              redirectTarget: null,
+              reason: 'session-restored-in-native-shell',
+            });
+          }
+
           setLoading(false);
           return;
         }
@@ -232,7 +247,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           avatar_url: metadata?.avatarUrl || '',
           ...(metadata?.role ? { role: metadata.role } : {}),
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+        emailRedirectTo: getPreferredAuthRedirectUrl('/auth/callback')
       }
     });
     if (error) throw error;

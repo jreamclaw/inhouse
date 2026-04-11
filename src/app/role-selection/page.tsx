@@ -55,32 +55,6 @@ export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
-
-  useEffect(() => {
-    const checkClientSession = async () => {
-      const sessionResult = await supabase.auth.getUser();
-      console.log('ROLE_SELECTION_CLIENT_GET_USER', sessionResult);
-      setDebugInfo((prev) => ({
-        ...prev,
-        clientGetUserResult: {
-          data: sessionResult.data,
-          error: sessionResult.error?.message ?? null,
-        },
-      }));
-    };
-
-    checkClientSession().catch((sessionError: any) => {
-      console.log('ROLE_SELECTION_CLIENT_GET_USER_ERROR', sessionError?.message || sessionError);
-      setDebugInfo((prev) => ({
-        ...prev,
-        clientGetUserResult: {
-          data: null,
-          error: sessionError?.message ?? 'unknown',
-        },
-      }));
-    });
-  }, [supabase]);
 
   const handleContinue = async () => {
     let activeUser = user;
@@ -88,9 +62,7 @@ export default function RoleSelectionPage() {
     if (!activeUser) {
       try {
         activeUser = await getCurrentUser();
-      } catch (sessionError: any) {
-        console.log('ROLE_CURRENT_USER_ERROR', sessionError?.message || sessionError);
-      }
+      } catch {}
     }
 
     authDebug('role-selection.continue-clicked', {
@@ -101,15 +73,6 @@ export default function RoleSelectionPage() {
       onboardingComplete: null,
       vendorOnboardingComplete: null,
       redirectTarget: null,
-    });
-    setDebugInfo({
-      selectedRole,
-      userIdPresent: !!activeUser?.id,
-      profileCheckResult: null,
-      bootstrapInsertResult: null,
-      roleUpdateResult: null,
-      errorText: null,
-      redirectReached: false,
     });
 
     if (!selectedRole) {
@@ -138,11 +101,6 @@ export default function RoleSelectionPage() {
         reason: missingUserMessage,
       });
       setError(missingUserMessage);
-      setDebugInfo((prev) => ({
-        ...prev,
-        userIdPresent: false,
-        errorText: missingUserMessage,
-      }));
       return;
     }
 
@@ -166,16 +124,6 @@ export default function RoleSelectionPage() {
         .eq('id', activeUser.id)
         .limit(1);
 
-      console.log('ROLE_PROFILE_CHECK', profileCheckResponse);
-      setDebugInfo((prev) => ({
-        ...prev,
-        profileCheckResult: {
-          data: profileCheckResponse.data,
-          error: profileCheckResponse.error?.message ?? null,
-          status: profileCheckResponse.status,
-          statusText: profileCheckResponse.statusText,
-        },
-      }));
 
       const { data: existingProfileRows, error: existingProfileError } = profileCheckResponse;
 
@@ -219,16 +167,6 @@ export default function RoleSelectionPage() {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
 
-        console.log('ROLE_PROFILE_BOOTSTRAP', bootstrapResponse);
-        setDebugInfo((prev) => ({
-          ...prev,
-          bootstrapInsertResult: {
-            data: bootstrapResponse.data ?? null,
-            error: bootstrapResponse.error?.message ?? null,
-            status: bootstrapResponse.status,
-            statusText: bootstrapResponse.statusText,
-          },
-        }));
 
         const { error: bootstrapError } = bootstrapResponse;
 
@@ -254,16 +192,6 @@ export default function RoleSelectionPage() {
         .eq('id', activeUser.id)
         .select('id, role');
 
-      console.log('ROLE_UPDATE_RESULT', roleUpdateResponse);
-      setDebugInfo((prev) => ({
-        ...prev,
-        roleUpdateResult: {
-          data: roleUpdateResponse.data,
-          error: roleUpdateResponse.error?.message ?? null,
-          status: roleUpdateResponse.status,
-          statusText: roleUpdateResponse.statusText,
-        },
-      }));
 
       const { data: updatedRows, error: updateError } = roleUpdateResponse;
 
@@ -294,10 +222,6 @@ export default function RoleSelectionPage() {
         });
         const zeroRowsMessage = 'role update returned zero rows';
         setError(zeroRowsMessage);
-        setDebugInfo((prev) => ({
-          ...prev,
-          errorText: zeroRowsMessage,
-        }));
         throw new Error(zeroRowsMessage);
       }
 
@@ -314,30 +238,13 @@ export default function RoleSelectionPage() {
         rowsUpdated: updatedRows.length,
       });
 
-      console.log('ROLE_SAVE_SUCCESS', {
-        selectedRole,
-        userId: activeUser.id,
-        data: updatedRows,
-      });
-
-      setDebugInfo((prev) => ({
-        ...prev,
-        errorText: null,
-        redirectReached: true,
-        successMessage: `role saved successfully: ${selectedRole}`,
-      }));
 
       refreshProfile().catch(() => undefined);
       window.location.assign(redirectTarget);
       return;
     } catch (err: any) {
       const exactMessage = err?.message || 'Failed to save your role. Please try again.';
-      console.log('ROLE_SAVE_ERROR', exactMessage);
       setError(exactMessage);
-      setDebugInfo((prev) => ({
-        ...prev,
-        errorText: exactMessage,
-      }));
     } finally {
       setLoading(false);
     }
@@ -428,18 +335,6 @@ export default function RoleSelectionPage() {
           </div>
         )}
 
-        <div className="mb-4 rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground space-y-2">
-          <p><span className="font-semibold text-foreground">Debug</span></p>
-          <p>selectedRole: {String(debugInfo.selectedRole ?? selectedRole ?? null)}</p>
-          <p>user.id present: {String(debugInfo.userIdPresent ?? !!user?.id)}</p>
-          <p>client getUser result: {JSON.stringify(debugInfo.clientGetUserResult ?? null)}</p>
-          <p>profile check result: {JSON.stringify(debugInfo.profileCheckResult ?? null)}</p>
-          <p>bootstrap insert result: {JSON.stringify(debugInfo.bootstrapInsertResult ?? null)}</p>
-          <p>role update result: {JSON.stringify(debugInfo.roleUpdateResult ?? null)}</p>
-          <p>error text: {String(debugInfo.errorText ?? error ?? '')}</p>
-          <p>redirect reached: {String(debugInfo.redirectReached ?? false)}</p>
-          <p>success: {String(debugInfo.successMessage ?? '')}</p>
-        </div>
 
         {/* Continue Button */}
         <button

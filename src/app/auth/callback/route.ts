@@ -4,15 +4,22 @@ import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
 import { NextResponse } from 'next/server';
 import { type NextRequest } from 'next/server';
 
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://inhouseapp.net').replace(/\/+$/, '');
+
 function normalizeNextPath(next: string | null) {
   if (!next) return 'role-based';
   if (next === 'role-based') return next;
   return next.startsWith('/') ? next : '/home-feed';
 }
 
+function getAppOrigin(origin: string) {
+  return origin === 'null' ? APP_URL : origin;
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const { searchParams, origin, pathname } = url;
+  const appOrigin = getAppOrigin(origin);
   const code = searchParams.get('code');
   const next = normalizeNextPath(searchParams.get('next'));
 
@@ -39,14 +46,14 @@ export async function GET(request: NextRequest) {
       redirectTarget: '/login',
       reason: 'missing-code',
     });
-    const loginUrl = new URL('/login', origin);
+    const loginUrl = new URL('/login', appOrigin);
     if (next && next !== 'role-based') {
       loginUrl.searchParams.set('next', next);
     }
     return NextResponse.redirect(loginUrl);
   }
 
-  const redirectUrlPlaceholder = new URL(next === 'role-based' ? '/home-feed' : next, origin).toString();
+  const redirectUrlPlaceholder = new URL(next === 'role-based' ? '/home-feed' : next, appOrigin).toString();
   const response = NextResponse.redirect(redirectUrlPlaceholder);
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -109,7 +116,7 @@ export async function GET(request: NextRequest) {
       redirectTarget: '/login',
       reason: error?.message ?? 'missing-session-after-exchange',
     });
-    const loginUrl = new URL('/login', origin);
+    const loginUrl = new URL('/login', appOrigin);
     if (next && next !== 'role-based') {
       loginUrl.searchParams.set('next', next);
     }
@@ -239,7 +246,7 @@ export async function GET(request: NextRequest) {
     ? resolvePostLoginRoute(profile)
     : { destination: next, reason: 'explicit-next' };
 
-  const redirectUrl = new URL(destination, origin).toString();
+  const redirectUrl = new URL(destination, appOrigin).toString();
 
   authDebug('auth-callback.final-redirect', {
     pathname,

@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { authDebug } from '@/lib/auth/debug';
+import { getOAuthCallbackRedirect, isCapacitorLikeRuntime } from '@/lib/auth/redirects';
 import AppLogo from '@/components/ui/AppLogo';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -106,18 +107,26 @@ export default function SignUpPage() {
     setError('');
     setOauthLoading(provider);
     try {
-      const redirectTo = provider === 'google'
-        ? `${window.location.origin}/oauth-complete`
-        : `${window.location.origin}/auth/callback?next=role-based`;
+      const oauthTarget = getOAuthCallbackRedirect(provider);
+      const useExternalBrowserStyleFlow = provider === 'google' && isCapacitorLikeRuntime();
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo,
-          skipBrowserRedirect: false,
+          redirectTo: oauthTarget.redirectTo,
+          skipBrowserRedirect: useExternalBrowserStyleFlow,
         },
       });
       if (error) throw error;
+
+      if (useExternalBrowserStyleFlow) {
+        const launchUrl = data?.url;
+        if (!launchUrl) {
+          throw new Error('Google sign-in URL was not returned.');
+        }
+        window.location.assign(launchUrl);
+        return;
+      }
     } catch (err: any) {
       setError(err?.message || `Failed to sign up with ${provider}. Please try again.`);
       setOauthLoading(null);

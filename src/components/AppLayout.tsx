@@ -40,7 +40,8 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
+    if (loading) return;
+    if (!user) router.replace('/login');
   }, [loading, user, router]);
 
   const toggleTheme = () => {
@@ -55,8 +56,12 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
     }
   };
 
-  if (loading || !user) {
+  if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center px-4"><div className="flex items-center gap-3 text-[#777777] dark:text-[#CBD5E1]"><div className="w-5 h-5 border-2 border-[#F97316] border-t-transparent rounded-full animate-spin" /><span className="text-sm font-semibold text-[#555555] dark:text-[#E5E7EB]">Loading app...</span></div></div>;
+  }
+
+  if (!user) {
+    return null;
   }
 
   const avatarUrl = profile?.avatar_url || null;

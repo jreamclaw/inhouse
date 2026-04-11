@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
 import { authDebug } from '@/lib/auth/debug';
+import { isCapacitorLikeRuntime } from '@/lib/auth/redirects';
 import { Loader2 } from 'lucide-react';
 
 export default function OAuthCompletePage() {
@@ -17,7 +18,6 @@ export default function OAuthCompletePage() {
       const pathname = '/oauth-complete';
 
       const userResult = await supabase.auth.getUser();
-      console.log('OAUTH_COMPLETE_GET_USER', userResult);
 
       const user = userResult.data.user;
       if (userResult.error || !user) {
@@ -42,8 +42,6 @@ export default function OAuthCompletePage() {
         .eq('id', user.id)
         .maybeSingle();
 
-      console.log('OAUTH_COMPLETE_PROFILE', { profile, profileError });
-
       if (profileError) {
         setError(profileError.message);
         return;
@@ -65,8 +63,6 @@ export default function OAuthCompletePage() {
           }, { onConflict: 'id' })
           .select('role, onboarding_complete, vendor_onboarding_complete')
           .maybeSingle();
-
-        console.log('OAUTH_COMPLETE_BOOTSTRAP', bootstrapResult);
 
         if (bootstrapResult.error) {
           setError(bootstrapResult.error.message);
@@ -93,11 +89,15 @@ export default function OAuthCompletePage() {
         reason,
       });
 
+      if (isCapacitorLikeRuntime()) {
+        window.location.replace(destination);
+        return;
+      }
+
       window.location.assign(destination);
     };
 
     finishOAuth().catch((err: any) => {
-      console.log('OAUTH_COMPLETE_ERROR', err?.message || err);
       setError(err?.message || 'Failed to finish Google sign in.');
     });
   }, [router, supabase]);

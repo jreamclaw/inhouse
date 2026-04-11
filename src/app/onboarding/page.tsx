@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { reverseGeocode } from '@/lib/location/geocode';
+import { getCurrentRuntimeLocation, RuntimeLocationError } from '@/lib/location/runtime';
 import { authDebug } from '@/lib/auth/debug';
 import AppLayout from '@/components/AppLayout';
 import { ArrowRight, CheckCircle2, Compass, Loader2, MapPin, ShoppingBag, Sparkles, Users } from 'lucide-react';
@@ -127,51 +128,39 @@ export default function OnboardingPage() {
     }
   }, [loading, user, profile, router, resolvedUserId]);
 
-  const handleRequestLocation = () => {
+  const handleRequestLocation = async () => {
     setLocationLoading(true);
     setError('');
 
-    if (!navigator.geolocation) {
-      setError('Location is not supported on this device.');
-      setLocationGranted(false);
-      setLocationLoading(false);
-      return;
-    }
+    try {
+      const position = await getCurrentRuntimeLocation();
+      const resolved = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+      const fullAddress = resolved?.fullAddress || 'Current location';
+      setLocationGranted(true);
+      setLocationLabel(fullAddress);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const resolved = await reverseGeocode(position.coords.latitude, position.coords.longitude);
-          const fullAddress = resolved?.fullAddress || 'Current location';
-          setLocationGranted(true);
-          setLocationLabel(fullAddress);
+      if (resolvedUserId) {
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({
+            location: fullAddress,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', resolvedUserId);
 
-          if (resolvedUserId) {
-            const { error: updateError } = await supabase
-              .from('user_profiles')
-              .update({
-                location: fullAddress,
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', resolvedUserId);
-
-            if (updateError) throw updateError;
-          }
-        } catch (err: any) {
-          setError(err?.message || 'We could not save your location.');
-          setLocationGranted(false);
-        } finally {
-          setLocationLoading(false);
-        }
-      },
-      () => {
-        setError('Location access was denied. You can continue without it.');
-        setLocationGranted(false);
-        setLocationLoading(false);
+        if (updateError) throw updateError;
       }
-    );
+    } catch (err: any) {
+      const message = err instanceof RuntimeLocationError
+        ? err.message
+        : (err?.message || 'We could not save your location.');
+      setError(message);
+      setLocationGranted(false);
+    } finally {
+      setLocationLoading(false);
+    }
   };
 
   const handleFinish = async () => {

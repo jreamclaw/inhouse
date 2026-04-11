@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { getStripeServer } from '@/lib/stripe';
 
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://inhouseapp.net').replace(/\/+$/, '');
+
 export async function POST() {
   try {
     const stripe = getStripeServer();
@@ -96,12 +98,12 @@ export async function POST() {
       }
     }
 
-    const productionPayoutUrl = 'https://inhouseapp.net/chef-menu?section=payouts';
+    const payoutReturnUrl = `${APP_URL}/chef-menu?section=payouts`;
 
     const link = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: productionPayoutUrl,
-      return_url: productionPayoutUrl,
+      refresh_url: payoutReturnUrl,
+      return_url: payoutReturnUrl,
       type: 'account_onboarding',
     });
 

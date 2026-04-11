@@ -67,12 +67,15 @@ export async function POST() {
         charges_enabled: false,
         payouts_enabled: false,
         details_submitted: false,
+        onboarding_complete: false,
       });
     }
 
     const account = await stripe.accounts.retrieve(profile.stripe_account_id);
 
-    const stripe_onboarding_complete = Boolean(account.details_submitted && account.charges_enabled && account.payouts_enabled);
+    const details_submitted = Boolean(account.details_submitted);
+    const stripe_connected = Boolean(profile.stripe_account_id);
+    const stripe_onboarding_complete = Boolean(details_submitted && account.charges_enabled && account.payouts_enabled);
     const stripe_charges_enabled = Boolean(account.charges_enabled);
     const stripe_payouts_enabled = Boolean(account.payouts_enabled);
 
@@ -86,11 +89,11 @@ export async function POST() {
       .eq('id', user.id);
 
     return NextResponse.json({
-      connected: true,
+      connected: stripe_connected,
       stripe_account_id: profile.stripe_account_id,
       charges_enabled: stripe_charges_enabled,
       payouts_enabled: stripe_payouts_enabled,
-      details_submitted: Boolean(account.details_submitted),
+      details_submitted,
       onboarding_complete: stripe_onboarding_complete,
     });
   } catch (error: any) {

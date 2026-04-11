@@ -210,6 +210,9 @@ export default function ChefMenuPage() {
     }
   };
 
+  const stripeConnected = Boolean(stripeState?.stripe_account_id);
+  const stripeReadyForPayouts = Boolean(stripeState?.stripe_onboarding_complete && stripeState?.stripe_charges_enabled && stripeState?.stripe_payouts_enabled);
+
   const syncStripeStatus = async () => {
     try {
       setStripeSyncing(true);
@@ -226,6 +229,8 @@ export default function ChefMenuPage() {
         stripe_onboarding_complete: !!payload?.onboarding_complete,
         stripe_charges_enabled: !!payload?.charges_enabled,
         stripe_payouts_enabled: !!payload?.payouts_enabled,
+        stripe_connected: !!payload?.connected,
+        stripe_details_submitted: !!payload?.details_submitted,
       }));
     } catch (error: any) {
       console.error(error);
@@ -242,7 +247,7 @@ export default function ChefMenuPage() {
       const response = await fetch('/api/stripe/connect', { method: 'POST' });
       const payload = await response.json();
       if (!response.ok || !payload?.url) throw new Error(payload?.error || 'Unable to start Stripe setup.');
-      window.location.href = payload.url;
+      window.location.assign(payload.url);
     } catch (error: any) {
       const message = error?.message || 'Unable to connect Stripe right now.';
       setStripeError(message);
@@ -489,7 +494,7 @@ export default function ChefMenuPage() {
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center justify-between gap-4 mb-3"><div><p className="text-sm font-700 text-foreground">Chef readiness</p><p className="text-xs text-muted-foreground">{readiness.completedCount} of {readiness.totalCount} setup areas complete</p></div><div className="text-right"><p className="text-2xl font-700 text-foreground">{readiness.percent}%</p><p className="text-xs text-muted-foreground capitalize">{readiness.status.replace('-', ' ')}</p></div></div>
               <div className="w-full h-2 rounded-full bg-muted overflow-hidden mb-4"><div className="h-full bg-primary rounded-full" style={{ width: `${readiness.percent}%` }} /></div>
-              <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{item.key === 'payouts' && stripeSyncing ? <span className="text-xs font-700 text-amber-600">Checking payout setup...</span> : item.key === 'payouts' && item.complete ? <span className="text-xs font-700 text-green-600">Payouts connected</span> : !item.complete && <button onClick={() => item.key === 'menu' ? setShowMealForm(true) : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
+              <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{item.key === 'payouts' && stripeSyncing ? <span className="text-xs font-700 text-amber-600">Checking payout setup...</span> : item.key === 'payouts' && stripeReadyForPayouts ? <span className="text-xs font-700 text-green-600">Payouts connected</span> : item.key === 'payouts' && stripeConnected ? <span className="text-xs font-700 text-sky-600">Stripe connected</span> : !item.complete && <button onClick={() => item.key === 'menu' ? setShowMealForm(true) : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
             </div>
         )}
 
@@ -538,9 +543,10 @@ export default function ChefMenuPage() {
 
             <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
               <div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div>
-              <p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeState?.stripe_onboarding_complete ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeState?.stripe_account_id ? 'Your Stripe account exists, but onboarding is not complete yet.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p>
+              <p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeReadyForPayouts ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeConnected ? 'Your Stripe account is connected. Finish payout verification if Stripe still needs more details.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p>
               {stripeError && <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">{stripeError}</div>}
-              <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeState?.stripe_onboarding_complete ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeState?.stripe_account_id ? 'Resume payout setup' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
+              <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeReadyForPayouts ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeConnected ? 'Manage Stripe' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
+              <p className="mt-3 text-[11px] text-muted-foreground">Stripe onboarding opens in an external secure page and returns here when finished.</p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5">
