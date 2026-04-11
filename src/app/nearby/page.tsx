@@ -24,7 +24,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { milesBetween } from '@/lib/location/distance';
 import { reverseGeocode } from '@/lib/location/geocode';
-import { getCurrentRuntimeLocation } from '@/lib/location/runtime';
 
 type SortOption = 'distance' | 'rating' | 'delivery' | 'fee';
 type LocationSource = 'browser' | 'saved-profile' | 'manual' | 'none';
@@ -390,32 +389,24 @@ export default function NearbyPage() {
     }
   };
 
-  const startWatchingLocation = async () => {
+  const startWatchingLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationLoading(false);
+      setLocationError('Browser location is unavailable. Using saved profile location if available.');
+      return;
+    }
+
     setLocationLoading(true);
 
-    try {
-      const position = await getCurrentRuntimeLocation();
-      await handleBrowserLocationSuccess({
-        coords: {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: 0,
-          altitude: null,
-          altitudeAccuracy: null,
-          heading: null,
-          speed: null,
-          toJSON() {
-            return this;
-          },
-        },
-        timestamp: Date.now(),
-        toJSON() {
-          return this;
-        },
-      } as GeolocationPosition);
-    } catch {
-      handleBrowserLocationFailure();
+    if (watchIdRef.current != null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
     }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      handleBrowserLocationSuccess,
+      handleBrowserLocationFailure,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
+    );
   };
 
   const loadVendors = async () => {
@@ -542,25 +533,8 @@ export default function NearbyPage() {
 
   const activeSortLabel = SORT_OPTIONS.find((s) => s.id === sortBy);
 
-  const locationSheetDebug = {
-    profileLocation: profile?.location || null,
-    manualLocationLabel: manualLocationLabel || null,
-    savedAddressesCount: savedAddresses.length,
-    displayFullAddress: displayLocation.fullAddress || null,
-    locationSource,
-    hasCoords: typeof locationCoords?.latitude === 'number' && typeof locationCoords?.longitude === 'number',
-  };
-
-  const openLocationPicker = () => {
-    const nextValue = window.prompt('Enter your city or address', displayLocation.fullAddress === DEFAULT_LOCATION ? '' : displayLocation.fullAddress);
-    if (nextValue === null) return;
-    const trimmed = nextValue.trim();
-    if (!trimmed) return;
-    void handleLocationChange(trimmed);
-  };
-
   const headerLocation = (
-    <button onClick={openLocationPicker} className="max-w-[170px] sm:max-w-[260px] flex items-center gap-1.5 text-[13px] font-700 text-foreground hover:text-primary transition-colors min-w-0">
+    <button onClick={() => setShowLocationSheet(true)} className="max-w-[170px] sm:max-w-[260px] flex items-center gap-1.5 text-[13px] font-700 text-foreground hover:text-primary transition-colors min-w-0">
       <span className="truncate">{displayLocation.shortLabel}</span>
       <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </button>
@@ -669,6 +643,100 @@ export default function NearbyPage() {
         )}
       </div>
 
+      {showLocationSheet && (
+        <div className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-end sm:items-center sm:justify-center">
+          <div className="w-full sm:max-w-lg bg-card rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-700 text-foreground">Addresses</h2>
+              <button onClick={() => setShowLocationSheet(false)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors">
+                <X className="w-4 h-4 text-foreground" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCustomSubmit} className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  placeholder="Search an address"
+                  className="w-full bg-muted rounded-2xl pl-10 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                  autoFocus
+                />
+              </div>
+            </form>
+
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
+              <button type="button" onClick={requestBrowserLocation} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-primary/10 hover:bg-primary/15 transition-colors text-sm font-700 text-primary">
+                <LocateFixed className="w-4 h-4" /> Current location
+              </button>
+              <button type="button" onClick={() => profile?.location && handleLocationChange(profile.location)} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
+                <Home className="w-4 h-4" /> Home
+              </button>
+              <button type="button" onClick={() => manualLocationLabel && handleLocationChange(manualLocationLabel)} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
+                <Briefcase className="w-4 h-4" /> Work
+              </button>
+              <button type="button" onClick={() => customInput.trim() && handleLocationChange(customInput.trim())} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
+                <Plus className="w-4 h-4" /> Use typed address
+              </button>
+            </div>
+
+            <button onClick={requestBrowserLocation} className="w-full flex items-center gap-3 rounded-2xl px-1 py-3 text-left hover:bg-muted/40 transition-all mb-2">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <LocateFixed className="w-4.5 h-4.5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-700 text-foreground">Use current location</p>
+                <p className="text-xs text-muted-foreground">Update with your live location</p>
+              </div>
+            </button>
+
+            <div className="border-t border-border/60 my-3" />
+
+            <div className="mb-4">
+              <div className="rounded-2xl bg-muted/40 px-4 py-3 mb-3">
+                <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-1">Current address</p>
+                <p className="text-sm text-foreground font-600">{displayLocation.fullAddress}</p>
+              </div>
+              <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Saved addresses</p>
+              <div className="space-y-2">
+                {savedAddresses.length > 0 ? savedAddresses.map((address) => {
+                  const AddressIcon = address.icon === 'home' ? Home : Briefcase;
+                  return (
+                    <button key={address.id} onClick={() => handleLocationChange(address.value)} className="w-full flex items-center gap-3 rounded-2xl px-1 py-3 text-left hover:bg-muted/40 transition-all">
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <AddressIcon className="w-4.5 h-4.5 text-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-700 text-foreground">{address.label}</p>
+                        <p className="text-xs text-muted-foreground truncate">{address.value}</p>
+                      </div>
+                    </button>
+                  );
+                }) : (
+                  <div className="rounded-2xl bg-muted/40 px-4 py-4 text-sm text-muted-foreground">
+                    No saved addresses yet. Search above or use your current location.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-muted/50 p-4 mt-2">
+              <p className="text-xs font-700 text-muted-foreground uppercase tracking-wider mb-2">Advanced</p>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-700 text-foreground">Search radius</p>
+                  <p className="text-xs text-muted-foreground">Only chefs within this distance will appear.</p>
+                </div>
+                <select value={customerRadiusMiles} onChange={(e) => setCustomerRadiusMiles(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none">
+                  {CUSTOMER_RADIUS_OPTIONS.map((radius) => <option key={radius} value={radius}>{radius} mi</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
