@@ -286,13 +286,6 @@ export default function NearbyPage() {
   const [locationSource, setLocationSource] = useState<LocationSource>('none');
   const [locationError, setLocationError] = useState('');
   const [locationLoading, setLocationLoading] = useState(true);
-  const [forceSavedProfileLocation, setForceSavedProfileLocation] = useState(false);
-  const [nearbyDebug, setNearbyDebug] = useState({
-    serverRawChefCount: 0,
-    filteredChefCount: 0,
-    targetChefInServerRaw: false,
-    targetChefInFiltered: false,
-  });
   const watchIdRef = useRef<number | null>(null);
   const lastSavedLocationRef = useRef<{ latitude: number; longitude: number; fullAddress: string } | null>(null);
 
@@ -314,7 +307,7 @@ export default function NearbyPage() {
     if (profile?.location && locationSource === 'none') {
       setDisplayLocation({ shortLabel: shortAddress(profile.location), fullAddress: profile.location });
     }
-    if (typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number' && (locationSource === 'none' || forceSavedProfileLocation)) {
+    if (typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number' && locationSource === 'none') {
       setLocationCoords({ latitude: profile.latitude, longitude: profile.longitude });
       setLocationSource('saved-profile');
       const full = profile.location || 'Saved location';
@@ -323,19 +316,6 @@ export default function NearbyPage() {
   }, [profile, locationSource, forceSavedProfileLocation]);
 
   useEffect(() => {
-    if (forceSavedProfileLocation) {
-      if (typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number') {
-        const savedCoords = { latitude: profile.latitude, longitude: profile.longitude };
-        setUserLocation(savedCoords);
-        setLocationCoords(savedCoords);
-        setLocationSource('saved-profile');
-        const full = profile.location || 'Saved location';
-        setDisplayLocation({ shortLabel: shortAddress(full), fullAddress: full });
-        setLocationLoading(false);
-      }
-      return;
-    }
-
     startWatchingLocation();
 
     return () => {
@@ -343,14 +323,14 @@ export default function NearbyPage() {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, [user?.id, profile?.id, manualLocationLabel, forceSavedProfileLocation]);
+  }, [user?.id, profile?.id, manualLocationLabel]);
 
   useEffect(() => {
     loadVendors();
   }, [profile?.id, locationCoords?.latitude, locationCoords?.longitude, customerRadiusMiles, manualLocationLabel]);
 
   const persistLiveLocation = async (nextCoords: { latitude: number; longitude: number }, fullAddress: string) => {
-    if (!user?.id || forceSavedProfileLocation) return;
+    if (!user?.id) return;
 
     const last = lastSavedLocationRef.current;
     const locationChangedEnough = !last || milesBetween(last.latitude, last.longitude, nextCoords.latitude, nextCoords.longitude) > 0.03 || last.fullAddress !== fullAddress;
@@ -500,20 +480,8 @@ export default function NearbyPage() {
         })
         .filter((row): row is Vendor => Boolean(row));
 
-      setNearbyDebug({
-        serverRawChefCount: payload?.debug?.rawChefCount ?? rawRows.length,
-        filteredChefCount: mapped.length,
-        targetChefInServerRaw: payload?.debug?.targetChefInServerRaw ?? rawRows.some((row) => row.id === '388eda79-4a09-44f2-88e5-ea1296d47f0d'),
-        targetChefInFiltered: mapped.some((row) => row.id === '388eda79-4a09-44f2-88e5-ea1296d47f0d'),
-      });
       setVendors(mapped);
     } catch {
-      setNearbyDebug({
-        serverRawChefCount: 0,
-        filteredChefCount: 0,
-        targetChefInServerRaw: false,
-        targetChefInFiltered: false,
-      });
       setVendors([]);
     } finally {
       setLoadingVendors(false);
@@ -575,30 +543,6 @@ export default function NearbyPage() {
   return (
     <AppLayout headerCenter={headerLocation}>
       <div className="max-w-screen-lg mx-auto px-4 py-4">
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 mb-4 text-[11px] text-amber-900 dark:text-amber-100 break-words space-y-1">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="font-700">Nearby debug</p>
-            <label className="inline-flex items-center gap-2 text-[11px] font-600">
-              <input
-                type="checkbox"
-                checked={forceSavedProfileLocation}
-                onChange={(e) => setForceSavedProfileLocation(e.target.checked)}
-              />
-              Use saved profile location
-            </label>
-          </div>
-          <p>locationSource: {locationSource}</p>
-          <p>runtime latitude: {String(locationCoords?.latitude ?? null)}</p>
-          <p>runtime longitude: {String(locationCoords?.longitude ?? null)}</p>
-          <p>saved profile latitude: {String(profile?.latitude ?? null)}</p>
-          <p>saved profile longitude: {String(profile?.longitude ?? null)}</p>
-          <p>customer radius: {customerRadiusMiles}</p>
-          <p>server raw chef count: {nearbyDebug.serverRawChefCount}</p>
-          <p>post-filter chef count: {nearbyDebug.filteredChefCount}</p>
-          <p>target chef in server raw: {String(nearbyDebug.targetChefInServerRaw)}</p>
-          <p>target chef after filter: {String(nearbyDebug.targetChefInFiltered)}</p>
-        </div>
-
         <div className="flex items-center justify-between py-1 gap-3 flex-wrap">
           <p className="text-sm text-muted-foreground">
             <span className="font-700 text-foreground">{filteredVendors.length}</span> chefs nearby
