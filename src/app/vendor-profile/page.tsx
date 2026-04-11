@@ -828,7 +828,7 @@ function VendorProfileContent() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto xl:max-w-screen-md pb-32">
-        <div className="relative h-56 sm:h-64 overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-700 rounded-b-[2rem]">
+        <div className="relative h-36 sm:h-40 overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-700">
           {vendor.coverImage ? (
             <img
               src={vendor.coverImage}
@@ -856,18 +856,18 @@ function VendorProfileContent() {
           </button>
         </div>
 
-        <div className="px-4 pb-5 pt-3 bg-card border-b border-border/50">
-          <div className="flex items-start gap-3 -mt-12 sm:-mt-14 mb-3">
+        <div className="px-4 pb-4 pt-3 bg-card border-b border-border/50">
+          <div className="flex items-start gap-3 -mt-7 sm:-mt-8 mb-2.5">
             <div className="relative shrink-0">
-              <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-full overflow-hidden border-[4px] border-card shadow-elevated bg-card">
+              <div className="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated bg-card">
                 <img src={vendor.avatar} alt={`${vendor.name} chef avatar`} className="w-full h-full object-cover" />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center border-2 border-card text-xs shadow-sm">
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border-2 border-card text-xs shadow-sm">
                 👨‍🍳
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-8 sm:pt-10">
+            <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-5 sm:pt-6">
               <div className="text-center">
                 <p className="text-[18px] font-700 text-foreground font-tabular tracking-snug">{vendor.menu.length}</p>
                 <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Menu</p>
@@ -886,33 +886,29 @@ function VendorProfileContent() {
           <div className="space-y-2">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-[22px] sm:text-[26px] font-800 text-foreground leading-tight tracking-snug">{vendor.name}</h1>
+                <h1 className="text-[18px] sm:text-[20px] font-700 text-foreground leading-tight tracking-snug">{vendor.name}</h1>
                 <span className="flex items-center gap-1 bg-[#FFE5D0] text-[#C2410C] dark:bg-orange-500/15 dark:text-[#FB923C] text-[11px] font-semibold px-2 py-0.5 rounded-full border border-[#FFD2B3]">
                   <ChefHat className="w-3 h-3" />Chef
                 </span>
               </div>
-              <p className="text-[13px] font-semibold text-muted-foreground">@{vendor.username}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-1.5 border border-amber-500/20">
-                  <Star className="w-3.5 h-3.5 fill-current" />
+              <p className="text-[13px] font-semibold text-foreground">@{vendor.username}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5">
+                  <Star className="w-3.5 h-3.5 text-primary" />
                   <span>{vendor.rating > 0 ? `${vendor.rating.toFixed(1)} rating` : 'No ratings yet'}</span>
                 </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 border border-border/60">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5">
                   <Users className="w-3.5 h-3.5 text-primary" />
-                  <span>{vendor.followers >= 1000 ? `${(vendor.followers / 1000).toFixed(1)}k followers` : `${vendor.followers} followers`}</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 border border-border/60">
-                  <ChefHat className="w-3.5 h-3.5 text-primary" />
-                  <span>{Math.max((vendorOverride as any)?.completed_orders ?? 0, 0)} orders</span>
+                  <span>{vendor.reviewCount} reviews</span>
                 </div>
               </div>
-              <p className="text-[14px] text-muted-foreground leading-relaxed line-clamp-3 mt-2">{stripBusinessHoursFromBio(vendor.bio)}</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2 mt-1">{stripBusinessHoursFromBio(vendor.bio)}</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground pt-1">
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
               <button
                 onClick={() => setHoursSheetOpen(true)}
-                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 hover:opacity-90 transition-opacity border ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border/60'}`}
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 hover:opacity-90 transition-opacity ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}
               >
                 <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 <span>{headerSummary}</span>
@@ -920,11 +916,11 @@ function VendorProfileContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mt-4 flex-wrap">
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
             <button
               suppressHydrationWarning
               onClick={() => document.getElementById('vendor-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="flex-1 min-w-[150px] flex items-center justify-center gap-2 bg-gradient-to-r from-[#F97316] to-[#FB923C] text-white text-[14px] font-700 px-4 py-3 rounded-2xl active:scale-95 transition-all duration-200 shadow-sm hover:opacity-95 hover:shadow-md hover:shadow-primary/20"
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-primary text-white text-[13px] font-600 px-4 py-2.5 rounded-xl active:scale-95 transition-all duration-200 shadow-sm hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20"
               aria-label="Order now"
             >
               <ShoppingBag className="w-4 h-4" />
@@ -934,7 +930,7 @@ function VendorProfileContent() {
               suppressHydrationWarning
               onClick={handleFollow}
               disabled={followLoading}
-              className={`flex-1 min-w-[130px] flex items-center justify-center gap-1.5 text-[14px] font-700 px-4 py-3 rounded-2xl active:scale-95 transition-all duration-200 shadow-sm ${
+              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 text-[13px] font-600 px-4 py-2.5 rounded-xl active:scale-95 transition-all duration-200 shadow-sm ${
               isFollowing ?
               'bg-muted text-muted-foreground border border-border/60 hover:border-red-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20' :
               'bg-card text-foreground border border-border hover:bg-muted'} ${
@@ -951,7 +947,7 @@ function VendorProfileContent() {
         </div>
 
         <div className="px-4 pt-4 space-y-4">
-          <section className="rounded-[28px] border border-border bg-card p-2 shadow-sm">
+          <section className="rounded-3xl border border-border bg-card p-2">
             <div className="grid grid-cols-4 gap-2">
               {[
                 { id: 'menu', label: 'Menu' },
