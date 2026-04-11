@@ -493,6 +493,11 @@ export default function NearbyPage() {
     }
   };
 
+  const requestBrowserLocation = async () => {
+    setShowLocationSheet(false);
+    await startWatchingLocation();
+  };
+
   const handleLocationChange = async (loc: string) => {
     const nextLabel = loc.trim();
     setManualLocationLabel(nextLabel);
