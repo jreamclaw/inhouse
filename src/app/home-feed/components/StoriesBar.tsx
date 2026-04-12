@@ -146,16 +146,16 @@ export default function StoriesBar() {
   return (
     <>
       <div className="bg-background border-b border-border/20">
-        <div ref={scrollRef} className="flex gap-3 px-3 py-2 overflow-x-auto scrollbar-hide">
+        <div ref={scrollRef} className="flex gap-4 px-4 py-3 overflow-x-auto scrollbar-hide">
           <button
-            className="flex flex-col items-center gap-1.5 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
+            className="flex flex-col items-center gap-2 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
             aria-label="Add your story"
             onClick={ownStoryGroup ? () => openStoryViewer(ownStoryGroup) : handleAddStory}
             suppressHydrationWarning
           >
             <div className="relative">
-              <div className={`w-[62px] h-[62px] rounded-full flex items-center justify-center ${ownStoryGroup ? 'bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]' : 'bg-muted'}`}>
-                <div className="w-[56px] h-[56px] rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
+              <div className={`w-[78px] h-[78px] rounded-full flex items-center justify-center ${ownStoryGroup ? 'bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2.5px] shadow-[0_10px_24px_rgba(249,115,22,0.18)]' : 'bg-muted border border-border/70'}`}>
+                <div className="w-[71px] h-[71px] rounded-full overflow-hidden bg-card ring-[2.5px] ring-card flex items-center justify-center">
                   {userAvatarUrl ? (
                     <img src={userAvatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
@@ -166,12 +166,12 @@ export default function StoriesBar() {
                 </div>
               </div>
               {!ownStoryGroup && (
-                <div className="absolute bottom-0 right-0 w-[18px] h-[18px] bg-primary rounded-full flex items-center justify-center border-[2px] border-card shadow-sm">
-                  <Plus className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                <div className="absolute bottom-0.5 right-0.5 w-[22px] h-[22px] bg-primary rounded-full flex items-center justify-center border-[2px] border-card shadow-sm">
+                  <Plus className="w-3 h-3 text-white" strokeWidth={3} />
                 </div>
               )}
             </div>
-            <span className="text-[10px] max-w-[62px] truncate text-center leading-tight tracking-tight text-muted-foreground font-500">
+            <span className="text-[11px] max-w-[78px] truncate text-center leading-tight tracking-tight text-muted-foreground font-500">
               Create Story
             </span>
           </button>
@@ -180,10 +180,10 @@ export default function StoriesBar() {
             <button
               key={group.userId}
               onClick={() => openStoryViewer(group)}
-              className="flex flex-col items-center gap-1.5 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
+              className="flex flex-col items-center gap-2 shrink-0 group transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
               aria-label={`View ${group.name}'s story`}
             >
-              <div className="w-[62px] h-[62px] rounded-full bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2px]">
+              <div className="w-[78px] h-[78px] rounded-full bg-gradient-to-br from-fuchsia-500 via-orange-400 to-amber-300 p-[2.5px] shadow-[0_10px_24px_rgba(249,115,22,0.18)]">
                 <div className="w-full h-full rounded-full overflow-hidden bg-card ring-[2px] ring-card flex items-center justify-center">
                   {group.avatarUrl ? (
                     <img src={group.avatarUrl} alt={`${group.name} avatar`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -194,7 +194,7 @@ export default function StoriesBar() {
                   )}
                 </div>
               </div>
-              <span className="text-[10px] max-w-[62px] truncate text-center leading-tight tracking-tight text-muted-foreground font-500">
+              <span className="text-[11px] max-w-[78px] truncate text-center leading-tight tracking-tight text-muted-foreground font-500">
                 {group.name}
               </span>
             </button>
