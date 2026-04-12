@@ -12,12 +12,14 @@ create index if not exists idx_post_tags_tagged_user_id on public.post_tags(tagg
 
 alter table public.post_tags enable row level security;
 
-create policy if not exists "Anyone can read post tags"
+drop policy if exists "Anyone can read post tags" on public.post_tags;
+create policy "Anyone can read post tags"
   on public.post_tags
   for select
   using (true);
 
-create policy if not exists "Authenticated users can create post tags for own posts"
+drop policy if exists "Authenticated users can create post tags for own posts" on public.post_tags;
+create policy "Authenticated users can create post tags for own posts"
   on public.post_tags
   for insert
   to authenticated
@@ -31,7 +33,8 @@ create policy if not exists "Authenticated users can create post tags for own po
     )
   );
 
-create policy if not exists "Owners can delete tags on own posts"
+drop policy if exists "Owners can delete tags on own posts" on public.post_tags;
+create policy "Owners can delete tags on own posts"
   on public.post_tags
   for delete
   to authenticated
