@@ -116,6 +116,7 @@ const SORT_OPTIONS: { id: SortOption; label: string; icon: string }[] = [
 const CUSTOMER_RADIUS_OPTIONS = [5, 10, 15, 25];
 const DEFAULT_LOCATION = 'Set your location';
 const VENDOR_AVATAR_FALLBACK = '/assets/images/no_image.png';
+const QUICK_FILTERS = ['Open now', 'Nearest', 'Top rated', 'Soul food', 'Healthy', 'Seafood', 'BBQ', 'Vegan'];
 
 function PriceRange({ range }: { range: '$' | '$$' | '$$$' }) {
   return (
@@ -175,6 +176,41 @@ function getVendorOpenState(hoursText?: string | null, availabilityOverride?: 'o
   return { label: 'Closed now', isOpen: false };
 }
 
+function FeaturedVendorCard({ vendor }: { vendor: Vendor }) {
+  const featuredBadge = vendor.badges.includes('top_rated') ? 'Top Rated' : vendor.badges.includes('verified_identity') ? 'Verified' : 'Popular';
+
+  return (
+    <Link href={`/vendor-profile?id=${vendor.id}`} className="block min-w-[280px] max-w-[280px] shrink-0">
+      <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-subtle hover:shadow-card-hover transition-all">
+        <div className="relative h-36 bg-muted overflow-hidden">
+          <img src={vendor.image} alt={vendor.imageAlt} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-700 text-white backdrop-blur-sm">
+            <Flame className="w-3 h-3 text-orange-300" />
+            {featuredBadge}
+          </div>
+          <div className="absolute bottom-3 left-3 right-3 flex items-end gap-3">
+            <img src={vendor.avatar} alt={`${vendor.name} avatar`} className="w-11 h-11 rounded-full border-2 border-white/80 object-cover shrink-0" />
+            <div className="min-w-0 text-white">
+              <p className="text-sm font-700 truncate">{vendor.name}</p>
+              <p className="text-[11px] text-white/80 truncate">{vendor.cuisine}</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-3 space-y-2.5">
+          <p className="text-[12px] text-muted-foreground line-clamp-2">{vendor.knownFor}</p>
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1"><MapPin className="w-3 h-3 text-primary" />{formatDistance(vendor.distance)}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1"><Clock className="w-3 h-3" />{vendor.deliveryTime}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1"><Star className="w-3 h-3 text-primary" />{vendor.rating > 0 ? vendor.rating.toFixed(1) : 'New'}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1"><PriceRange range={vendor.priceRange} /></span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function VendorCard({ vendor }: { vendor: Vendor }) {
   return (
     <div className="bg-card rounded-2xl overflow-hidden border border-border/50 hover:border-primary/25 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-250 active:scale-[0.99] group shadow-subtle">
@@ -226,6 +262,11 @@ function VendorCard({ vendor }: { vendor: Vendor }) {
         </div>
 
         <div className="rounded-xl bg-muted/60 px-3 py-2.5 mb-3 space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {[vendor.cuisine, vendor.knownFor].filter(Boolean).slice(0, 2).map((tag) => (
+              <span key={tag} className="inline-flex max-w-full truncate rounded-full bg-background/80 px-2 py-1 text-[10px] font-600 text-muted-foreground border border-border/50">{tag}</span>
+            ))}
+          </div>
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-700 mb-1">Known for</p>
@@ -586,13 +627,45 @@ export default function NearbyPage() {
         {locationLoading && <p className="text-xs text-muted-foreground mt-2 mb-3">Finding chefs near you...</p>}
         {locationError && <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 mb-3">{locationError}</p>}
 
-        <div className="relative mb-3 mt-2">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mt-2 mb-3">
+          {QUICK_FILTERS.map((filter) => {
+            const selected = (filter === 'Open now' && showOpenOnly) ||
+              (filter === 'Nearest' && sortBy === 'distance') ||
+              (filter === 'Top rated' && sortBy === 'rating');
+
+            return (
+              <button
+                key={filter}
+                onClick={() => {
+                  if (filter === 'Open now') {
+                    setShowOpenOnly((prev) => !prev);
+                    return;
+                  }
+                  if (filter === 'Nearest') {
+                    setSortBy('distance');
+                    return;
+                  }
+                  if (filter === 'Top rated') {
+                    setSortBy('rating');
+                    return;
+                  }
+                  setSearchQuery(filter);
+                }}
+                className={`shrink-0 rounded-full px-3 py-2 text-xs font-700 transition-all border ${selected ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20' : 'bg-muted text-muted-foreground border-border hover:border-primary/30 hover:text-foreground'}`}
+              >
+                {filter}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative mb-3 mt-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chefs or cuisines..."
+            placeholder="Search chefs, dishes, or cuisines"
             className="w-full bg-muted rounded-xl pl-9 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
           {searchQuery && (
@@ -601,6 +674,20 @@ export default function NearbyPage() {
             </button>
           )}
         </div>
+
+        {filteredVendors.length > 0 && (
+          <section className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-[15px] font-700 text-foreground">Popular near you</h2>
+                <p className="text-[12px] text-muted-foreground">Popular local chefs customers are checking out.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+              {filteredVendors.slice(0, 6).map((vendor) => <FeaturedVendorCard key={`featured-${vendor.id}`} vendor={vendor} />)}
+            </div>
+          </section>
+        )}
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-2">
           {CATEGORIES.map((cat) => (
@@ -614,6 +701,15 @@ export default function NearbyPage() {
             </button>
           ))}
         </div>
+
+        {!loadingVendors && filteredVendors.length > 0 && (
+          <div className="flex items-center justify-between mb-3 mt-1">
+            <div>
+              <h2 className="text-[15px] font-700 text-foreground">Nearby chefs</h2>
+              <p className="text-[12px] text-muted-foreground">Browse chefs, compare vibes, and order fast.</p>
+            </div>
+          </div>
+        )}
 
         {loadingVendors ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
@@ -638,7 +734,7 @@ export default function NearbyPage() {
               <Truck className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="font-700 text-foreground mb-1">No chefs found nearby</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">Try updating your location or widening your radius from the location sheet.</p>
+            <p className="text-sm text-muted-foreground max-w-sm">Try updating your location or widening your radius from the location sheet. You can still browse popular chefs when they become available.</p>
           </div>
         )}
       </div>
