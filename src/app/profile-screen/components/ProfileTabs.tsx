@@ -31,6 +31,7 @@ interface DbPost {
     id: string;
     full_name: string | null;
     username: string | null;
+    role?: 'chef' | 'customer' | null;
   }>;
 }
 
@@ -220,7 +221,8 @@ export default function ProfileTabs() {
             tagged_profile:tagged_user_id (
               id,
               full_name,
-              username
+              username,
+              role
             )
           `)
           .in('post_id', postIds);
@@ -230,10 +232,10 @@ export default function ProfileTabs() {
             const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
             if (!tagged?.id) return map;
             const existing = map.get(row.post_id) || [];
-            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null });
+            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null, role: tagged.role || null });
             map.set(row.post_id, existing);
             return map;
-          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>());
+          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null; role?: 'chef' | 'customer' | null }>>());
         }
       } catch {
         // keep posts even if tag lookup fails
@@ -1166,11 +1168,14 @@ export default function ProfileTabs() {
                 <p className="text-[12px] text-white/60">Post {selectedPostIndex + 1} of {dbPosts.length}</p>
                 {selectedPost.tagged_users && selectedPost.tagged_users.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {selectedPost.tagged_users.map((taggedUser) => (
-                      <span key={taggedUser.id} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90">
-                        @{taggedUser.username || taggedUser.full_name || 'user'}
-                      </span>
-                    ))}
+                    {selectedPost.tagged_users.map((taggedUser: any) => {
+                      const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
+                      return (
+                        <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/15 transition-colors">
+                          @{taggedUser.username || taggedUser.full_name || 'user'}
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : null}
                 {selectedPost.caption ? (

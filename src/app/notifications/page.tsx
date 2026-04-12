@@ -11,7 +11,7 @@ interface NotificationItem {
   id: string;
   title: string;
   body: string;
-  type: 'order' | 'chef' | 'follow' | 'like';
+  type: 'order' | 'chef' | 'follow' | 'like' | 'tag';
 }
 
 const EMPTY_NOTIFICATIONS: NotificationItem[] = [];
@@ -77,6 +77,8 @@ export default function NotificationsPage() {
                 ) : item.type === 'follow' ? (
                   <ChefHat className="w-5 h-5 text-foreground" />
                 ) : item.type === 'like' ? (
+                  <Bell className="w-5 h-5 text-foreground" />
+                ) : item.type === 'tag' ? (
                   <Bell className="w-5 h-5 text-foreground" />
                 ) : (
                   <ChefHat className="w-5 h-5 text-foreground" />

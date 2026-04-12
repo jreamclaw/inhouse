@@ -291,6 +291,7 @@ interface DbPost {
     id: string;
     full_name: string | null;
     username: string | null;
+    role?: 'chef' | 'customer' | null;
   }>;
   user_profiles: {
     id: string;
@@ -780,11 +781,14 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
         {/* Caption */}
         {Array.isArray((post as any).taggedUsers) && (post as any).taggedUsers.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {(post as any).taggedUsers.map((taggedUser: any) => (
-              <span key={taggedUser.id} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-600 text-primary">
-                @{taggedUser.username || taggedUser.full_name || 'user'}
-              </span>
-            ))}
+            {(post as any).taggedUsers.map((taggedUser: any) => {
+              const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
+              return (
+                <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-600 text-primary hover:bg-primary/15 transition-colors">
+                  @{taggedUser.username || taggedUser.full_name || 'user'}
+                </Link>
+              );
+            })}
           </div>
         )}
         <p className="text-[13px] text-foreground leading-relaxed">
@@ -971,7 +975,8 @@ export default function PostFeed({ mode }: PostFeedProps) {
               tagged_profile:tagged_user_id (
                 id,
                 full_name,
-                username
+                username,
+                role
               )
             `)
             .in('post_id', postIds);
@@ -981,7 +986,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
               const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
               if (!tagged?.id) return map;
               const existing = map.get(row.post_id) || [];
-              existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null });
+              existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null, role: tagged.role || null });
               map.set(row.post_id, existing);
               return map;
             }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>());

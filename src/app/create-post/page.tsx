@@ -22,6 +22,21 @@ type TaggableUser = {
   role: 'chef' | 'customer' | null;
 };
 
+async function shouldCreateNotification(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  key: 'notif_new_follower' | 'notif_post_likes' | 'notif_order_updates'
+) {
+  const { data } = await supabase
+    .from('user_settings')
+    .select(key)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!data) return true;
+  return data[key] !== false;
+}
+
 export default function CreatePostPage() {
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
@@ -179,6 +194,29 @@ export default function CreatePostPage() {
         if (tagInsert.error && !String(tagInsert.error.message || '').includes('post_tags')) {
           throw tagInsert.error;
         }
+
+        const actorName = user.user_metadata?.full_name || user.user_metadata?.name || 'Someone';
+        const safeCaptionPreview = caption.trim().slice(0, 80);
+
+        await Promise.all(
+          selectedTags.map(async (tag) => {
+            if (!tag.id || tag.id === user.id) return;
+            const shouldNotify = await shouldCreateNotification(supabase, tag.id, 'notif_post_likes');
+            if (!shouldNotify) return;
+
+            await supabase.from('notifications').insert({
+              user_id: tag.id,
+              actor_id: user.id,
+              type: 'chef',
+              title: 'You were tagged in a post',
+              body: safeCaptionPreview
+                ? `${actorName} tagged you in a post: "${safeCaptionPreview}${caption.trim().length > 80 ? '…' : ''}"`
+                : `${actorName} tagged you in a post.`,
+              entity_id: createdPostId,
+              entity_type: 'post',
+            });
+          })
+        );
       }
 
       await refreshProfile().catch(() => undefined);

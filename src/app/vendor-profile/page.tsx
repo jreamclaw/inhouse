@@ -733,7 +733,7 @@ function VendorProfileContent() {
         return;
       }
 
-      let tagsByPostId = new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>();
+      let tagsByPostId = new Map<string, Array<{ id: string; full_name: string | null; username: string | null; role?: 'chef' | 'customer' | null }>>();
       try {
         const { data: tagRows } = await supabase
           .from('post_tags')
@@ -742,7 +742,8 @@ function VendorProfileContent() {
             tagged_profile:tagged_user_id (
               id,
               full_name,
-              username
+              username,
+              role
             )
           `)
           .in('post_id', posts.map((post: any) => post.id));
@@ -752,10 +753,10 @@ function VendorProfileContent() {
             const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
             if (!tagged?.id) return map;
             const existing = map.get(row.post_id) || [];
-            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null });
+            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null, role: tagged.role || null });
             map.set(row.post_id, existing);
             return map;
-          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>());
+          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null; role?: 'chef' | 'customer' | null }>>());
         }
       } catch {
         // keep vendor posts visible if tag lookup fails
