@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck, X, MessageCircle, Send } from 'lucide-react';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import { toast } from 'sonner';
 
@@ -100,6 +100,7 @@ export default function ProfileTabs() {
   const [selectedPost, setSelectedPost] = useState<DbPost | null>(null);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const touchStartXRef = useRef<number | null>(null);
+  const viewerScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !isVendor) return;
@@ -334,18 +335,23 @@ export default function ProfileTabs() {
     touchStartXRef.current = null;
   };
 
+  const scrollToMediaIndex = (index: number) => {
+    const container = viewerScrollRef.current;
+    if (!container) return;
+    container.scrollTo({ left: container.clientWidth * index, behavior: 'smooth' });
+    setSelectedMediaIndex(index);
+  };
+
   const goToPreviousMedia = () => {
-    setSelectedMediaIndex((prev) => {
-      if (!selectedPostMedia.length) return 0;
-      return prev === 0 ? selectedPostMedia.length - 1 : prev - 1;
-    });
+    if (!selectedPostMedia.length) return;
+    const nextIndex = selectedMediaIndex === 0 ? selectedPostMedia.length - 1 : selectedMediaIndex - 1;
+    scrollToMediaIndex(nextIndex);
   };
 
   const goToNextMedia = () => {
-    setSelectedMediaIndex((prev) => {
-      if (!selectedPostMedia.length) return 0;
-      return prev === selectedPostMedia.length - 1 ? 0 : prev + 1;
-    });
+    if (!selectedPostMedia.length) return;
+    const nextIndex = selectedMediaIndex === selectedPostMedia.length - 1 ? 0 : selectedMediaIndex + 1;
+    scrollToMediaIndex(nextIndex);
   };
 
   const handleViewerTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -365,6 +371,13 @@ export default function ProfileTabs() {
       if (deltaX > 0) goToPreviousMedia();
     }
     touchStartXRef.current = null;
+  };
+
+  const handleViewerScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    if (!container.clientWidth) return;
+    const nextIndex = Math.round(container.scrollLeft / container.clientWidth);
+    if (nextIndex !== selectedMediaIndex) setSelectedMediaIndex(nextIndex);
   };
 
   return (
@@ -835,53 +848,82 @@ export default function ProfileTabs() {
         </div>
       )}
       {selectedPost && selectedPostMedia.length > 0 && (
-        <div className="fixed inset-0 z-[90] bg-black/92 backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 text-white">
-            <div className="min-w-0 pr-3">
-              <p className="text-sm font-700 truncate">Your Post</p>
-              <p className="text-xs text-white/70 truncate">{selectedPost.caption || 'Swipe to view media'}</p>
+        <div className="fixed inset-0 z-[90] bg-black text-white overflow-hidden">
+          <div className="absolute inset-x-0 top-0 z-20 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 bg-gradient-to-b from-black/70 via-black/35 to-transparent">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 pt-1">
+                <p className="text-sm font-700 truncate">Your Post</p>
+                <p className="text-xs text-white/75 truncate">{selectedPost.caption || 'Swipe to view media'}</p>
+              </div>
+              <button onClick={closePostViewer} className="w-10 h-10 rounded-full bg-white/12 backdrop-blur-sm flex items-center justify-center shrink-0" aria-label="Close post viewer">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button onClick={closePostViewer} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" aria-label="Close post viewer">
-              <X className="w-5 h-5" />
-            </button>
           </div>
 
-          <div className="flex-1 flex items-center justify-center px-3 pb-6">
-            <div className="relative w-full max-w-xl" onTouchStart={handleViewerTouchStart} onTouchEnd={handleViewerTouchEnd}>
-              <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-black">
-                {selectedPostMedia[selectedMediaIndex]?.media_type === 'video' ? (
-                  <video src={selectedPostMedia[selectedMediaIndex]?.media_url} className="w-full h-full object-contain bg-black" controls autoPlay playsInline />
-                ) : (
-                  <img src={selectedPostMedia[selectedMediaIndex]?.media_url} alt={selectedPost.caption || 'Post media'} className="w-full h-full object-contain bg-black" />
-                )}
-
-                {selectedPostMedia.length > 1 && (
-                  <>
-                    <button onClick={goToPreviousMedia} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 text-white flex items-center justify-center" aria-label="Previous media">
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button onClick={goToNextMedia} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 text-white flex items-center justify-center" aria-label="Next media">
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                    <div className="absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
-                      {selectedMediaIndex + 1}/{selectedPostMedia.length}
-                    </div>
-                  </>
-                )}
+          <div className="h-screen flex flex-col justify-center">
+            <div className="relative w-full h-[75vh]" onTouchStart={handleViewerTouchStart} onTouchEnd={handleViewerTouchEnd}>
+              <div
+                ref={viewerScrollRef}
+                onScroll={handleViewerScroll}
+                className="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                style={{ scrollSnapType: 'x mandatory' }}
+              >
+                {selectedPostMedia.map((media, index) => (
+                  <div
+                    key={`${media.media_url}-${index}`}
+                    className="w-full h-full shrink-0 snap-center bg-black flex items-center justify-center relative"
+                  >
+                    {media.media_type === 'video' ? (
+                      <video src={media.media_url} className="w-full h-full object-cover" controls autoPlay={index === selectedMediaIndex} playsInline />
+                    ) : (
+                      <img src={media.media_url} alt={selectedPost.caption || 'Post media'} className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                ))}
               </div>
 
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+              <div className="absolute left-0 right-0 bottom-4 px-4 flex items-end justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Like post">
+                    <Heart className="w-5 h-5" />
+                  </button>
+                  <button className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Comment on post">
+                    <MessageCircle className="w-5 h-5" />
+                  </button>
+                  <button className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Share post">
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {selectedPostMedia.length > 1 && (
+                  <div className="rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
+                    {selectedMediaIndex + 1}/{selectedPostMedia.length}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {selectedPostMedia.length > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mt-3">
+                <div className="flex items-center justify-center gap-1.5 mb-3">
                   {selectedPostMedia.map((media, index) => (
                     <button
                       key={`${media.media_url}-${index}`}
-                      onClick={() => setSelectedMediaIndex(index)}
-                      className={`h-2 rounded-full transition-all ${selectedMediaIndex === index ? 'w-5 bg-white' : 'w-2 bg-white/35'}`}
+                      onClick={() => scrollToMediaIndex(index)}
+                      className={`h-1.5 rounded-full transition-all ${selectedMediaIndex === index ? 'w-5 bg-white' : 'w-2 bg-white/35'}`}
                       aria-label={`View media ${index + 1}`}
                     />
                   ))}
                 </div>
               )}
+
+              {selectedPost.caption ? (
+                <p className="text-sm text-white/88 leading-relaxed line-clamp-3">{selectedPost.caption}</p>
+              ) : null}
             </div>
           </div>
         </div>
