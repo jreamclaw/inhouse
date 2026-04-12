@@ -16,7 +16,7 @@ type MediaItem = {
 
 export default function CreatePostPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const supabase = createClient();
 
   const [caption, setCaption] = useState('');
@@ -130,9 +130,10 @@ export default function CreatePostPage() {
         throw mediaInsert.error;
       }
 
+      await refreshProfile().catch(() => undefined);
       toast.success(mediaItems.length > 1 ? 'Carousel post shared successfully!' : 'Post shared successfully!');
-      router.push('/profile-screen?tab=posts&refresh=' + Date.now());
-      router.refresh();
+      window.location.assign('/profile-screen?tab=posts&refresh=' + Date.now());
+      return;
     } catch (err: any) {
       toast.error(err.message || 'Failed to create post');
     } finally {
