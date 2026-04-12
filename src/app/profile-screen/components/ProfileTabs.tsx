@@ -129,27 +129,59 @@ export default function ProfileTabs() {
     if (!user?.id) return;
     setPostsLoading(true);
     try {
-      const { data, error } = await supabase
+      const basePostSelect = `
+        id,
+        user_id,
+        media_url,
+        caption,
+        media_type,
+        likes_count,
+        created_at
+      `;
+
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          id,
-          user_id,
-          media_url,
-          caption,
-          media_type,
-          likes_count,
-          created_at,
-          post_media (
-            media_url,
-            media_type,
-            sort_order
-          )
-        `)
+        .select(basePostSelect)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      if (!error && data) setDbPosts(data as DbPost[]);
+
+      if (postsError) throw postsError;
+
+      const posts = (postsData || []) as DbPost[];
+      if (posts.length === 0) {
+        setDbPosts([]);
+        return;
+      }
+
+      const postIds = posts.map((post) => post.id);
+      let mediaByPostId = new Map<string, DbPostMedia[]>();
+
+      try {
+        const { data: mediaRows, error: mediaError } = await supabase
+          .from('post_media')
+          .select('post_id, media_url, media_type, sort_order')
+          .in('post_id', postIds)
+          .order('sort_order', { ascending: true });
+
+        if (!mediaError && Array.isArray(mediaRows)) {
+          mediaByPostId = mediaRows.reduce((map, row: any) => {
+            const existing = map.get(row.post_id) || [];
+            existing.push({
+              media_url: row.media_url,
+              media_type: row.media_type,
+              sort_order: row.sort_order ?? 0,
+            });
+            map.set(row.post_id, existing);
+            return map;
+          }, new Map<string, DbPostMedia[]>());
+        }
+      } catch {
+        // keep posts even if post_media lookup fails
+      }
+
+      setDbPosts(posts.map((post) => ({ ...post, post_media: mediaByPostId.get(post.id) || [] })));
     } catch {
-      // no-op
+      setDbPosts([]);
     } finally {
       setPostsLoading(false);
     }
