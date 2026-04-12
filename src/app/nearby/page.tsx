@@ -18,6 +18,8 @@ import {
   Plus,
   Shield,
   Eye,
+  Flame,
+  Star,
 } from 'lucide-react';
 import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import { useAuth } from '@/contexts/AuthContext';
