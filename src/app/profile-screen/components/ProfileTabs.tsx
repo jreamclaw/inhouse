@@ -27,6 +27,11 @@ interface DbPost {
   comments_count?: number;
   created_at: string;
   post_media?: DbPostMedia[];
+  tagged_users?: Array<{
+    id: string;
+    full_name: string | null;
+    username: string | null;
+  }>;
 }
 
 interface DbComment {
@@ -205,10 +210,40 @@ export default function ProfileTabs() {
         // keep posts even if post_media lookup fails
       }
 
+      let tagsByPostId = new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>();
+
+      try {
+        const { data: tagRows, error: tagError } = await supabase
+          .from('post_tags')
+          .select(`
+            post_id,
+            tagged_profile:tagged_user_id (
+              id,
+              full_name,
+              username
+            )
+          `)
+          .in('post_id', postIds);
+
+        if (!tagError && Array.isArray(tagRows)) {
+          tagsByPostId = tagRows.reduce((map, row: any) => {
+            const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
+            if (!tagged?.id) return map;
+            const existing = map.get(row.post_id) || [];
+            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null });
+            map.set(row.post_id, existing);
+            return map;
+          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>());
+        }
+      } catch {
+        // keep posts even if tag lookup fails
+      }
+
       const mergedPosts = posts.map((post) => ({
         ...post,
         media_type: post.media_type || inferMediaTypeFromUrl(post.media_url),
         post_media: mediaByPostId.get(post.id) || [],
+        tagged_users: tagsByPostId.get(post.id) || [],
       }));
       setDbPosts(mergedPosts);
     } catch {
@@ -1129,6 +1164,15 @@ export default function ProfileTabs() {
 
               <div className="space-y-1.5">
                 <p className="text-[12px] text-white/60">Post {selectedPostIndex + 1} of {dbPosts.length}</p>
+                {selectedPost.tagged_users && selectedPost.tagged_users.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPost.tagged_users.map((taggedUser) => (
+                      <span key={taggedUser.id} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90">
+                        @{taggedUser.username || taggedUser.full_name || 'user'}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 {selectedPost.caption ? (
                   <p className="text-sm text-white/88 leading-relaxed line-clamp-3">{selectedPost.caption}</p>
                 ) : null}

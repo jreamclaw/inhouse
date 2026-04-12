@@ -5,13 +5,21 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ImagePlus, X, MapPin, ChevronLeft, Loader2 } from 'lucide-react';
+import { ImagePlus, X, MapPin, ChevronLeft, Loader2, AtSign } from 'lucide-react';
 import { toast } from 'sonner';
 
 type MediaItem = {
   file: File;
   preview: string;
   type: 'image' | 'video';
+};
+
+type TaggableUser = {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  role: 'chef' | 'customer' | null;
 };
 
 export default function CreatePostPage() {
@@ -23,6 +31,10 @@ export default function CreatePostPage() {
   const [location, setLocation] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [tagQuery, setTagQuery] = useState('');
+  const [tagResults, setTagResults] = useState<TaggableUser[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TaggableUser[]>([]);
+  const [tagLoading, setTagLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +74,31 @@ export default function CreatePostPage() {
   const handleRemoveMedia = useCallback((index: number) => {
     setMediaItems((prev) => prev.filter((_, i) => i !== index));
   }, []);
+
+  const searchUsers = useCallback(async (query: string) => {
+    const value = query.trim();
+    if (!value || value.length < 2) {
+      setTagResults([]);
+      return;
+    }
+
+    setTagLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, username, avatar_url, role')
+        .or(`username.ilike.%${value}%,full_name.ilike.%${value}%`)
+        .limit(8);
+
+      if (error) throw error;
+      const selectedIds = new Set(selectedTags.map((tag) => tag.id));
+      setTagResults(((data || []) as TaggableUser[]).filter((item) => item.id !== user?.id && !selectedIds.has(item.id)));
+    } catch {
+      setTagResults([]);
+    } finally {
+      setTagLoading(false);
+    }
+  }, [selectedTags, supabase, user?.id]);
 
   const handleSubmit = async () => {
     if (!user) return toast.error('You must be logged in to post');
@@ -130,6 +167,20 @@ export default function CreatePostPage() {
         throw mediaInsert.error;
       }
 
+      if (selectedTags.length > 0) {
+        const tagInsert = await supabase.from('post_tags').insert(
+          selectedTags.map((tag) => ({
+            post_id: createdPostId,
+            tagged_user_id: tag.id,
+            tagged_by_user_id: user.id,
+          }))
+        );
+
+        if (tagInsert.error && !String(tagInsert.error.message || '').includes('post_tags')) {
+          throw tagInsert.error;
+        }
+      }
+
       await refreshProfile().catch(() => undefined);
       toast.success(mediaItems.length > 1 ? 'Carousel post shared successfully!' : 'Post shared successfully!');
       window.location.assign('/profile-screen?tab=posts&refresh=' + Date.now());
@@ -169,6 +220,8 @@ export default function CreatePostPage() {
         )}
 
         <div className="mb-4"><label className="block text-sm font-600 text-foreground mb-2">Caption</label><textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Write a caption..." rows={4} maxLength={2200} className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all resize-none" /><p className="text-xs text-muted-foreground text-right mt-1">{caption.length}/2200</p></div>
+
+        <div className="mb-4"><label className="block text-sm font-600 text-foreground mb-2">Tag People</label><div className="relative"><AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><input type="text" value={tagQuery} onChange={(e) => { const value = e.target.value; setTagQuery(value); void searchUsers(value); }} placeholder="Search users to tag" className="w-full bg-muted rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all" /></div>{tagLoading ? <p className="text-xs text-muted-foreground mt-2">Searching...</p> : null}{tagResults.length > 0 && (<div className="mt-2 rounded-2xl border border-border bg-card overflow-hidden">{tagResults.map((person) => (<button key={person.id} type="button" onClick={() => { setSelectedTags((prev) => [...prev, person]); setTagQuery(''); setTagResults([]); }} className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"><div className="w-9 h-9 rounded-full overflow-hidden bg-muted shrink-0">{person.avatar_url ? <img src={person.avatar_url} alt={person.full_name || person.username || 'User'} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-foreground">{(person.full_name || person.username || 'U').charAt(0).toUpperCase()}</div>}</div><div className="min-w-0"><p className="text-sm font-600 text-foreground truncate">{person.full_name || 'User'}</p><p className="text-xs text-muted-foreground truncate">@{person.username || 'user'}</p></div></button>))}</div>)}{selectedTags.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{selectedTags.map((tag) => (<span key={tag.id} className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-600">@{tag.username || tag.full_name || 'user'}<button type="button" onClick={() => setSelectedTags((prev) => prev.filter((item) => item.id !== tag.id))} aria-label={`Remove ${tag.username || tag.full_name || 'tag'}`}><X className="w-3 h-3" /></button></span>))}</div>}</div>
 
         <div className="mb-6"><label className="block text-sm font-600 text-foreground mb-2">Location</label><div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Add location (optional)" className="w-full bg-muted rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all" /></div></div>
 
