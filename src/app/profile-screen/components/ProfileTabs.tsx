@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck, X, MessageCircle } from 'lucide-react';
+import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck, X, MessageCircle, Trash2 } from 'lucide-react';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import { toast } from 'sonner';
 
@@ -542,6 +542,43 @@ export default function ProfileTabs() {
     }
   };
 
+  const handleDeleteSelectedPost = async () => {
+    if (!selectedPost || !user?.id) return;
+    const confirmed = typeof window !== 'undefined' ? window.confirm('Delete this post? This cannot be undone.') : false;
+    if (!confirmed) return;
+
+    const deletingPostId = selectedPost.id;
+
+    try {
+      const { error } = await supabase.from('posts').delete().eq('id', deletingPostId).eq('user_id', user.id);
+      if (error) throw error;
+
+      const nextPosts = dbPosts.filter((post) => post.id !== deletingPostId);
+      setDbPosts(nextPosts);
+      setCommentsByPostId((prev) => {
+        const next = { ...prev };
+        delete next[deletingPostId];
+        return next;
+      });
+      setLikedPostIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deletingPostId);
+        return next;
+      });
+
+      if (nextPosts.length === 0) {
+        closePostViewer();
+      } else {
+        const nextIndex = Math.min(selectedPostIndex, nextPosts.length - 1);
+        openPostAtIndex(nextIndex);
+      }
+
+      toast.success('Post deleted');
+    } catch {
+      toast.error('Could not delete post.');
+    }
+  };
+
   const handleViewerTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     touchStartXRef.current = e.touches[0]?.clientX ?? null;
     touchStartYRef.current = e.touches[0]?.clientY ?? null;
@@ -1014,9 +1051,14 @@ export default function ProfileTabs() {
                 <p className="text-sm font-700 truncate">Your Post</p>
                 <p className="text-xs text-white/75 truncate">{selectedPost.caption || 'Swipe to view media'}</p>
               </div>
-              <button onClick={closePostViewer} className="w-10 h-10 rounded-full bg-white/12 backdrop-blur-sm flex items-center justify-center shrink-0" aria-label="Close post viewer">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={handleDeleteSelectedPost} className="w-10 h-10 rounded-full bg-white/12 backdrop-blur-sm flex items-center justify-center" aria-label="Delete post">
+                  <Trash2 className="w-5 h-5" />
+                </button>
+                <button onClick={closePostViewer} className="w-10 h-10 rounded-full bg-white/12 backdrop-blur-sm flex items-center justify-center" aria-label="Close post viewer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
 
