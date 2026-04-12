@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck, X, MessageCircle, Send } from 'lucide-react';
+import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck, X, MessageCircle } from 'lucide-react';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import { toast } from 'sonner';
 
@@ -24,8 +24,21 @@ interface DbPost {
   caption: string | null;
   media_type?: 'image' | 'video';
   likes_count: number;
+  comments_count?: number;
   created_at: string;
   post_media?: DbPostMedia[];
+}
+
+interface DbComment {
+  id: string;
+  body: string;
+  created_at: string;
+  user_id: string;
+  user_profiles?: {
+    full_name?: string | null;
+    username?: string | null;
+    avatar_url?: string | null;
+  } | null;
 }
 
 function inferMediaTypeFromUrl(url?: string | null): 'image' | 'video' {
@@ -99,7 +112,14 @@ export default function ProfileTabs() {
   const [vendorToolsOpen, setVendorToolsOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<DbPost | null>(null);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
+  const [selectedPostIndex, setSelectedPostIndex] = useState(0);
+  const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
+  const [commentSheetOpen, setCommentSheetOpen] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
+  const [commentsByPostId, setCommentsByPostId] = useState<Record<string, DbComment[]>>({});
   const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
   const viewerScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -141,6 +161,7 @@ export default function ProfileTabs() {
         media_url,
         caption,
         likes_count,
+        comments_count,
         created_at
       `;
 
@@ -320,19 +341,41 @@ export default function ProfileTabs() {
     toast.success(`${meal.title} added to cart`, { description: `$${meal.price.toFixed(2)}` });
   };
 
+  useEffect(() => {
+    const loadLikedPosts = async () => {
+      if (!user?.id) return;
+      try {
+        const { data } = await supabase.from('post_likes').select('post_id').eq('user_id', user.id);
+        setLikedPostIds(new Set((data || []).map((row: any) => row.post_id)));
+      } catch {
+        setLikedPostIds(new Set());
+      }
+    };
+
+    void loadLikedPosts();
+  }, [supabase, user?.id]);
+
   const categories = ['All', ...Array.from(new Set(dbMeals.map((m) => m.category)))];
   const filteredMeals = selectedCategory === 'All' ? dbMeals : dbMeals.filter((m) => m.category === selectedCategory);
   const selectedPostMedia = selectedPost ? getOrderedPostMedia(selectedPost) : [];
+  const selectedPostComments = selectedPost ? (commentsByPostId[selectedPost.id] || []) : [];
+  const selectedPostLiked = selectedPost ? likedPostIds.has(selectedPost.id) : false;
 
   const openPostViewer = (post: DbPost) => {
+    const postIndex = dbPosts.findIndex((entry) => entry.id === post.id);
     setSelectedPost(post);
+    setSelectedPostIndex(postIndex >= 0 ? postIndex : 0);
     setSelectedMediaIndex(0);
   };
 
   const closePostViewer = () => {
     setSelectedPost(null);
+    setSelectedPostIndex(0);
     setSelectedMediaIndex(0);
+    setCommentSheetOpen(false);
+    setCommentInput('');
     touchStartXRef.current = null;
+    touchStartYRef.current = null;
   };
 
   const scrollToMediaIndex = (index: number) => {
@@ -354,23 +397,179 @@ export default function ProfileTabs() {
     scrollToMediaIndex(nextIndex);
   };
 
+  const openPostAtIndex = (index: number) => {
+    const nextPost = dbPosts[index];
+    if (!nextPost) return;
+    setSelectedPost(nextPost);
+    setSelectedPostIndex(index);
+    setSelectedMediaIndex(0);
+    setCommentSheetOpen(false);
+    setCommentInput('');
+    requestAnimationFrame(() => {
+      const container = viewerScrollRef.current;
+      if (container) container.scrollTo({ left: 0, behavior: 'auto' });
+    });
+  };
+
+  const goToPreviousPost = () => {
+    if (!dbPosts.length) return;
+    const nextIndex = selectedPostIndex === 0 ? dbPosts.length - 1 : selectedPostIndex - 1;
+    openPostAtIndex(nextIndex);
+  };
+
+  const goToNextPost = () => {
+    if (!dbPosts.length) return;
+    const nextIndex = selectedPostIndex === dbPosts.length - 1 ? 0 : selectedPostIndex + 1;
+    openPostAtIndex(nextIndex);
+  };
+
+  const loadCommentsForPost = async (postId: string) => {
+    setCommentsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select(`
+          id,
+          body,
+          created_at,
+          user_id,
+          user_profiles:user_id (
+            full_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setCommentsByPostId((prev) => ({ ...prev, [postId]: (data || []) as DbComment[] }));
+    } catch {
+      setCommentsByPostId((prev) => ({ ...prev, [postId]: prev[postId] || [] }));
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleOpenComments = async () => {
+    if (!selectedPost) return;
+    setCommentSheetOpen(true);
+    if (!commentsByPostId[selectedPost.id]) {
+      await loadCommentsForPost(selectedPost.id);
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!selectedPost || !user?.id) {
+      toast.error('Please sign in to like posts.');
+      return;
+    }
+
+    const postId = selectedPost.id;
+    const isLiked = likedPostIds.has(postId);
+    const nextLiked = !isLiked;
+
+    setLikedPostIds((prev) => {
+      const next = new Set(prev);
+      if (nextLiked) next.add(postId); else next.delete(postId);
+      return next;
+    });
+
+    setDbPosts((prev) => prev.map((post) => post.id === postId ? { ...post, likes_count: nextLiked ? (post.likes_count || 0) + 1 : Math.max(0, (post.likes_count || 0) - 1) } : post));
+    setSelectedPost((prev) => prev && prev.id === postId ? { ...prev, likes_count: nextLiked ? (prev.likes_count || 0) + 1 : Math.max(0, (prev.likes_count || 0) - 1) } : prev);
+
+    try {
+      if (nextLiked) {
+        const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', user.id);
+        if (error) throw error;
+      }
+
+      await supabase.from('posts').update({ likes_count: nextLiked ? (selectedPost.likes_count || 0) + 1 : Math.max(0, (selectedPost.likes_count || 0) - 1) }).eq('id', postId);
+    } catch {
+      setLikedPostIds((prev) => {
+        const next = new Set(prev);
+        if (isLiked) next.add(postId); else next.delete(postId);
+        return next;
+      });
+      setDbPosts((prev) => prev.map((post) => post.id === postId ? { ...post, likes_count: selectedPost.likes_count || 0 } : post));
+      setSelectedPost((prev) => prev && prev.id === postId ? { ...prev, likes_count: selectedPost.likes_count || 0 } : prev);
+      toast.error('Could not update like.');
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedPost || !user?.id) {
+      toast.error('Please sign in to comment.');
+      return;
+    }
+    const body = commentInput.trim();
+    if (!body) return;
+
+    setCommentInput('');
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({ post_id: selectedPost.id, user_id: user.id, body })
+        .select(`
+          id,
+          body,
+          created_at,
+          user_id,
+          user_profiles:user_id (
+            full_name,
+            username,
+            avatar_url
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+
+      const createdComment = data as DbComment;
+      setCommentsByPostId((prev) => ({
+        ...prev,
+        [selectedPost.id]: [...(prev[selectedPost.id] || []), createdComment],
+      }));
+
+      setDbPosts((prev) => prev.map((post) => post.id === selectedPost.id ? { ...post, comments_count: (post.comments_count || 0) + 1 } : post));
+      setSelectedPost((prev) => prev && prev.id === selectedPost.id ? { ...prev, comments_count: (prev.comments_count || 0) + 1 } : prev);
+    } catch {
+      setCommentInput(body);
+      toast.error('Could not post comment.');
+    }
+  };
+
   const handleViewerTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     touchStartXRef.current = e.touches[0]?.clientX ?? null;
+    touchStartYRef.current = e.touches[0]?.clientY ?? null;
   };
 
   const handleViewerTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (touchStartXRef.current == null) return;
+    if (touchStartXRef.current == null || touchStartYRef.current == null) return;
     const endX = e.changedTouches[0]?.clientX ?? null;
-    if (endX == null) {
+    const endY = e.changedTouches[0]?.clientY ?? null;
+    if (endX == null || endY == null) {
       touchStartXRef.current = null;
+      touchStartYRef.current = null;
       return;
     }
+
     const deltaX = endX - touchStartXRef.current;
-    if (Math.abs(deltaX) > 40) {
+    const deltaY = endY - touchStartYRef.current;
+
+    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 60) {
+      if (deltaY < 0) goToNextPost();
+      if (deltaY > 0) goToPreviousPost();
+    } else if (Math.abs(deltaX) > 40) {
       if (deltaX < 0) goToNextMedia();
       if (deltaX > 0) goToPreviousMedia();
     }
+
     touchStartXRef.current = null;
+    touchStartYRef.current = null;
   };
 
   const handleViewerScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -848,22 +1047,27 @@ export default function ProfileTabs() {
 
               <div className="absolute left-0 right-0 bottom-4 px-4 flex items-end justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <button className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Like post">
-                    <Heart className="w-5 h-5" />
+                  <button onClick={handleToggleLike} className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Like post">
+                    <Heart className={`w-5 h-5 ${selectedPostLiked ? 'fill-white text-white' : 'text-white'}`} />
                   </button>
-                  <button className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Comment on post">
+                  <button onClick={handleOpenComments} className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Comment on post">
                     <MessageCircle className="w-5 h-5" />
-                  </button>
-                  <button className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Share post">
-                    <Send className="w-5 h-5" />
                   </button>
                 </div>
 
-                {selectedPostMedia.length > 1 && (
+                <div className="flex items-center gap-2">
                   <div className="rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
-                    {selectedMediaIndex + 1}/{selectedPostMedia.length}
+                    ♥ {(selectedPost.likes_count || 0).toLocaleString()}
                   </div>
-                )}
+                  <div className="rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
+                    💬 {(selectedPost.comments_count || 0).toLocaleString()}
+                  </div>
+                  {selectedPostMedia.length > 1 && (
+                    <div className="rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
+                      {selectedMediaIndex + 1}/{selectedPostMedia.length}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -881,11 +1085,55 @@ export default function ProfileTabs() {
                 </div>
               )}
 
-              {selectedPost.caption ? (
-                <p className="text-sm text-white/88 leading-relaxed line-clamp-3">{selectedPost.caption}</p>
-              ) : null}
+              <div className="space-y-1.5">
+                <p className="text-[12px] text-white/60">Post {selectedPostIndex + 1} of {dbPosts.length}</p>
+                {selectedPost.caption ? (
+                  <p className="text-sm text-white/88 leading-relaxed line-clamp-3">{selectedPost.caption}</p>
+                ) : null}
+              </div>
             </div>
           </div>
+
+          {commentSheetOpen && selectedPost && (
+            <div className="absolute inset-x-0 bottom-0 z-30 rounded-t-3xl bg-card text-foreground border-t border-border shadow-2xl max-h-[55vh] flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <h3 className="text-sm font-700">Comments</h3>
+                <button onClick={() => setCommentSheetOpen(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-label="Close comments">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                {commentsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading comments...</p>
+                ) : selectedPostComments.length > 0 ? (
+                  selectedPostComments.map((comment) => (
+                    <div key={comment.id} className="rounded-2xl bg-muted/50 px-3 py-2.5">
+                      <p className="text-[12px] font-700 text-foreground">
+                        {comment.user_profiles?.full_name || comment.user_profiles?.username || 'User'}
+                      </p>
+                      <p className="text-sm text-foreground mt-1 leading-relaxed">{comment.body}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p>
+                )}
+              </div>
+
+              <div className="border-t border-border px-4 py-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="flex-1 h-11 rounded-full bg-muted px-4 text-sm outline-none focus:ring-2 focus:ring-primary/25"
+                />
+                <button onClick={handleAddComment} disabled={!commentInput.trim()} className="h-11 px-4 rounded-full bg-primary text-white text-sm font-700 disabled:opacity-40">
+                  Post
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
