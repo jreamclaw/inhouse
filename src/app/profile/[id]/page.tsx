@@ -13,6 +13,7 @@ import TrustVerificationSection from '@/components/trust/TrustVerificationSectio
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
 import { calculateTrustScore } from '@/lib/trust/score';
 import type { TrustCredentialShape } from '@/lib/trust/types';
+import { getPublicLocationLabel } from '@/lib/location/display';
 
 interface PublicProfile {
   id: string;
@@ -354,8 +355,8 @@ export default function PublicProfilePage() {
   }
 
   const displayName = profile.full_name || profile.username || 'User';
-  const locationLabel = profile.location || 'Location unavailable';
   const isChef = profile.role === 'chef';
+  const locationLabel = isChef ? (profile.location || 'Location unavailable') : (getPublicLocationLabel(profile.location) || 'Location unavailable');
   const chefOpenState = getChefOpenState(profile.business_hours, profile.availability_override);
   const trustScore = isChef
     ? calculateTrustScore(

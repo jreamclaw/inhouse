@@ -3,11 +3,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChefHat, MapPin, Settings, Share2, ShoppingBag, BookOpen, LogOut, UserPlus, Clock3 } from 'lucide-react';
+import { ChefHat, MapPin, Settings, Share2, ShoppingBag, BookOpen, LogOut, UserPlus, Clock3, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
+import { getPublicLocationLabel } from '@/lib/location/display';
 
 function parseHoursFromBio(bio?: string | null) {
   if (!bio) return { cleanBio: '', hours: null };
@@ -72,6 +73,7 @@ export default function ProfileHeader() {
   const [followerCount, setFollowerCount] = useState<number>(profile?.followers_count ?? 0);
   const [followingCount, setFollowingCount] = useState<number>(profile?.following_count ?? 0);
   const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
+  const [showChefIntro, setShowChefIntro] = useState(false);
 
   const isChef = profile?.role === 'chef';
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
@@ -82,6 +84,7 @@ export default function ProfileHeader() {
 
   const { cleanBio, hours } = useMemo(() => parseHoursFromBio(profile?.bio), [profile?.bio]);
   const openState = useMemo(() => getTodayStatus(hours, profile?.availability_override || null), [hours, profile?.availability_override]);
+  const publicLocationLabel = useMemo(() => getPublicLocationLabel(profile?.location), [profile?.location]);
 
   useEffect(() => {
     const syncCounts = async () => {
@@ -191,10 +194,10 @@ export default function ProfileHeader() {
           )}
 
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-            {profile?.location && profile?.privacy_show_location !== false && (
+            {((isChef && profile?.location) || (!isChef && publicLocationLabel)) && profile?.privacy_show_location !== false && (
               <div className="flex items-center gap-1.5 text-[12px] text-[#555555] dark:text-[#E5E7EB]">
                 <MapPin className="w-3.5 h-3.5" />
-                <span>{profile.location}</span>
+                <span>{isChef ? profile?.location : publicLocationLabel}</span>
               </div>
             )}
             {joinedDate && (
@@ -233,12 +236,42 @@ export default function ProfileHeader() {
 
         {!isChef && (
           <div className="mt-3.5">
-            <button className="text-[12px] font-semibold bg-[#FFE5D0] text-[#C2410C] dark:bg-orange-500/15 dark:text-[#FB923C] px-4 py-2.5 rounded-full hover:bg-[#F97316] hover:text-white transition-all duration-150 active:scale-95 border border-[#FFD2B3]">
+            <button onClick={() => setShowChefIntro(true)} className="text-[12px] font-semibold bg-[#FFE5D0] text-[#C2410C] dark:bg-orange-500/15 dark:text-[#FB923C] px-4 py-2.5 rounded-full hover:bg-[#F97316] hover:text-white transition-all duration-150 active:scale-95 border border-[#FFD2B3]">
               Become a Vendor / Chef
             </button>
           </div>
         )}
       </div>
+      {showChefIntro && (
+        <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center sm:justify-center">
+          <div className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-[#E5E5E5] dark:border-white/15 bg-card p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-700 text-[#111111] dark:text-white">Become a Vendor / Chef</h2>
+              <button onClick={() => setShowChefIntro(false)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors" aria-label="Close">
+                <X className="w-4 h-4 text-foreground" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+              Start your chef storefront, add your menu and hours, set your service area, and connect payouts so customers can order from you.
+            </p>
+            <div className="rounded-2xl bg-muted/60 px-4 py-3 text-sm text-foreground space-y-2 mb-4">
+              <p>• Set up your chef profile and business details</p>
+              <p>• Add menu items, pricing, and availability</p>
+              <p>• Connect Stripe to receive payouts</p>
+              <p>• Complete trust steps to build customer confidence</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowChefIntro(false)} className="flex-1 h-11 rounded-xl border border-[#E5E5E5] dark:border-white/15 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
+                Not now
+              </button>
+              <button onClick={() => { setShowChefIntro(false); router.push('/vendor-onboarding'); }} className="flex-1 h-11 rounded-xl bg-[#F97316] text-white text-sm font-semibold hover:bg-[#ea6a10] transition-colors">
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {profile?.id && sheetMode && (
         <FollowListSheet
           open={!!sheetMode}
