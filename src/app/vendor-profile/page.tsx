@@ -727,7 +727,41 @@ function VendorProfileContent() {
         .order('created_at', { ascending: false })
         .limit(6);
 
-      setVendorPosts(data || []);
+      const posts = data || [];
+      if (!posts.length) {
+        setVendorPosts([]);
+        return;
+      }
+
+      let tagsByPostId = new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>();
+      try {
+        const { data: tagRows } = await supabase
+          .from('post_tags')
+          .select(`
+            post_id,
+            tagged_profile:tagged_user_id (
+              id,
+              full_name,
+              username
+            )
+          `)
+          .in('post_id', posts.map((post: any) => post.id));
+
+        if (Array.isArray(tagRows)) {
+          tagsByPostId = tagRows.reduce((map, row: any) => {
+            const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
+            if (!tagged?.id) return map;
+            const existing = map.get(row.post_id) || [];
+            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null });
+            map.set(row.post_id, existing);
+            return map;
+          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>());
+        }
+      } catch {
+        // keep vendor posts visible if tag lookup fails
+      }
+
+      setVendorPosts(posts.map((post: any) => ({ ...post, tagged_users: tagsByPostId.get(post.id) || [] })));
     } catch {
       setVendorPosts([]);
     }
@@ -1190,6 +1224,11 @@ function VendorProfileContent() {
                       {index === 0 && (
                         <div className="absolute top-2 left-2 rounded-full bg-black/55 p-1.5">
                           <Pin className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      )}
+                      {Array.isArray((post as any).tagged_users) && (post as any).tagged_users.length > 0 && (
+                        <div className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-1 text-[10px] font-700 text-white">
+                          @{(post as any).tagged_users[0]?.username || (post as any).tagged_users[0]?.full_name || 'user'}{(post as any).tagged_users.length > 1 ? ` +${(post as any).tagged_users.length - 1}` : ''}
                         </div>
                       )}
                     </button>

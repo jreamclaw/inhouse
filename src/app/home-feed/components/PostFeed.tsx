@@ -287,6 +287,11 @@ interface DbPost {
   viewer_has_liked?: { user_id: string }[];
   viewer_has_saved?: { user_id: string }[];
   post_media?: DbPostMedia[];
+  tagged_users?: Array<{
+    id: string;
+    full_name: string | null;
+    username: string | null;
+  }>;
   user_profiles: {
     id: string;
     full_name: string;
@@ -344,6 +349,7 @@ function dbPostToMockShape(p: DbPost): MockPost {
     availability: null,
     isLocal: true,
     mediaItems: orderedMedia.length > 0 ? orderedMedia : [{ media_url: p.media_url, media_type: p.media_type, sort_order: 0 }],
+    taggedUsers: p.tagged_users || [],
     ...(p.media_type === 'video' ? { isVideo: true } : {})
   };
 }
@@ -772,6 +778,15 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
         )}
 
         {/* Caption */}
+        {Array.isArray((post as any).taggedUsers) && (post as any).taggedUsers.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {(post as any).taggedUsers.map((taggedUser: any) => (
+              <span key={taggedUser.id} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-600 text-primary">
+                @{taggedUser.username || taggedUser.full_name || 'user'}
+              </span>
+            ))}
+          </div>
+        )}
         <p className="text-[13px] text-foreground leading-relaxed">
           <Link href={`/vendor-profile?id=${post.user.id}`} className="font-700 hover:underline mr-1 tracking-snug">
             {post.user.username}
@@ -945,8 +960,39 @@ export default function PostFeed({ mode }: PostFeedProps) {
           savedPostIds = new Set((savesData || []).map((row: any) => row.post_id));
         }
 
+        const postIds = (data as DbPost[]).map((post) => post.id);
+        let tagsByPostId = new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>();
+
+        try {
+          const { data: tagRows, error: tagError } = await supabase
+            .from('post_tags')
+            .select(`
+              post_id,
+              tagged_profile:tagged_user_id (
+                id,
+                full_name,
+                username
+              )
+            `)
+            .in('post_id', postIds);
+
+          if (!tagError && Array.isArray(tagRows)) {
+            tagsByPostId = tagRows.reduce((map, row: any) => {
+              const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
+              if (!tagged?.id) return map;
+              const existing = map.get(row.post_id) || [];
+              existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null });
+              map.set(row.post_id, existing);
+              return map;
+            }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>());
+          }
+        } catch {
+          // keep feed posts even if tag lookup fails
+        }
+
         setDbPosts((data as DbPost[]).map((post) => dbPostToMockShape({
           ...post,
+          tagged_users: tagsByPostId.get(post.id) || [],
           viewer_has_liked: likedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
           viewer_has_saved: savedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
         })));

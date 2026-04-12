@@ -52,6 +52,11 @@ interface PublicPost {
   created_at: string;
   likes_count?: number | null;
   comments_count?: number | null;
+  tagged_users?: Array<{
+    id: string;
+    full_name: string | null;
+    username: string | null;
+  }>;
 }
 
 interface PublicMeal {
@@ -212,7 +217,42 @@ export default function PublicProfilePage() {
         .limit(12);
 
       if (error) throw error;
-      setPosts((data || []) as PublicPost[]);
+
+      const posts = (data || []) as PublicPost[];
+      if (!posts.length) {
+        setPosts([]);
+        return;
+      }
+
+      let tagsByPostId = new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>();
+      try {
+        const { data: tagRows } = await supabase
+          .from('post_tags')
+          .select(`
+            post_id,
+            tagged_profile:tagged_user_id (
+              id,
+              full_name,
+              username
+            )
+          `)
+          .in('post_id', posts.map((post) => post.id));
+
+        if (Array.isArray(tagRows)) {
+          tagsByPostId = tagRows.reduce((map, row: any) => {
+            const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
+            if (!tagged?.id) return map;
+            const existing = map.get(row.post_id) || [];
+            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null });
+            map.set(row.post_id, existing);
+            return map;
+          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null }>>());
+        }
+      } catch {
+        // keep posts visible if tag lookup fails
+      }
+
+      setPosts(posts.map((post) => ({ ...post, tagged_users: tagsByPostId.get(post.id) || [] })));
     } catch {
       setPosts([]);
     }
@@ -579,6 +619,15 @@ export default function PublicProfilePage() {
                       </div>
                     ) : null}
                     <div className="p-4 space-y-2">
+                      {post.tagged_users && post.tagged_users.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {post.tagged_users.map((taggedUser) => (
+                            <span key={taggedUser.id} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-600 text-primary">
+                              @{taggedUser.username || taggedUser.full_name || 'user'}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                       <p className="text-sm text-foreground whitespace-pre-wrap">{post.caption || 'No caption'}</p>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>{new Date(post.created_at).toLocaleDateString()}</span>
