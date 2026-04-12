@@ -477,27 +477,6 @@ export default function ProfileTabs() {
       )}
 
       {/* ── CUSTOMER-SPECIFIC QUICK ACTIONS ── */}
-      {!isVendor && activeTab === 'posts' && (
-        <div className="px-4 pt-3 pb-2 border-b border-border">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2.5">Quick Access</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Link href="/order-checkout-screen">
-              <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
-                <Package className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="text-[13px] font-medium text-foreground">My Orders</span>
-              </button>
-            </Link>
-            <button
-              onClick={() => setActiveTab('saved')}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left"
-            >
-              <Bookmark className="w-4 h-4 text-amber-500 flex-shrink-0" />
-              <span className="text-[13px] font-medium text-foreground">Saved Vendors</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Posts Grid Tab */}
       {activeTab === 'posts' && (
         <div>
