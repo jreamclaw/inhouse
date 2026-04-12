@@ -478,28 +478,22 @@ export default function ProfileTabs() {
 
       {/* ── CUSTOMER-SPECIFIC QUICK ACTIONS ── */}
       {!isVendor && activeTab === 'posts' && (
-        <div className="p-4 border-b border-border">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Quick Access</p>
+        <div className="px-4 pt-3 pb-2 border-b border-border">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2.5">Quick Access</p>
           <div className="grid grid-cols-2 gap-2">
             <Link href="/order-checkout-screen">
-              <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
+              <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left">
                 <Package className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">My Orders</span>
+                <span className="text-[13px] font-medium text-foreground">My Orders</span>
               </button>
             </Link>
             <button
               onClick={() => setActiveTab('saved')}
-              className="w-full flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 transition-colors text-left"
             >
               <Bookmark className="w-4 h-4 text-amber-500 flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground">Saved Vendors</span>
+              <span className="text-[13px] font-medium text-foreground">Saved Vendors</span>
             </button>
-            <Link href="/settings">
-              <button className="col-span-2 w-full flex items-center gap-2 p-3 rounded-xl bg-muted hover:bg-muted/80 border border-border transition-colors text-left">
-                <Settings className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground">Account Settings</span>
-              </button>
-            </Link>
           </div>
         </div>
       )}
@@ -507,19 +501,6 @@ export default function ProfileTabs() {
       {/* Posts Grid Tab */}
       {activeTab === 'posts' && (
         <div>
-          {isOwnProfile && (
-            <div className="p-3 border-b border-border">
-              <Link href="/create-post">
-                <button className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-left">
-                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Plus className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className="text-sm text-muted-foreground">Share a photo or video...</span>
-                </button>
-              </Link>
-            </div>
-          )}
-
           {postsLoading ? (
             <div className="pt-2">
               <PostFeedSkeleton count={2} />
