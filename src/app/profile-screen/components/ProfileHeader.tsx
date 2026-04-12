@@ -252,9 +252,10 @@ export default function ProfileHeader() {
               </button>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              Start your chef storefront, add your menu and hours, set your service area, and connect payouts so customers can order from you.
+              Chef accounts are separate from customer accounts. To sell on InHouse, you’ll continue into a dedicated chef setup flow to build your storefront, add your menu and hours, set your service area, and connect payouts.
             </p>
             <div className="rounded-2xl bg-muted/60 px-4 py-3 text-sm text-foreground space-y-2 mb-4">
+              <p>• Create your separate chef account/profile setup</p>
               <p>• Set up your chef profile and business details</p>
               <p>• Add menu items, pricing, and availability</p>
               <p>• Connect Stripe to receive payouts</p>

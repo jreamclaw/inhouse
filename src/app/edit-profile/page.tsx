@@ -165,6 +165,14 @@ export default function EditProfilePage() {
         </div>
 
         {/* Cover Image */}
+        <div className="px-4 pt-4 pb-3">
+          <div className="rounded-2xl border border-border/70 bg-card/80 p-3 mb-3">
+            <p className="text-sm font-700 text-foreground">Cover Photo</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Add a cover photo to personalize your profile. Customers can use cover images too — not just chefs.
+            </p>
+          </div>
+        </div>
         <div className="relative h-36 sm:h-48 bg-muted overflow-hidden">
           {coverUrl ? (
             <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
@@ -240,8 +248,9 @@ export default function EditProfilePage() {
               onChange={handleAvatarChange}
             />
           </div>
-          <div className="pb-1">
+          <div className="pb-1 space-y-1">
             <p className="text-xs text-muted-foreground">Tap the camera icon to change your photo</p>
+            <p className="text-xs text-muted-foreground">You can also add a cover image above to make your profile feel more complete.</p>
           </div>
         </div>
 
