@@ -22,17 +22,22 @@ interface DbPost {
   user_id: string;
   media_url: string;
   caption: string | null;
-  media_type: 'image' | 'video';
+  media_type?: 'image' | 'video';
   likes_count: number;
   created_at: string;
   post_media?: DbPostMedia[];
+}
+
+function inferMediaTypeFromUrl(url?: string | null): 'image' | 'video' {
+  const value = (url || '').toLowerCase();
+  return /\.(mp4|mov|webm|m4v)(\?|$)/.test(value) ? 'video' : 'image';
 }
 
 function getOrderedPostMedia(post: Pick<DbPost, 'post_media' | 'media_url' | 'media_type'>) {
   const orderedMedia = (post.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
   return orderedMedia.length > 0
     ? orderedMedia
-    : [{ media_url: post.media_url, media_type: post.media_type, sort_order: 0 }];
+    : [{ media_url: post.media_url, media_type: post.media_type || inferMediaTypeFromUrl(post.media_url), sort_order: 0 }];
 }
 
 interface DbMeal {
@@ -94,7 +99,6 @@ export default function ProfileTabs() {
   const [vendorToolsOpen, setVendorToolsOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<DbPost | null>(null);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
-  const [postsDebug, setPostsDebug] = useState<{ userId: string | null; profilePostsCount: number | null; fetchedPostsCount: number; postsError: string | null } | null>(null);
   const touchStartXRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -135,7 +139,6 @@ export default function ProfileTabs() {
         user_id,
         media_url,
         caption,
-        media_type,
         likes_count,
         created_at
       `;
@@ -180,22 +183,14 @@ export default function ProfileTabs() {
         // keep posts even if post_media lookup fails
       }
 
-      const mergedPosts = posts.map((post) => ({ ...post, post_media: mediaByPostId.get(post.id) || [] }));
+      const mergedPosts = posts.map((post) => ({
+        ...post,
+        media_type: post.media_type || inferMediaTypeFromUrl(post.media_url),
+        post_media: mediaByPostId.get(post.id) || [],
+      }));
       setDbPosts(mergedPosts);
-      setPostsDebug({
-        userId: user.id,
-        profilePostsCount: profile?.posts_count ?? null,
-        fetchedPostsCount: mergedPosts.length,
-        postsError: null,
-      });
-    } catch (error: any) {
+    } catch {
       setDbPosts([]);
-      setPostsDebug({
-        userId: user.id,
-        profilePostsCount: profile?.posts_count ?? null,
-        fetchedPostsCount: 0,
-        postsError: error?.message || 'Failed to load posts',
-      });
     } finally {
       setPostsLoading(false);
     }
@@ -509,16 +504,6 @@ export default function ProfileTabs() {
                   <span className="text-sm text-muted-foreground">Share a photo or video...</span>
                 </button>
               </Link>
-            </div>
-          )}
-
-          {postsDebug && dbPosts.length === 0 && !postsLoading && (
-            <div className="mx-3 mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[11px] text-amber-700 dark:text-amber-300">
-              <p className="font-700 mb-1">Posts debug</p>
-              <p>user: {postsDebug.userId || 'none'}</p>
-              <p>profile posts_count: {postsDebug.profilePostsCount ?? 'null'}</p>
-              <p>fetched posts: {postsDebug.fetchedPostsCount}</p>
-              <p>error: {postsDebug.postsError || 'none'}</p>
             </div>
           )}
 
