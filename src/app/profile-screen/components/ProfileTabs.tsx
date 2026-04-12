@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Grid3X3, UtensilsCrossed, Info, Heart, Plus, Pencil, Package, DollarSign, Clock, Settings, Bookmark, ChevronDown, ChefHat, MapPin, ShieldCheck, BadgeCheck, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import { toast } from 'sonner';
 
@@ -26,6 +26,13 @@ interface DbPost {
   likes_count: number;
   created_at: string;
   post_media?: DbPostMedia[];
+}
+
+function getOrderedPostMedia(post: Pick<DbPost, 'post_media' | 'media_url' | 'media_type'>) {
+  const orderedMedia = (post.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  return orderedMedia.length > 0
+    ? orderedMedia
+    : [{ media_url: post.media_url, media_type: post.media_type, sort_order: 0 }];
 }
 
 interface DbMeal {
@@ -85,6 +92,9 @@ export default function ProfileTabs() {
   const [savedLoading, setSavedLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [vendorToolsOpen, setVendorToolsOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<DbPost | null>(null);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !isVendor) return;
@@ -270,6 +280,51 @@ export default function ProfileTabs() {
 
   const categories = ['All', ...Array.from(new Set(dbMeals.map((m) => m.category)))];
   const filteredMeals = selectedCategory === 'All' ? dbMeals : dbMeals.filter((m) => m.category === selectedCategory);
+  const selectedPostMedia = selectedPost ? getOrderedPostMedia(selectedPost) : [];
+
+  const openPostViewer = (post: DbPost) => {
+    setSelectedPost(post);
+    setSelectedMediaIndex(0);
+  };
+
+  const closePostViewer = () => {
+    setSelectedPost(null);
+    setSelectedMediaIndex(0);
+    touchStartXRef.current = null;
+  };
+
+  const goToPreviousMedia = () => {
+    setSelectedMediaIndex((prev) => {
+      if (!selectedPostMedia.length) return 0;
+      return prev === 0 ? selectedPostMedia.length - 1 : prev - 1;
+    });
+  };
+
+  const goToNextMedia = () => {
+    setSelectedMediaIndex((prev) => {
+      if (!selectedPostMedia.length) return 0;
+      return prev === selectedPostMedia.length - 1 ? 0 : prev + 1;
+    });
+  };
+
+  const handleViewerTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  };
+
+  const handleViewerTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current == null) return;
+    const endX = e.changedTouches[0]?.clientX ?? null;
+    if (endX == null) {
+      touchStartXRef.current = null;
+      return;
+    }
+    const deltaX = endX - touchStartXRef.current;
+    if (Math.abs(deltaX) > 40) {
+      if (deltaX < 0) goToNextMedia();
+      if (deltaX > 0) goToPreviousMedia();
+    }
+    touchStartXRef.current = null;
+  };
 
   return (
     <div className="bg-card">
@@ -446,16 +501,13 @@ export default function ProfileTabs() {
           ) : (
             <div className="grid grid-cols-3 gap-0.5">
               {dbPosts.map((post) => {
-                const orderedMedia = (post.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
-                const coverMedia = orderedMedia[0] || {
-                  media_url: post.media_url,
-                  media_type: post.media_type,
-                  sort_order: 0,
-                };
+                const orderedMedia = getOrderedPostMedia(post);
+                const coverMedia = orderedMedia[0];
 
                 return (
                 <button
                   key={post.id}
+                  onClick={() => openPostViewer(post)}
                   className="relative aspect-square overflow-hidden bg-muted group"
                   aria-label={`View post: ${post.caption || 'Post'}`}
                 >
@@ -738,6 +790,58 @@ export default function ProfileTabs() {
                 <p className="text-sm text-muted-foreground">No saved posts yet.</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {selectedPost && selectedPostMedia.length > 0 && (
+        <div className="fixed inset-0 z-[90] bg-black/92 backdrop-blur-sm flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 text-white">
+            <div className="min-w-0 pr-3">
+              <p className="text-sm font-700 truncate">Your Post</p>
+              <p className="text-xs text-white/70 truncate">{selectedPost.caption || 'Swipe to view media'}</p>
+            </div>
+            <button onClick={closePostViewer} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" aria-label="Close post viewer">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center px-3 pb-6">
+            <div className="relative w-full max-w-xl" onTouchStart={handleViewerTouchStart} onTouchEnd={handleViewerTouchEnd}>
+              <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-black">
+                {selectedPostMedia[selectedMediaIndex]?.media_type === 'video' ? (
+                  <video src={selectedPostMedia[selectedMediaIndex]?.media_url} className="w-full h-full object-contain bg-black" controls autoPlay playsInline />
+                ) : (
+                  <img src={selectedPostMedia[selectedMediaIndex]?.media_url} alt={selectedPost.caption || 'Post media'} className="w-full h-full object-contain bg-black" />
+                )}
+
+                {selectedPostMedia.length > 1 && (
+                  <>
+                    <button onClick={goToPreviousMedia} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 text-white flex items-center justify-center" aria-label="Previous media">
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button onClick={goToNextMedia} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 text-white flex items-center justify-center" aria-label="Next media">
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <div className="absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
+                      {selectedMediaIndex + 1}/{selectedPostMedia.length}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {selectedPostMedia.length > 1 && (
+                <div className="flex items-center justify-center gap-1.5 mt-3">
+                  {selectedPostMedia.map((media, index) => (
+                    <button
+                      key={`${media.media_url}-${index}`}
+                      onClick={() => setSelectedMediaIndex(index)}
+                      className={`h-2 rounded-full transition-all ${selectedMediaIndex === index ? 'w-5 bg-white' : 'w-2 bg-white/35'}`}
+                      aria-label={`View media ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
