@@ -844,17 +844,6 @@ function VendorProfileContent() {
             <p className="text-base font-700 text-foreground">Chef profile unavailable</p>
             <p className="text-sm text-muted-foreground mt-2">{vendorNotFound ? 'This chef profile could not be loaded right now.' : 'This chef profile is not available.'}</p>
           </div>
-          <div className="mt-4 rounded-2xl border border-amber-300/40 bg-amber-50 dark:bg-amber-950/20 p-4 text-left space-y-1 text-xs text-foreground">
-            <p><span className="font-700">vendorId:</span> {debugInfo.vendorId}</p>
-            <p><span className="font-700">profile exists:</span> {String(debugInfo.profileExists)}</p>
-            <p><span className="font-700">profileRole:</span> {debugInfo.profileRole ?? 'null'}</p>
-            <p><span className="font-700">rolePassed:</span> {String(debugInfo.rolePassed)}</p>
-            <p><span className="font-700">profileError code:</span> {debugInfo.profileErrorCode ?? 'null'}</p>
-            <p><span className="font-700">profileError message:</span> {debugInfo.profileErrorMessage ?? 'null'}</p>
-            <p><span className="font-700">maybeSingle returned null:</span> {String(debugInfo.maybeSingleReturnedNull)}</p>
-            <p><span className="font-700">vendorNotFound:</span> {String(debugInfo.vendorNotFound)}</p>
-            <p><span className="font-700">did unavailable branch run:</span> {String(debugInfo.didUnavailableBranchRun)}</p>
-          </div>
         </div>
       </AppLayout>
     );

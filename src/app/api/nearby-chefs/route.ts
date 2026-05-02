@@ -14,15 +14,8 @@ export async function GET() {
       return NextResponse.json({ error: error.message || 'Failed to load nearby chefs.' }, { status: 500 });
     }
 
-    const rows = (data ?? []) as any[];
-    const targetChefId = '388eda79-4a09-44f2-88e5-ea1296d47f0d';
-
     return NextResponse.json({
-      chefs: rows,
-      debug: {
-        rawChefCount: rows.length,
-        targetChefInServerRaw: rows.some((row) => row.id === targetChefId),
-      },
+      chefs: (data ?? []) as any[],
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed to load nearby chefs.' }, { status: 500 });

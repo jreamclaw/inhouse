@@ -14,6 +14,7 @@ interface SearchUser {
   avatar_url: string | null;
   bio: string | null;
   role: 'chef' | 'customer' | null;
+  vendor_onboarding_complete?: boolean | null;
 }
 
 export default function SearchPage() {
@@ -44,7 +45,7 @@ export default function SearchPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, bio, role')
+        .select('id, full_name, username, avatar_url, bio, role, vendor_onboarding_complete')
         .or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
         .neq('id', user?.id || '')
         .limit(20);
@@ -106,19 +107,20 @@ export default function SearchPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-700 text-foreground truncate">{person.full_name || person.username || 'User'}</p>
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${person.role === 'chef' ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground'}`}>
-                        {person.role === 'chef' ? <ChefHat className="w-3 h-3" /> : <UserRound className="w-3 h-3" />}
-                        {person.role === 'chef' ? 'Chef' : 'User'}
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${person.role === 'chef' && person.vendor_onboarding_complete ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground'}`}>
+                        {person.role === 'chef' && person.vendor_onboarding_complete ? <ChefHat className="w-3 h-3" /> : <UserRound className="w-3 h-3" />}
+                        {person.role === 'chef' && person.vendor_onboarding_complete ? 'Chef' : 'User'}
                       </span>
                     </div>
                     {person.username && <p className="text-xs text-muted-foreground mt-0.5">@{person.username}</p>}
                     {person.bio && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{person.bio}</p>}
-                    {person.role !== 'chef' && <p className="text-[11px] text-muted-foreground mt-2">Public customer profiles are coming next.</p>}
+                    {(person.role !== 'chef' || !person.vendor_onboarding_complete) && <p className="text-[11px] text-muted-foreground mt-2">Public customer profiles are coming next.</p>}
                   </div>
                 </div>
               );
 
-              const href = person.role === 'chef' ? `/vendor-profile?id=${person.id}` : `/profile/${person.id}`;
+              const isRealChef = person.role === 'chef' && person.vendor_onboarding_complete;
+              const href = isRealChef ? `/vendor-profile?id=${person.id}` : `/profile/${person.id}`;
 
               return (
                 <Link key={person.id} href={href} className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all">
