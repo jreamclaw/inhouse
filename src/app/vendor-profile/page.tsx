@@ -59,6 +59,11 @@ interface DbVendorProfile {
   privacy_show_location?: boolean | null;
   chef_hide_exact_location?: boolean | null;
   followers_count?: number | null;
+  following_count?: number | null;
+  delivery_enabled?: boolean | null;
+  service_radius_miles?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   delivery_fee?: number | null;
   business_hours?: string | null;
   closed_days?: string[] | null;
@@ -492,7 +497,8 @@ function VendorProfileContent() {
     didUnavailableBranchRun: false,
   });
   const businessHours = vendor ? resolveBusinessHours(vendor as any) : null;
-  const openState = getTodayOpenState(businessHours, vendor ? ((vendor as any)?.availability_override || null) : null);
+  const activeAvailabilityOverride = (vendorOverride as any)?.availability_override ?? (vendor as any)?.availability_override ?? null;
+  const openState = getTodayOpenState(businessHours, activeAvailabilityOverride);
   const weeklyHours = parseWeeklyHours(businessHours);
   const headerSummary = [vendor?.location, openState.summary].filter(Boolean).join(' • ');
   const isOwnVendorProfile = !!user?.id && !!vendor?.id && user.id === vendor.id;
@@ -670,6 +676,9 @@ function VendorProfileContent() {
         latitude: typeof dbVendor.latitude === 'number' ? dbVendor.latitude : null,
         longitude: typeof dbVendor.longitude === 'number' ? dbVendor.longitude : null,
         deliveryTime: 'TBD',
+        availability_override: dbVendor.availability_override || null,
+        business_hours: dbVendor.business_hours || null,
+        closed_days: dbVendor.closed_days || [],
         minOrder: mappedMenu.length > 0 ? Math.min(...mappedMenu.map((item) => item.price)) : 0,
         menu: mappedMenu,
       });
