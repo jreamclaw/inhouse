@@ -184,15 +184,6 @@ export default function SignUpPage() {
             <p className="text-muted-foreground">Join InHouse and start discovering local chefs</p>
           </div>
 
-          <div className="mb-6 rounded-2xl border border-border bg-card p-4">
-            <p className="text-sm font-semibold text-foreground mb-2">How it works</p>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>1. Create your account with Google, Apple, or email.</p>
-              <p>2. Choose how you want to use InHouse after you sign in.</p>
-              <p>3. Finish setup and start ordering or selling.</p>
-            </div>
-          </div>
-
           {/* OAuth Buttons */}
           <div className="flex flex-col gap-3 mb-6">
             <button
