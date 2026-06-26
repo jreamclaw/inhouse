@@ -34,6 +34,7 @@ import ChefReviews, { MOCK_REVIEWS } from './components/ChefReviews';
 import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
 import { calculateTrustScore } from '@/lib/trust/score';
+import { getChefPublicLocationLabel } from '@/lib/location/display';
 import type { TrustCredentialShape } from '@/lib/trust/types';
 
 interface DbMeal {
@@ -56,6 +57,7 @@ interface DbVendorProfile {
   bio: string | null;
   location: string | null;
   privacy_show_location?: boolean | null;
+  chef_hide_exact_location?: boolean | null;
   followers_count?: number | null;
   delivery_fee?: number | null;
   business_hours?: string | null;
@@ -513,7 +515,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }, { data: credentials }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, delivery_enabled, delivery_fee, service_radius_miles, latitude, longitude, role')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, chef_hide_exact_location, delivery_enabled, delivery_fee, service_radius_miles, latitude, longitude, role')
           .eq('id', vendorId)
           .maybeSingle(),
         supabase
@@ -603,7 +605,7 @@ function VendorProfileContent() {
 
       const { data: profileExtras } = await supabase
         .from('user_profiles')
-        .select('business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, delivery_enabled, service_radius_miles, latitude, longitude')
+        .select('business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, chef_hide_exact_location, delivery_enabled, service_radius_miles, latitude, longitude')
         .eq('id', vendorId)
         .maybeSingle();
 
@@ -639,7 +641,7 @@ function VendorProfileContent() {
         reviewCount: Number(dbVendor.rating_count || 0),
         followers: dbVendor.followers_count || 0,
         following_count: (dbVendor as any).following_count || 0,
-        location: dbVendor.privacy_show_location === false ? 'Location private' : (dbVendor.location || 'Location unavailable'),
+        location: dbVendor.privacy_show_location === false ? 'Location private' : (getChefPublicLocationLabel(dbVendor.location, dbVendor.chef_hide_exact_location) || 'Location unavailable'),
         distance: undefined,
         deliveryFee: Number(dbVendor.delivery_fee || 0),
         deliveryEnabled: dbVendor.delivery_enabled !== false,

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2, Loader2, ImagePlus, X, Clock3, DollarSign, CalendarDays, ShieldCheck, Upload, FileText, Eye } from 'lucide-react';
+import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2, Loader2, ImagePlus, X, Clock3, DollarSign, CalendarDays, ShieldCheck, Upload, FileText, Eye, MapPin } from 'lucide-react';
 import { getChefReadiness } from '@/lib/chef/readiness';
 import { toast } from 'sonner';
 import OrdersTab from '@/app/vendor-profile/components/OrdersTab';
@@ -88,6 +88,11 @@ export default function ChefMenuPage() {
   const [stripeState, setStripeState] = useState<any>(null);
   const [payoutSchedule, setPayoutSchedule] = useState<'daily' | 'weekly'>('daily');
   const [savingPayoutSchedule, setSavingPayoutSchedule] = useState(false);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+  const [deliveryFee, setDeliveryFee] = useState('0');
+  const [serviceRadiusMiles, setServiceRadiusMiles] = useState('10');
+  const [chefHideExactLocation, setChefHideExactLocation] = useState(false);
+  const [savingDeliverySettings, setSavingDeliverySettings] = useState(false);
   const [stripeLoading, setStripeLoading] = useState(false);
   const [stripeSyncing, setStripeSyncing] = useState(false);
   const [stripeError, setStripeError] = useState('');
@@ -153,13 +158,13 @@ export default function ChefMenuPage() {
   const loadChefData = async () => {
     if (!user) return;
     try {
-      const profileSelect = 'delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, payout_schedule, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count';
+      const profileSelect = 'delivery_enabled, delivery_fee, service_radius_miles, chef_hide_exact_location, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, payout_schedule, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count';
       let profileResult = await supabase.from('user_profiles').select(profileSelect).eq('id', user.id).single();
 
       if (profileResult.error && String(profileResult.error.message || '').includes('stripe_')) {
         profileResult = await supabase
           .from('user_profiles')
-          .select('delivery_enabled, delivery_fee, payout_schedule, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count')
+          .select('delivery_enabled, delivery_fee, service_radius_miles, chef_hide_exact_location, payout_schedule, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count')
           .eq('id', user.id)
           .single();
       }
@@ -180,6 +185,10 @@ export default function ChefMenuPage() {
         ...profileRow,
       });
       setPayoutSchedule(profileRow?.payout_schedule === 'weekly' ? 'weekly' : 'daily');
+      setDeliveryEnabled(profileRow?.delivery_enabled === true);
+      setDeliveryFee(String(Number(profileRow?.delivery_fee ?? 0).toFixed(2)));
+      setServiceRadiusMiles(String(Number(profileRow?.service_radius_miles ?? 10)));
+      setChefHideExactLocation(profileRow?.chef_hide_exact_location === true);
       setMeals(mealRows || []);
 
       const summaryRows = (revenueRows as any[] | null) ?? [];
@@ -282,6 +291,53 @@ export default function ChefMenuPage() {
       toast.error(error?.message || 'Unable to update payout schedule.');
     } finally {
       setSavingPayoutSchedule(false);
+    }
+  };
+
+  const saveDeliverySettings = async () => {
+    if (!user) return;
+
+    const nextDeliveryFee = Number(deliveryFee || 0);
+    const nextServiceRadius = Math.max(1, Number(serviceRadiusMiles || 10));
+
+    if (Number.isNaN(nextDeliveryFee) || nextDeliveryFee < 0) {
+      toast.error('Enter a valid delivery fee.');
+      return;
+    }
+
+    if (Number.isNaN(nextServiceRadius) || nextServiceRadius < 1) {
+      toast.error('Enter a valid service radius.');
+      return;
+    }
+
+    try {
+      setSavingDeliverySettings(true);
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          delivery_enabled: deliveryEnabled,
+          delivery_fee: Number(nextDeliveryFee.toFixed(2)),
+          service_radius_miles: Math.round(nextServiceRadius),
+          chef_hide_exact_location: chefHideExactLocation,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setStripeState((prev: any) => ({
+        ...prev,
+        delivery_enabled: deliveryEnabled,
+        delivery_fee: Number(nextDeliveryFee.toFixed(2)),
+        service_radius_miles: Math.round(nextServiceRadius),
+        chef_hide_exact_location: chefHideExactLocation,
+      }));
+
+      toast.success('Delivery and location privacy settings saved.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Unable to save delivery settings.');
+    } finally {
+      setSavingDeliverySettings(false);
     }
   };
 
@@ -614,6 +670,43 @@ export default function ChefMenuPage() {
 
         {activeSection === 'hours' && (
           <div className="space-y-4">
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-3 mb-3"><MapPin className="w-5 h-5 text-emerald-600" /><div><p className="text-sm font-700 text-foreground">Delivery & pickup area</p><p className="text-xs text-muted-foreground">Control whether customers can order delivery and how your location appears publicly before payment.</p></div></div>
+              <div className="space-y-4">
+                <label className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
+                  <div>
+                    <p className="text-sm font-700 text-foreground">Enable delivery</p>
+                    <p className="text-xs text-muted-foreground">Turn delivery on if you want customers in your radius to check out for delivery.</p>
+                  </div>
+                  <input type="checkbox" checked={deliveryEnabled} onChange={(e) => setDeliveryEnabled(e.target.checked)} />
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-700 text-muted-foreground uppercase tracking-wide mb-2">Flat delivery fee</label>
+                    <input value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} inputMode="decimal" placeholder="5.99" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-700 text-muted-foreground uppercase tracking-wide mb-2">Service radius (miles)</label>
+                    <input value={serviceRadiusMiles} onChange={(e) => setServiceRadiusMiles(e.target.value)} inputMode="numeric" placeholder="10" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                  </div>
+                </div>
+
+                <label className="flex items-start justify-between gap-3 rounded-xl border border-border/60 p-3">
+                  <div>
+                    <p className="text-sm font-700 text-foreground">Hide my exact location</p>
+                    <p className="text-xs text-muted-foreground">When enabled, customers only see your general area before payment. Your exact pickup address is revealed only after a paid order.</p>
+                  </div>
+                  <input type="checkbox" checked={chefHideExactLocation} onChange={(e) => setChefHideExactLocation(e.target.checked)} />
+                </label>
+
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">Nearby still uses your real saved coordinates behind the scenes for distance and radius checks.</p>
+                  <button onClick={saveDeliverySettings} disabled={savingDeliverySettings} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingDeliverySettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}Save delivery settings</button>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-3 mb-3"><Clock3 className="w-5 h-5 text-blue-600" /><div><p className="text-sm font-700 text-foreground">Business hours</p><p className="text-xs text-muted-foreground">Set the days and times customers should expect you to be open.</p></div></div>
               <div className="flex flex-wrap items-center gap-2 mb-4">

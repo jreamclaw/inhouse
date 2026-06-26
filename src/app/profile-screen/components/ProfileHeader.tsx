@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
-import { getPublicLocationLabel } from '@/lib/location/display';
+import { getChefPublicLocationLabel, getPublicLocationLabel } from '@/lib/location/display';
 
 function parseHoursFromBio(bio?: string | null) {
   if (!bio) return { cleanBio: '', hours: null };
@@ -85,6 +85,7 @@ export default function ProfileHeader() {
   const { cleanBio, hours } = useMemo(() => parseHoursFromBio(profile?.bio), [profile?.bio]);
   const openState = useMemo(() => getTodayStatus(hours, profile?.availability_override || null), [hours, profile?.availability_override]);
   const publicLocationLabel = useMemo(() => getPublicLocationLabel(profile?.location), [profile?.location]);
+  const publicChefLocationLabel = useMemo(() => getChefPublicLocationLabel(profile?.location, profile?.chef_hide_exact_location), [profile?.location, profile?.chef_hide_exact_location]);
 
   useEffect(() => {
     const syncCounts = async () => {
@@ -197,7 +198,7 @@ export default function ProfileHeader() {
             {((isChef && profile?.location) || (!isChef && publicLocationLabel)) && profile?.privacy_show_location !== false && (
               <div className="flex items-center gap-1.5 text-[12px] text-[#555555] dark:text-[#E5E7EB]">
                 <MapPin className="w-3.5 h-3.5" />
-                <span>{isChef ? profile?.location : publicLocationLabel}</span>
+                <span>{isChef ? publicChefLocationLabel : publicLocationLabel}</span>
               </div>
             )}
             {joinedDate && (
@@ -212,7 +213,7 @@ export default function ProfileHeader() {
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <div className={`inline-flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-full font-700 border ${openState.isOpen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}>
                 <span className={`w-2 h-2 rounded-full ${openState.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                {profile?.location ? `${profile.location} • ${openState.label}` : openState.label}
+                {publicChefLocationLabel ? `${publicChefLocationLabel} • ${openState.label}` : openState.label}
               </div>
             </div>
           )}

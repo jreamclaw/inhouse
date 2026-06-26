@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { milesBetween } from '@/lib/location/distance';
 import { reverseGeocode } from '@/lib/location/geocode';
+import { getChefPublicLocationLabel } from '@/lib/location/display';
 
 type SortOption = 'distance' | 'rating' | 'delivery' | 'fee';
 type LocationSource = 'browser' | 'saved-profile' | 'manual' | 'none';
@@ -71,6 +72,7 @@ interface DbVendorRow {
   latitude: number | null;
   longitude: number | null;
   service_radius_miles: number | null;
+  chef_hide_exact_location?: boolean | null;
   delivery_enabled?: boolean | null;
   delivery_fee?: number | null;
   business_hours?: string | null;
@@ -476,7 +478,7 @@ export default function NearbyPage() {
             isOpen: openState.isOpen,
             openLabel: openState.label,
             knownFor: inferKnownFor(row),
-            locationLabel: row.location || 'Location unavailable',
+            locationLabel: getChefPublicLocationLabel(row.location, row.chef_hide_exact_location) || 'Location unavailable',
             serviceRadiusMiles: chefServiceRadius,
             trustScore: row.trust_score || 0,
             trustLabel: row.trust_label || 'Low trust',

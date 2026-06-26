@@ -18,6 +18,7 @@ export interface UserProfile {
   role: 'chef' | 'customer' | null;
   availability_override?: 'open' | 'closed' | null;
   privacy_show_location?: boolean;
+  chef_hide_exact_location?: boolean;
   privacy_public_profile?: boolean;
   privacy_show_activity?: boolean;
   email_verified?: boolean;

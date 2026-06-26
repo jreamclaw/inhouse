@@ -24,3 +24,9 @@ export function getPublicLocationLabel(location?: string | null) {
   const firstTwo = stripped.split(',').map((part) => part.trim()).filter(Boolean).slice(0, 2);
   return firstTwo.length > 0 ? firstTwo.join(', ') : stripped;
 }
+
+export function getChefPublicLocationLabel(location?: string | null, hideExactLocation?: boolean | null) {
+  const safe = getPublicLocationLabel(location);
+  if (!safe) return hideExactLocation ? 'Local pickup area' : null;
+  return hideExactLocation ? `${safe} · Exact pickup shared after payment` : safe;
+}
