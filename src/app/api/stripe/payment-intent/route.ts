@@ -78,9 +78,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Chef payouts are not ready to accept payments yet.' }, { status: 400 });
     }
 
-    const platformFee = Math.round(subtotal * 0.15 * 100) / 100;
-    const transferAmount = Math.round((subtotal - platformFee) * 100);
-
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: 'usd',
@@ -99,7 +96,6 @@ export async function POST(request: Request) {
       application_fee_amount: Math.max(0, Math.round(serviceFee * 100)),
       transfer_data: {
         destination: chefProfile.stripe_account_id,
-        amount: Math.max(0, transferAmount),
       },
       receipt_email: user.email || undefined,
     });
