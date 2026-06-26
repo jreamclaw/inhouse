@@ -26,6 +26,17 @@ export default function LoginPage() {
   const [routingStatus, setRoutingStatus] = useState('');
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const providerError = params.get('error_description') || params.get('error');
+    if (providerError) {
+      setError(providerError);
+      setOauthLoading(null);
+    }
+  }, []);
+
+  useEffect(() => {
     if (authLoading) return;
     if (!user) return;
     if (!profile) return;
