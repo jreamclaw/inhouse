@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '../../lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2, Loader2, ImagePlus, X, Clock3, DollarSign, CalendarDays, ShieldCheck, Upload, FileText, Eye, MapPin } from 'lucide-react';
+import { ChefHat, CheckCircle2, Circle, Settings, Wallet, Package, Plus, Trash2, Loader2, ImagePlus, X, Clock3, DollarSign, CalendarDays, ShieldCheck, Upload, FileText, Eye, MapPin, ChevronDown } from 'lucide-react';
 import { getChefReadiness } from '@/lib/chef/readiness';
 import { toast } from 'sonner';
 import OrdersTab from '@/app/vendor-profile/components/OrdersTab';
@@ -571,6 +571,14 @@ export default function ChefMenuPage() {
 
   const missingItems = readiness.items.filter((item) => !item.complete);
 
+  const toggleSection = (section: string, onOpen?: () => void) => {
+    setActiveSection((prev) => {
+      const next = prev === section ? '' : section;
+      if (next === section) onOpen?.();
+      return next;
+    });
+  };
+
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 py-4 space-y-5">
@@ -582,168 +590,203 @@ export default function ChefMenuPage() {
           <Link href="/edit-profile" className="flex items-center gap-1.5 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Settings className="w-4 h-4" />Edit Vendor Profile</Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-          <button onClick={() => setActiveSection('overview')} className={`rounded-2xl border p-3 text-left ${activeSection === 'overview' ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Overview</p><p className="text-sm font-700 text-foreground mt-1">Chef home</p></button>
-          <button onClick={() => setActiveSection('menu')} className={`rounded-2xl border p-3 text-left ${activeSection === 'menu' ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Menu</p><p className="text-sm font-700 text-foreground mt-1">Manage menu</p></button>
-          <button onClick={() => setActiveSection('orders')} className={`rounded-2xl border p-3 text-left ${activeSection === 'orders' ? 'border-amber-500 bg-amber-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Orders</p><p className="text-sm font-700 text-foreground mt-1">Incoming orders</p></button>
-          <button onClick={() => { setActiveSection('payouts'); syncStripeStatus(); }} className={`rounded-2xl border p-3 text-left ${activeSection === 'payouts' ? 'border-green-500 bg-green-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Payouts</p><p className="text-sm font-700 text-foreground mt-1">Earnings</p></button>
-          <button onClick={() => setActiveSection('hours')} className={`rounded-2xl border p-3 text-left ${activeSection === 'hours' ? 'border-blue-500 bg-blue-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Hours</p><p className="text-sm font-700 text-foreground mt-1">Business hours</p></button>
-          <button onClick={() => setActiveSection('delivery')} className={`rounded-2xl border p-3 text-left ${activeSection === 'delivery' ? 'border-emerald-500 bg-emerald-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Delivery</p><p className="text-sm font-700 text-foreground mt-1">Area & privacy</p></button>
+        <div className="space-y-3">
+          <div className={`rounded-2xl border overflow-hidden ${activeSection === 'overview' ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}>
+            <button onClick={() => toggleSection('overview')} className="w-full p-3 text-left flex items-center justify-between gap-3">
+              <div><p className="text-xs text-muted-foreground">Overview</p><p className="text-sm font-700 text-foreground mt-1">Chef home</p></div>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${activeSection === 'overview' ? 'rotate-180' : ''}`} />
+            </button>
+            {activeSection === 'overview' && (
+              <div className="border-t border-border/60 p-3">
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-center justify-between gap-4 mb-3"><div><p className="text-sm font-700 text-foreground">Chef readiness</p><p className="text-xs text-muted-foreground">{readiness.completedCount} of {readiness.totalCount} setup areas complete</p></div><div className="text-right"><p className="text-2xl font-700 text-foreground">{readiness.percent}%</p><p className="text-xs text-muted-foreground capitalize">{readiness.status.replace('-', ' ')}</p></div></div>
+                  <div className="w-full h-2 rounded-full bg-muted overflow-hidden mb-4"><div className="h-full bg-primary rounded-full" style={{ width: `${readiness.percent}%` }} /></div>
+                  <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{item.key === 'payouts' && stripeSyncing ? <span className="text-xs font-700 text-amber-600">Checking payout setup...</span> : item.key === 'payouts' && stripeReadyForPayouts ? <span className="text-xs font-700 text-green-600">Payouts connected</span> : item.key === 'payouts' && stripeConnected ? <span className="text-xs font-700 text-sky-600">Stripe connected</span> : !item.complete && <button onClick={() => item.key === 'menu' ? toggleSection('menu') : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-2xl border overflow-hidden ${activeSection === 'menu' ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}>
+            <button onClick={() => toggleSection('menu')} className="w-full p-3 text-left flex items-center justify-between gap-3">
+              <div><p className="text-xs text-muted-foreground">Menu</p><p className="text-sm font-700 text-foreground mt-1">Manage menu</p></div>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${activeSection === 'menu' ? 'rotate-180' : ''}`} />
+            </button>
+            {activeSection === 'menu' && (
+              <div className="border-t border-border/60 p-3">
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <div><p className="text-sm font-700 text-foreground">Menu manager</p><p className="text-xs text-muted-foreground">Add and manage the dishes customers will see.</p></div>
+                    <button onClick={() => setShowMealForm((prev) => !prev)} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />{showMealForm ? 'Close form' : 'Add meal'}</button>
+                  </div>
+
+                  {showMealForm && (
+                    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 mb-4 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <input value={mealTitle} onChange={(e) => setMealTitle(e.target.value)} placeholder="Meal title" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                          <input value={mealPrice} onChange={(e) => setMealPrice(e.target.value)} placeholder="Price" inputMode="decimal" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                        </div>
+                        <textarea value={mealDescription} onChange={(e) => setMealDescription(e.target.value)} placeholder="Describe the dish" rows={3} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background resize-none" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <select value={mealCategory} onChange={(e) => setMealCategory(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background">{CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}</select>
+                          <label className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background"><input type="checkbox" checked={mealAvailable} onChange={(e) => setMealAvailable(e.target.checked)} />Available for orders</label>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background p-4 space-y-3"><div className="flex items-center justify-between"><p className="text-sm font-700 text-foreground">Sides / drinks / extras</p><button onClick={() => setModifierGroups((prev) => [...prev, { id: makeId(), name: '', required: false, multiSelect: false, options: [{ id: makeId(), label: '', priceAdd: 0 }] }])} className="text-xs font-700 text-primary">+ Add option group</button></div>{modifierGroups.length === 0 ? <p className="text-xs text-muted-foreground">Add modifier groups for sides, drinks, and extras.</p> : modifierGroups.map((group, groupIndex) => <div key={group.id} className="rounded-xl border border-border/70 p-3 space-y-3"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><input value={group.name} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, name: e.target.value } : item))} placeholder="Group name (e.g. Sides)" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" /><div className="flex gap-3"><label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={group.required} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, required: e.target.checked } : item))} />Required</label><label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={group.multiSelect} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, multiSelect: e.target.checked } : item))} />Multi-select</label></div></div><div className="space-y-2">{group.options.map((option, optionIndex) => <div key={option.id} className="grid grid-cols-[1fr_110px_auto] gap-2"><input value={option.label} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.map((opt, optIdx) => optIdx === optionIndex ? { ...opt, label: e.target.value } : opt) } : item))} placeholder="Option name" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" /><input value={option.priceAdd} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.map((opt, optIdx) => optIdx === optionIndex ? { ...opt, priceAdd: Number(e.target.value || 0) } : opt) } : item))} placeholder="Price add" inputMode="decimal" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" /><button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.filter((_, optIdx) => optIdx !== optionIndex) } : item).filter((item) => item.options.length > 0))} className="text-xs font-700 text-red-500">Remove</button></div>)}</div><div className="flex items-center justify-between"><button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: [...item.options, { id: makeId(), label: '', priceAdd: 0 }] } : item))} className="text-xs font-700 text-primary">+ Add option</button><button onClick={() => setModifierGroups((prev) => prev.filter((_, idx) => idx !== groupIndex))} className="text-xs font-700 text-red-500">Delete group</button></div></div>)}</div>
+                        <div className="rounded-xl border border-dashed border-border p-4 bg-background">{!mealImagePreview ? <button onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 text-sm font-600 text-primary"><ImagePlus className="w-4 h-4" />Upload meal photo</button> : <div className="relative w-32 h-32 rounded-xl overflow-hidden"><img src={mealImagePreview} alt="Meal preview" className="w-full h-full object-cover" /><button onClick={() => { setMealImageFile(null); setMealImagePreview(null); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center"><X className="w-4 h-4 text-white" /></button></div>}<input ref={fileInputRef} type="file" accept="image/*" onChange={handleMealImageSelect} className="hidden" /></div>
+                        <div className="flex gap-3"><button onClick={handleCreateMeal} disabled={savingMeal} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingMeal ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}{savingMeal ? 'Saving meal...' : 'Save meal'}</button><button onClick={resetMealForm} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">Cancel</button></div>
+                      </div>
+                    )}
+
+                    {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Use the Add meal button above to create your first dish.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} • {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-2xl border overflow-hidden ${activeSection === 'orders' ? 'border-amber-500 bg-amber-500/5' : 'border-border bg-card'}`}>
+            <button onClick={() => toggleSection('orders')} className="w-full p-3 text-left flex items-center justify-between gap-3">
+              <div><p className="text-xs text-muted-foreground">Orders</p><p className="text-sm font-700 text-foreground mt-1">Incoming orders</p></div>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${activeSection === 'orders' ? 'rotate-180' : ''}`} />
+            </button>
+            {activeSection === 'orders' && (
+              <div className="border-t border-border/60 p-3">
+                <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                  <div className="p-5 border-b border-border/60"><div className="flex items-center gap-3"><Package className="w-5 h-5 text-amber-600" /><div><p className="text-sm font-700 text-foreground">Orders received</p><p className="text-xs text-muted-foreground">Incoming customer orders and fulfillment status.</p></div></div></div>
+                  <OrdersTab />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-2xl border overflow-hidden ${activeSection === 'payouts' ? 'border-green-500 bg-green-500/5' : 'border-border bg-card'}`}>
+            <button onClick={() => toggleSection('payouts', syncStripeStatus)} className="w-full p-3 text-left flex items-center justify-between gap-3">
+              <div><p className="text-xs text-muted-foreground">Payouts</p><p className="text-sm font-700 text-foreground mt-1">Earnings</p></div>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${activeSection === 'payouts' ? 'rotate-180' : ''}`} />
+            </button>
+            {activeSection === 'payouts' && (
+              <div className="border-t border-border/60 p-3 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Net earnings</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.net.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Completed orders: {earningsSummary.completedOrders}</p></div>
+                  <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending payout</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.pendingPayout.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Estimated payout date: {nextPayoutLabel(payoutSchedule)} · {payoutSchedule === 'weekly' ? 'Weekly payouts' : 'Daily payouts'}</p></div>
+                  <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Delivery fees earned</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.deliveryFees.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Gross order volume: ${earningsSummary.gross.toFixed(2)}</p></div>
+                </div>
+
+                <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
+                  <div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div>
+                  <p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeReadyForPayouts ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeConnected ? 'Your Stripe account is connected. Finish payout verification if Stripe still needs more details.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p>
+                  {stripeError && <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">{stripeError}</div>}
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => void savePayoutSchedule('daily')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'daily' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Daily payouts</button>
+                      <button onClick={() => void savePayoutSchedule('weekly')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Weekly payouts</button>
+                    </div>
+                    <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeReadyForPayouts ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeConnected ? 'Manage Stripe' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
+                  </div>
+                  <p className="mt-3 text-[11px] text-muted-foreground">Stripe onboarding opens in an external secure page and returns here when finished.</p>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-center gap-3 mb-3"><DollarSign className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Earnings details</p></div>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>• Net earnings are calculated from delivered orders using stored `chef_earnings` values after the 6% chef platform fee.</p>
+                    <p>• Customers now pay a separate 6% service fee at checkout.</p>
+                    <p>• Pending payout reflects orders not yet delivered or paid out.</p>
+                    <p>• Stripe payout status must be fully connected for payouts to settle on your selected daily or weekly schedule.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-2xl border overflow-hidden ${activeSection === 'hours' ? 'border-blue-500 bg-blue-500/5' : 'border-border bg-card'}`}>
+            <button onClick={() => toggleSection('hours')} className="w-full p-3 text-left flex items-center justify-between gap-3">
+              <div><p className="text-xs text-muted-foreground">Hours</p><p className="text-sm font-700 text-foreground mt-1">Business hours</p></div>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${activeSection === 'hours' ? 'rotate-180' : ''}`} />
+            </button>
+            {activeSection === 'hours' && (
+              <div className="border-t border-border/60 p-3 space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-center gap-3 mb-3"><Clock3 className="w-5 h-5 text-blue-600" /><div><p className="text-sm font-700 text-foreground">Business hours</p><p className="text-xs text-muted-foreground">Set the days and times customers should expect you to be open.</p></div></div>
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <button onClick={() => setAvailabilityOverride(null)} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === null ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Auto</button>
+                    <button onClick={() => setAvailabilityOverride('open')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'open' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-border text-muted-foreground'}`}>Open now</button>
+                    <button onClick={() => setAvailabilityOverride('closed')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'closed' ? 'border-red-500 bg-red-500/10 text-red-600' : 'border-border text-muted-foreground'}`}>Closed now</button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground border-b border-border">
+                          <th className="py-2 pr-3 font-600">Day</th>
+                          <th className="py-2 pr-3 font-600">Open</th>
+                          <th className="py-2 pr-3 font-600">Open time</th>
+                          <th className="py-2 font-600">Close time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {businessHoursRows.map((row, idx) => (
+                          <tr key={row.day} className="border-b border-border/40 last:border-0">
+                            <td className="py-3 pr-3 font-600 text-foreground">{row.day}</td>
+                            <td className="py-3 pr-3"><input type="checkbox" checked={row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, open: e.target.checked } : item))} /></td>
+                            <td className="py-3 pr-3"><input type="time" value={row.openTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, openTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
+                            <td className="py-3"><input type="time" value={row.closeTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, closeTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-4"><div className="text-xs text-muted-foreground flex items-center gap-2"><CalendarDays className="w-4 h-4" />Display summary: {formatBusinessHours(businessHoursRows)}</div><button onClick={saveBusinessHours} disabled={savingBusinessHours} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingBusinessHours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock3 className="w-4 h-4" />}Save hours</button></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-2xl border overflow-hidden ${activeSection === 'delivery' ? 'border-emerald-500 bg-emerald-500/5' : 'border-border bg-card'}`}>
+            <button onClick={() => toggleSection('delivery')} className="w-full p-3 text-left flex items-center justify-between gap-3">
+              <div><p className="text-xs text-muted-foreground">Delivery</p><p className="text-sm font-700 text-foreground mt-1">Area & privacy</p></div>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${activeSection === 'delivery' ? 'rotate-180' : ''}`} />
+            </button>
+            {activeSection === 'delivery' && (
+              <div className="border-t border-border/60 p-3 space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-center gap-3 mb-3"><MapPin className="w-5 h-5 text-emerald-600" /><div><p className="text-sm font-700 text-foreground">Delivery & pickup area</p><p className="text-xs text-muted-foreground">Control whether customers can order delivery and how your location appears publicly before payment.</p></div></div>
+                  <div className="space-y-4">
+                    <label className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
+                      <div>
+                        <p className="text-sm font-700 text-foreground">Enable delivery</p>
+                        <p className="text-xs text-muted-foreground">Turn delivery on if you want customers in your radius to check out for delivery.</p>
+                      </div>
+                      <input type="checkbox" checked={deliveryEnabled} onChange={(e) => setDeliveryEnabled(e.target.checked)} />
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-700 text-muted-foreground uppercase tracking-wide mb-2">Flat delivery fee</label>
+                        <input value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} inputMode="decimal" placeholder="5.99" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-700 text-muted-foreground uppercase tracking-wide mb-2">Service radius (miles)</label>
+                        <input value={serviceRadiusMiles} onChange={(e) => setServiceRadiusMiles(e.target.value)} inputMode="numeric" placeholder="10" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
+                      </div>
+                    </div>
+
+                    <label className="flex items-start justify-between gap-3 rounded-xl border border-border/60 p-3">
+                      <div>
+                        <p className="text-sm font-700 text-foreground">Hide my exact location</p>
+                        <p className="text-xs text-muted-foreground">When enabled, customers only see your general area before payment. Your exact pickup address is revealed only after a paid order.</p>
+                      </div>
+                      <input type="checkbox" checked={chefHideExactLocation} onChange={(e) => setChefHideExactLocation(e.target.checked)} />
+                    </label>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs text-muted-foreground">Nearby still uses your real saved coordinates behind the scenes for distance and radius checks.</p>
+                      <button onClick={saveDeliverySettings} disabled={savingDeliverySettings} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingDeliverySettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}Save delivery settings</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        {activeSection === 'overview' && (
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center justify-between gap-4 mb-3"><div><p className="text-sm font-700 text-foreground">Chef readiness</p><p className="text-xs text-muted-foreground">{readiness.completedCount} of {readiness.totalCount} setup areas complete</p></div><div className="text-right"><p className="text-2xl font-700 text-foreground">{readiness.percent}%</p><p className="text-xs text-muted-foreground capitalize">{readiness.status.replace('-', ' ')}</p></div></div>
-              <div className="w-full h-2 rounded-full bg-muted overflow-hidden mb-4"><div className="h-full bg-primary rounded-full" style={{ width: `${readiness.percent}%` }} /></div>
-              <div className="space-y-3">{readiness.items.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div className="flex items-center gap-3">{item.complete ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-muted-foreground" />}<span className="text-sm text-foreground">{item.label}</span></div>{item.key === 'payouts' && stripeSyncing ? <span className="text-xs font-700 text-amber-600">Checking payout setup...</span> : item.key === 'payouts' && stripeReadyForPayouts ? <span className="text-xs font-700 text-green-600">Payouts connected</span> : item.key === 'payouts' && stripeConnected ? <span className="text-xs font-700 text-sky-600">Stripe connected</span> : !item.complete && <button onClick={() => item.key === 'menu' ? setShowMealForm(true) : item.key === 'payouts' ? handleStripeConnect() : router.push(item.ctaHref)} className="text-xs font-700 text-primary hover:underline">{item.ctaLabel}</button>}</div>)}</div>
-            </div>
-        )}
-
-        {activeSection === 'menu' && (
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div><p className="text-sm font-700 text-foreground">Menu manager</p><p className="text-xs text-muted-foreground">Add and manage the dishes customers will see.</p></div>
-              <button onClick={() => setShowMealForm((prev) => !prev)} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Plus className="w-4 h-4" />{showMealForm ? 'Close form' : 'Add meal'}</button>
-            </div>
-
-            {showMealForm && (
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 mb-4 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <input value={mealTitle} onChange={(e) => setMealTitle(e.target.value)} placeholder="Meal title" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                    <input value={mealPrice} onChange={(e) => setMealPrice(e.target.value)} placeholder="Price" inputMode="decimal" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                  </div>
-                  <textarea value={mealDescription} onChange={(e) => setMealDescription(e.target.value)} placeholder="Describe the dish" rows={3} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background resize-none" />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <select value={mealCategory} onChange={(e) => setMealCategory(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background">{CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}</select>
-                    <label className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background"><input type="checkbox" checked={mealAvailable} onChange={(e) => setMealAvailable(e.target.checked)} />Available for orders</label>
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-4 space-y-3"><div className="flex items-center justify-between"><p className="text-sm font-700 text-foreground">Sides / drinks / extras</p><button onClick={() => setModifierGroups((prev) => [...prev, { id: makeId(), name: '', required: false, multiSelect: false, options: [{ id: makeId(), label: '', priceAdd: 0 }] }])} className="text-xs font-700 text-primary">+ Add option group</button></div>{modifierGroups.length === 0 ? <p className="text-xs text-muted-foreground">Add modifier groups for sides, drinks, and extras.</p> : modifierGroups.map((group, groupIndex) => <div key={group.id} className="rounded-xl border border-border/70 p-3 space-y-3"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><input value={group.name} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, name: e.target.value } : item))} placeholder="Group name (e.g. Sides)" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" /><div className="flex gap-3"><label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={group.required} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, required: e.target.checked } : item))} />Required</label><label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={group.multiSelect} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, multiSelect: e.target.checked } : item))} />Multi-select</label></div></div><div className="space-y-2">{group.options.map((option, optionIndex) => <div key={option.id} className="grid grid-cols-[1fr_110px_auto] gap-2"><input value={option.label} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.map((opt, optIdx) => optIdx === optionIndex ? { ...opt, label: e.target.value } : opt) } : item))} placeholder="Option name" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" /><input value={option.priceAdd} onChange={(e) => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.map((opt, optIdx) => optIdx === optionIndex ? { ...opt, priceAdd: Number(e.target.value || 0) } : opt) } : item))} placeholder="Price add" inputMode="decimal" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" /><button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: item.options.filter((_, optIdx) => optIdx !== optionIndex) } : item).filter((item) => item.options.length > 0))} className="text-xs font-700 text-red-500">Remove</button></div>)}</div><div className="flex items-center justify-between"><button onClick={() => setModifierGroups((prev) => prev.map((item, idx) => idx === groupIndex ? { ...item, options: [...item.options, { id: makeId(), label: '', priceAdd: 0 }] } : item))} className="text-xs font-700 text-primary">+ Add option</button><button onClick={() => setModifierGroups((prev) => prev.filter((_, idx) => idx !== groupIndex))} className="text-xs font-700 text-red-500">Delete group</button></div></div>)}</div>
-                  <div className="rounded-xl border border-dashed border-border p-4 bg-background">{!mealImagePreview ? <button onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 text-sm font-600 text-primary"><ImagePlus className="w-4 h-4" />Upload meal photo</button> : <div className="relative w-32 h-32 rounded-xl overflow-hidden"><img src={mealImagePreview} alt="Meal preview" className="w-full h-full object-cover" /><button onClick={() => { setMealImageFile(null); setMealImagePreview(null); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center"><X className="w-4 h-4 text-white" /></button></div>}<input ref={fileInputRef} type="file" accept="image/*" onChange={handleMealImageSelect} className="hidden" /></div>
-                  <div className="flex gap-3"><button onClick={handleCreateMeal} disabled={savingMeal} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingMeal ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}{savingMeal ? 'Saving meal...' : 'Save meal'}</button><button onClick={resetMealForm} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">Cancel</button></div>
-                </div>
-              )}
-
-              {meals.length === 0 ? <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No menu items yet. Use the Add meal button above to create your first dish.</div> : <div className="space-y-3">{meals.map((meal) => <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3"><div><p className="text-sm font-700 text-foreground">{meal.title}</p><p className="text-xs text-muted-foreground">${Number(meal.price).toFixed(2)} • {meal.category}</p></div><button onClick={() => handleDeleteMeal(meal.id)} className="inline-flex items-center gap-1 text-xs font-700 text-red-500"><Trash2 className="w-4 h-4" />Remove</button></div>)}</div>}
-            </div>
-        )}
-
-        {activeSection === 'orders' && (
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className="p-5 border-b border-border/60"><div className="flex items-center gap-3"><Package className="w-5 h-5 text-amber-600" /><div><p className="text-sm font-700 text-foreground">Orders received</p><p className="text-xs text-muted-foreground">Incoming customer orders and fulfillment status.</p></div></div></div>
-            <OrdersTab />
-          </div>
-        )}
-
-        {activeSection === 'payouts' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Net earnings</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.net.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Completed orders: {earningsSummary.completedOrders}</p></div>
-              <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending payout</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.pendingPayout.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Estimated payout date: {nextPayoutLabel(payoutSchedule)} · {payoutSchedule === 'weekly' ? 'Weekly payouts' : 'Daily payouts'}</p></div>
-              <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Delivery fees earned</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.deliveryFees.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Gross order volume: ${earningsSummary.gross.toFixed(2)}</p></div>
-            </div>
-
-            <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
-              <div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div>
-              <p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeReadyForPayouts ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeConnected ? 'Your Stripe account is connected. Finish payout verification if Stripe still needs more details.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p>
-              {stripeError && <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">{stripeError}</div>}
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => void savePayoutSchedule('daily')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'daily' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Daily payouts</button>
-                  <button onClick={() => void savePayoutSchedule('weekly')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Weekly payouts</button>
-                </div>
-                <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeReadyForPayouts ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeConnected ? 'Manage Stripe' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
-              </div>
-              <p className="mt-3 text-[11px] text-muted-foreground">Stripe onboarding opens in an external secure page and returns here when finished.</p>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center gap-3 mb-3"><DollarSign className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Earnings details</p></div>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>• Net earnings are calculated from delivered orders using stored `chef_earnings` values after the 6% chef platform fee.</p>
-                <p>• Customers now pay a separate 6% service fee at checkout.</p>
-                <p>• Pending payout reflects orders not yet delivered or paid out.</p>
-                <p>• Stripe payout status must be fully connected for payouts to settle on your selected daily or weekly schedule.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'hours' && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center gap-3 mb-3"><Clock3 className="w-5 h-5 text-blue-600" /><div><p className="text-sm font-700 text-foreground">Business hours</p><p className="text-xs text-muted-foreground">Set the days and times customers should expect you to be open.</p></div></div>
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <button onClick={() => setAvailabilityOverride(null)} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === null ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Auto</button>
-                <button onClick={() => setAvailabilityOverride('open')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'open' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-border text-muted-foreground'}`}>Open now</button>
-                <button onClick={() => setAvailabilityOverride('closed')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'closed' ? 'border-red-500 bg-red-500/10 text-red-600' : 'border-border text-muted-foreground'}`}>Closed now</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-muted-foreground border-b border-border">
-                      <th className="py-2 pr-3 font-600">Day</th>
-                      <th className="py-2 pr-3 font-600">Open</th>
-                      <th className="py-2 pr-3 font-600">Open time</th>
-                      <th className="py-2 font-600">Close time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {businessHoursRows.map((row, idx) => (
-                      <tr key={row.day} className="border-b border-border/40 last:border-0">
-                        <td className="py-3 pr-3 font-600 text-foreground">{row.day}</td>
-                        <td className="py-3 pr-3"><input type="checkbox" checked={row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, open: e.target.checked } : item))} /></td>
-                        <td className="py-3 pr-3"><input type="time" value={row.openTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, openTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
-                        <td className="py-3"><input type="time" value={row.closeTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, closeTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex items-center justify-between gap-3 mt-4"><div className="text-xs text-muted-foreground flex items-center gap-2"><CalendarDays className="w-4 h-4" />Display summary: {formatBusinessHours(businessHoursRows)}</div><button onClick={saveBusinessHours} disabled={savingBusinessHours} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingBusinessHours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock3 className="w-4 h-4" />}Save hours</button></div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'delivery' && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center gap-3 mb-3"><MapPin className="w-5 h-5 text-emerald-600" /><div><p className="text-sm font-700 text-foreground">Delivery & pickup area</p><p className="text-xs text-muted-foreground">Control whether customers can order delivery and how your location appears publicly before payment.</p></div></div>
-              <div className="space-y-4">
-                <label className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
-                  <div>
-                    <p className="text-sm font-700 text-foreground">Enable delivery</p>
-                    <p className="text-xs text-muted-foreground">Turn delivery on if you want customers in your radius to check out for delivery.</p>
-                  </div>
-                  <input type="checkbox" checked={deliveryEnabled} onChange={(e) => setDeliveryEnabled(e.target.checked)} />
-                </label>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-700 text-muted-foreground uppercase tracking-wide mb-2">Flat delivery fee</label>
-                    <input value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} inputMode="decimal" placeholder="5.99" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-700 text-muted-foreground uppercase tracking-wide mb-2">Service radius (miles)</label>
-                    <input value={serviceRadiusMiles} onChange={(e) => setServiceRadiusMiles(e.target.value)} inputMode="numeric" placeholder="10" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                  </div>
-                </div>
-
-                <label className="flex items-start justify-between gap-3 rounded-xl border border-border/60 p-3">
-                  <div>
-                    <p className="text-sm font-700 text-foreground">Hide my exact location</p>
-                    <p className="text-xs text-muted-foreground">When enabled, customers only see your general area before payment. Your exact pickup address is revealed only after a paid order.</p>
-                  </div>
-                  <input type="checkbox" checked={chefHideExactLocation} onChange={(e) => setChefHideExactLocation(e.target.checked)} />
-                </label>
-
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-muted-foreground">Nearby still uses your real saved coordinates behind the scenes for distance and radius checks.</p>
-                  <button onClick={saveDeliverySettings} disabled={savingDeliverySettings} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingDeliverySettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}Save delivery settings</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AppLayout>
   );
