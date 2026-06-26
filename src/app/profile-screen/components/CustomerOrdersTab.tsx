@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { ShoppingBag, Clock, MapPin, Package, Bike, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ShoppingBag, Clock, MapPin, Package, Bike, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Star } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import ReviewModal from '@/app/order-checkout-screen/components/ReviewModal';
 
 type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready' | 'on_the_way' | 'delivered' | 'cancelled';
 
@@ -13,6 +14,12 @@ interface DbOrderItem {
   meal_title: string;
   qty: number;
   unit_price: number;
+  meal_id?: string | null;
+  meals?: {
+    image_url?: string | null;
+  } | {
+    image_url?: string | null;
+  }[] | null;
 }
 
 interface DbChefProfile {
@@ -59,6 +66,13 @@ interface CustomerOrder {
   items: DbOrderItem[];
 }
 
+interface ReviewTarget {
+  orderId: string;
+  chefName: string;
+  chefAvatar: string;
+  dishes: Array<{ id: string; title: string; image: string; imageAlt: string }>;
+}
+
 const STATUS_UI: Record<OrderStatus, { label: string; tone: string }> = {
   pending: { label: 'Pending', tone: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800' },
   accepted: { label: 'Accepted', tone: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800' },
@@ -97,6 +111,7 @@ export default function CustomerOrdersTab() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -159,7 +174,7 @@ export default function CustomerOrdersTab() {
           created_at,
           chef_id,
           user_profiles:chef_id (full_name, avatar_url, location),
-          order_items (meal_title, qty, unit_price)
+          order_items (meal_id, meal_title, qty, unit_price, meals:meal_id (image_url))
         `)
         .eq('customer_id', user.id)
         .order('created_at', { ascending: false });
@@ -286,11 +301,42 @@ export default function CustomerOrdersTab() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Service fee</span><span className="font-tabular">${order.serviceFee.toFixed(2)}</span></div>
                   <div className="flex justify-between pt-1 border-t border-border"><span className="font-700 text-foreground">Total</span><span className="font-700 text-primary font-tabular">${order.total.toFixed(2)}</span></div>
                 </div>
+
+                {order.status === 'delivered' && (
+                  <button
+                    onClick={() => setReviewTarget({
+                      orderId: order.id,
+                      chefName: order.chefName,
+                      chefAvatar: order.chefAvatar || '/assets/images/no_image.png',
+                      dishes: order.items.map((item, idx) => {
+                        const mealRef = Array.isArray(item.meals) ? item.meals[0] : item.meals;
+                        return {
+                          id: item.meal_id || `${order.id}-${idx}`,
+                          title: item.meal_title,
+                          image: mealRef?.image_url || '/assets/images/no_image.png',
+                          imageAlt: item.meal_title,
+                        };
+                      }),
+                    })}
+                    className="w-full mt-1 bg-primary text-white font-700 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all duration-150"
+                  >
+                    <Star className="w-4 h-4 fill-white text-white" />
+                    Leave a Review
+                  </button>
+                )}
               </div>
             )}
           </div>
         );
       })}
+
+      <ReviewModal
+        isOpen={!!reviewTarget}
+        onClose={() => setReviewTarget(null)}
+        vendorName={reviewTarget?.chefName || 'Chef'}
+        vendorAvatar={reviewTarget?.chefAvatar || '/assets/images/no_image.png'}
+        dishes={reviewTarget?.dishes || []}
+      />
     </div>
   );
 }
