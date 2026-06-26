@@ -588,7 +588,7 @@ export default function ChefMenuPage() {
           <button onClick={() => setActiveSection('orders')} className={`rounded-2xl border p-3 text-left ${activeSection === 'orders' ? 'border-amber-500 bg-amber-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Orders</p><p className="text-sm font-700 text-foreground mt-1">Incoming orders</p></button>
           <button onClick={() => { setActiveSection('payouts'); syncStripeStatus(); }} className={`rounded-2xl border p-3 text-left ${activeSection === 'payouts' ? 'border-green-500 bg-green-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Payouts</p><p className="text-sm font-700 text-foreground mt-1">Earnings</p></button>
           <button onClick={() => setActiveSection('hours')} className={`rounded-2xl border p-3 text-left ${activeSection === 'hours' ? 'border-blue-500 bg-blue-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Hours</p><p className="text-sm font-700 text-foreground mt-1">Business hours</p></button>
-          <button onClick={() => setActiveSection('trust')} className={`rounded-2xl border p-3 text-left ${activeSection === 'trust' ? 'border-slate-900 bg-slate-900/5 dark:border-white dark:bg-white/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Trust</p><p className="text-sm font-700 text-foreground mt-1">Verification</p></button>
+          <button onClick={() => setActiveSection('delivery')} className={`rounded-2xl border p-3 text-left ${activeSection === 'delivery' ? 'border-emerald-500 bg-emerald-500/5' : 'border-border bg-card'}`}><p className="text-xs text-muted-foreground">Delivery</p><p className="text-sm font-700 text-foreground mt-1">Area & privacy</p></button>
         </div>
 
         {activeSection === 'overview' && (
@@ -671,6 +671,42 @@ export default function ChefMenuPage() {
         {activeSection === 'hours' && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-3 mb-3"><Clock3 className="w-5 h-5 text-blue-600" /><div><p className="text-sm font-700 text-foreground">Business hours</p><p className="text-xs text-muted-foreground">Set the days and times customers should expect you to be open.</p></div></div>
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <button onClick={() => setAvailabilityOverride(null)} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === null ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Auto</button>
+                <button onClick={() => setAvailabilityOverride('open')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'open' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-border text-muted-foreground'}`}>Open now</button>
+                <button onClick={() => setAvailabilityOverride('closed')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'closed' ? 'border-red-500 bg-red-500/10 text-red-600' : 'border-border text-muted-foreground'}`}>Closed now</button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="py-2 pr-3 font-600">Day</th>
+                      <th className="py-2 pr-3 font-600">Open</th>
+                      <th className="py-2 pr-3 font-600">Open time</th>
+                      <th className="py-2 font-600">Close time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {businessHoursRows.map((row, idx) => (
+                      <tr key={row.day} className="border-b border-border/40 last:border-0">
+                        <td className="py-3 pr-3 font-600 text-foreground">{row.day}</td>
+                        <td className="py-3 pr-3"><input type="checkbox" checked={row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, open: e.target.checked } : item))} /></td>
+                        <td className="py-3 pr-3"><input type="time" value={row.openTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, openTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
+                        <td className="py-3"><input type="time" value={row.closeTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, closeTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between gap-3 mt-4"><div className="text-xs text-muted-foreground flex items-center gap-2"><CalendarDays className="w-4 h-4" />Display summary: {formatBusinessHours(businessHoursRows)}</div><button onClick={saveBusinessHours} disabled={savingBusinessHours} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingBusinessHours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock3 className="w-4 h-4" />}Save hours</button></div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'delivery' && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-3 mb-3"><MapPin className="w-5 h-5 text-emerald-600" /><div><p className="text-sm font-700 text-foreground">Delivery & pickup area</p><p className="text-xs text-muted-foreground">Control whether customers can order delivery and how your location appears publicly before payment.</p></div></div>
               <div className="space-y-4">
                 <label className="flex items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
@@ -705,153 +741,6 @@ export default function ChefMenuPage() {
                   <button onClick={saveDeliverySettings} disabled={savingDeliverySettings} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingDeliverySettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}Save delivery settings</button>
                 </div>
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center gap-3 mb-3"><Clock3 className="w-5 h-5 text-blue-600" /><div><p className="text-sm font-700 text-foreground">Business hours</p><p className="text-xs text-muted-foreground">Set the days and times customers should expect you to be open.</p></div></div>
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <button onClick={() => setAvailabilityOverride(null)} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === null ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Auto</button>
-                <button onClick={() => setAvailabilityOverride('open')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'open' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-border text-muted-foreground'}`}>Open now</button>
-                <button onClick={() => setAvailabilityOverride('closed')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${availabilityOverride === 'closed' ? 'border-red-500 bg-red-500/10 text-red-600' : 'border-border text-muted-foreground'}`}>Closed now</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-muted-foreground border-b border-border">
-                      <th className="py-2 pr-3 font-600">Day</th>
-                      <th className="py-2 pr-3 font-600">Open</th>
-                      <th className="py-2 pr-3 font-600">Open time</th>
-                      <th className="py-2 font-600">Close time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {businessHoursRows.map((row, idx) => (
-                      <tr key={row.day} className="border-b border-border/40 last:border-0">
-                        <td className="py-3 pr-3 font-600 text-foreground">{row.day}</td>
-                        <td className="py-3 pr-3"><input type="checkbox" checked={row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, open: e.target.checked } : item))} /></td>
-                        <td className="py-3 pr-3"><input type="time" value={row.openTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, openTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
-                        <td className="py-3"><input type="time" value={row.closeTime} disabled={!row.open} onChange={(e) => setBusinessHoursRows((prev) => prev.map((item, itemIdx) => itemIdx === idx ? { ...item, closeTime: e.target.value } : item))} className="rounded-xl border border-border px-3 py-2 bg-background disabled:opacity-40" /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex items-center justify-between gap-3 mt-4"><div className="text-xs text-muted-foreground flex items-center gap-2"><CalendarDays className="w-4 h-4" />Display summary: {formatBusinessHours(businessHoursRows)}</div><button onClick={saveBusinessHours} disabled={savingBusinessHours} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full">{savingBusinessHours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock3 className="w-4 h-4" />}Save hours</button></div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'trust' && (
-          <div className="space-y-4">
-            <TrustMeter score={trustScore.score} label={trustScore.label} />
-
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-700 text-foreground">Trust & Verification</p>
-                  <p className="text-xs text-muted-foreground">Upload credentials for InHouse review and premium trust badges.</p>
-                </div>
-                <TrustBadgeRow badges={trustScore.badges} compact showLocked profile={{
-                  avatar_url: profile?.avatar_url,
-                  bio: profile?.bio,
-                  email_verified: stripeState?.email_verified ?? profile?.email_verified,
-                  phone_verified: stripeState?.phone_verified ?? profile?.phone_verified,
-                  identity_verified: stripeState?.identity_verified ?? profile?.identity_verified,
-                  completed_orders: stripeState?.completed_orders ?? earningsSummary.completedOrders,
-                  complaints_count: stripeState?.complaints_count ?? profile?.complaints_count,
-                  rating_avg: stripeState?.rating_avg ?? profile?.rating_avg,
-                  rating_count: stripeState?.rating_count ?? profile?.rating_count,
-                }} credentials={credentials} />
-                <div className="pt-1">
-                  <Link href="/badges" className="text-xs font-semibold text-primary hover:underline">View all badges and requirements</Link>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {trustScore.checklist.map((item) => (
-                  <div key={item.key} className="rounded-2xl border border-border bg-muted/20 p-3">
-                    <p className="text-xs text-muted-foreground">{item.label}</p>
-                    <p className={`mt-1 text-sm font-semibold ${item.earned ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      {item.earned ? `+${item.points} pts` : 'Pending'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-              <div>
-                <p className="text-sm font-700 text-foreground">Upload credentials</p>
-                <p className="text-xs text-muted-foreground mt-1">Accepted: PDF, JPG, PNG, WEBP. Max 10 MB.</p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <select value={credentialType} onChange={(e) => setCredentialType(e.target.value as CredentialType)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background">
-                  {CREDENTIAL_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <input value={credentialTitle} onChange={(e) => setCredentialTitle(e.target.value)} placeholder="Credential title" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                <input value={credentialIssuedBy} onChange={(e) => setCredentialIssuedBy(e.target.value)} placeholder="Issued by" className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                <div className="grid grid-cols-2 gap-3">
-                  <input type="date" value={credentialIssueDate} onChange={(e) => setCredentialIssueDate(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                  <input type="date" value={credentialExpirationDate} onChange={(e) => setCredentialExpirationDate(e.target.value)} className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground bg-background" />
-                </div>
-              </div>
-
-              <label className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-4 cursor-pointer hover:border-primary/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                    <Upload className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{credentialFile ? credentialFile.name : 'Upload file'}</p>
-                    <p className="text-xs text-muted-foreground">Secure upload for review</p>
-                  </div>
-                </div>
-                <input type="file" accept=".pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={handleCredentialFileChange} />
-              </label>
-
-              {credentialError && <div className="rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{credentialError}</div>}
-
-              <button onClick={handleCredentialUpload} disabled={uploadingCredential} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2.5 rounded-full hover:bg-primary/90 transition-colors disabled:opacity-60">
-                {uploadingCredential ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {uploadingCredential ? 'Uploading...' : 'Submit for review'}
-              </button>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-sm font-700 text-foreground">Submitted credentials</p>
-                  <p className="text-xs text-muted-foreground">Pending, approved, rejected, or expired documents.</p>
-                </div>
-              </div>
-
-              {loadingCredentials ? (
-                <div className="text-sm text-muted-foreground">Loading credentials...</div>
-              ) : credentials.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">No credentials uploaded yet.</div>
-              ) : (
-                <div className="space-y-3">
-                  {credentials.map((credential) => (
-                    <div key={credential.id} className="rounded-2xl border border-border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-foreground">{credential.title}</p>
-                          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground capitalize">{credential.status}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{credential.credential_type.replaceAll('_', ' ')} • {credential.issued_by || 'Issued credential'}</p>
-                        {credential.review_notes && <p className="text-xs text-muted-foreground mt-2">Review notes: {credential.review_notes}</p>}
-                      </div>
-                      <button onClick={() => openCredentialPreview(supabase, credential).catch((error: any) => toast.error(error?.message || 'Could not open credential file.'))} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
-                        <Eye className="w-4 h-4" />
-                        View file
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         )}
