@@ -705,24 +705,6 @@ export default function ProfileTabs() {
                         <span className="text-sm font-medium text-foreground">Orders Received</span>
                       </button>
                     </Link>
-                    <Link href="/chef-menu?section=trust">
-                      <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-slate-500/5 hover:bg-slate-500/10 border border-slate-500/20 transition-colors text-left">
-                        <ShieldCheck className="w-4 h-4 text-slate-700 dark:text-slate-200 flex-shrink-0" />
-                        <span className="text-sm font-medium text-foreground">Trust & Verification</span>
-                      </button>
-                    </Link>
-                    <Link href="/chef-menu?section=trust">
-                      <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 transition-colors text-left">
-                        <Plus className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <span className="text-sm font-medium text-foreground">Upload Credentials</span>
-                      </button>
-                    </Link>
-                    <Link href="/badges">
-                      <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-violet-500/5 hover:bg-violet-500/10 border border-violet-500/20 transition-colors text-left">
-                        <BadgeCheck className="w-4 h-4 text-violet-500 flex-shrink-0" />
-                        <span className="text-sm font-medium text-foreground">Badge Progress</span>
-                      </button>
-                    </Link>
                     <Link href="/edit-profile">
                       <button className="w-full flex items-center gap-2 p-3 rounded-xl bg-violet-500/5 hover:bg-violet-500/10 border border-violet-500/20 transition-colors text-left">
                         <Settings className="w-4 h-4 text-violet-500 flex-shrink-0" />

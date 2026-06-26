@@ -779,7 +779,7 @@ export default function CheckoutFlow() {
             </div>
           )}
 
-          <div className="rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-xs text-muted-foreground">Card checkout is the only live payment method right now.</div>
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">Live in-app card charging is not enabled yet. This step currently places the order and notifies the chef, but it does not charge your card yet.</div>
 
           <div className="p-4 bg-card rounded-2xl border border-border space-y-2">
             <h3 className="text-sm font-700 text-foreground mb-2">Order Total</h3>
@@ -787,7 +787,7 @@ export default function CheckoutFlow() {
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">{fulfillment === 'pickup' ? 'Pickup' : 'Delivery'}</span><span className="font-500 text-foreground font-tabular">${deliveryFee.toFixed(2)}</span></div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service fee</span><span className="font-500 text-foreground font-tabular">${serviceFee.toFixed(2)}</span></div>
             {promoApplied && <div className="flex justify-between text-sm"><span className="text-green-600 dark:text-green-400">Promo discount</span><span className="font-600 text-green-600 dark:text-green-400 font-tabular">−$8.00</span></div>}
-            <div className="border-t border-border pt-2 flex justify-between"><span className="text-base font-700 text-foreground">Total charged</span><span className="text-lg font-700 text-primary font-tabular">${total.toFixed(2)}</span></div>
+            <div className="border-t border-border pt-2 flex justify-between"><span className="text-base font-700 text-foreground">Order total</span><span className="text-lg font-700 text-primary font-tabular">${total.toFixed(2)}</span></div>
           </div>
 
           <button type="submit" disabled={isPlacingOrder} className="w-full bg-primary text-white font-700 py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20 disabled:opacity-80 disabled:cursor-not-allowed">
@@ -801,7 +801,7 @@ export default function CheckoutFlow() {
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4 scale-in"><CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" /></div>
             <h1 className="text-2xl font-700 text-foreground mb-1">Order Placed! 🎉</h1>
-            <p className="text-sm text-muted-foreground">{primaryChef.name} has been notified and can now update your order status.</p>
+            <p className="text-sm text-muted-foreground">{primaryChef.name} has been notified and can now update your order status. No card charge was processed in-app for this order.</p>
             <div className="mt-3 inline-flex items-center gap-2 bg-muted px-4 py-2 rounded-full"><span className="text-xs text-muted-foreground">Order ID:</span><span className="text-sm font-700 text-foreground font-tabular">{orderId}</span></div>
           </div>
 
@@ -841,10 +841,10 @@ export default function CheckoutFlow() {
           <div className="bg-card rounded-2xl border border-border p-4 mb-4">
             <h2 className="text-sm font-700 text-foreground mb-3">Your Order</h2>
             <div className="space-y-3">{cart.map((item) => <div key={item.id} className="flex items-center gap-3"><div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted"><img src={item.image} alt={item.imageAlt} className="w-full h-full object-cover" /></div><div className="flex-1 min-w-0"><p className="text-sm font-600 text-foreground truncate">{item.title}</p><p className="text-xs text-muted-foreground">×{item.qty}</p></div><span className="text-sm font-700 text-foreground font-tabular shrink-0">${(item.price * item.qty).toFixed(2)}</span></div>)}</div>
-            <div className="border-t border-border mt-3 pt-3 space-y-1.5"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-500 font-tabular">${subtotal.toFixed(2)}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Delivery + fees</span><span className="font-500 font-tabular">${(deliveryFee + serviceFee).toFixed(2)}</span></div><div className="flex justify-between pt-1 border-t border-border"><span className="text-base font-700 text-foreground">Total charged</span><span className="text-base font-700 text-primary font-tabular">${total.toFixed(2)}</span></div></div>
+            <div className="border-t border-border mt-3 pt-3 space-y-1.5"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-500 font-tabular">${subtotal.toFixed(2)}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Delivery + fees</span><span className="font-500 font-tabular">${(deliveryFee + serviceFee).toFixed(2)}</span></div><div className="flex justify-between pt-1 border-t border-border"><span className="text-base font-700 text-foreground">Order total</span><span className="text-base font-700 text-primary font-tabular">${total.toFixed(2)}</span></div></div>
           </div>
 
-          <div className="bg-card rounded-2xl border border-border p-4 mb-4"><h2 className="text-sm font-700 text-foreground mb-2">What happens next</h2><div className="space-y-2 text-sm text-muted-foreground"><p>• The chef sees this order instantly in vendor orders.</p><p>• Your status now updates from the real order record instead of a fake timer.</p><p>• You can also track the order in your profile under My Orders.</p></div></div>
+          <div className="bg-card rounded-2xl border border-border p-4 mb-4"><h2 className="text-sm font-700 text-foreground mb-2">What happens next</h2><div className="space-y-2 text-sm text-muted-foreground"><p>• The chef sees this order instantly in vendor orders.</p><p>• Your status now updates from the real order record instead of a fake timer.</p><p>• You can also track the order in your profile under My Orders.</p><p>• In-app payment is not live yet, so no card charge was submitted from this screen.</p></div></div>
 
           <div className="space-y-3">
             <Link href="/profile-screen?tab=orders" className="block"><button className="w-full bg-primary text-white font-700 py-4 rounded-2xl hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20">View My Orders</button></Link>

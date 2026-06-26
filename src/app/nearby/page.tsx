@@ -21,7 +21,6 @@ import {
   Flame,
   Star,
 } from 'lucide-react';
-import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { milesBetween } from '@/lib/location/distance';
@@ -235,17 +234,6 @@ function VendorCard({ vendor }: { vendor: Vendor }) {
           <img src={vendor.avatar} alt={`${vendor.name} vendor avatar`} className="w-8 h-8 rounded-full object-cover border border-border/50 shrink-0" />
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-[13px] font-700 text-foreground truncate">{vendor.name}</p>
-            <TrustBadgeRow badges={vendor.badges} compact showLocked profile={{
-              avatar_url: vendor.avatar,
-              bio: vendor.bio,
-              email_verified: vendor.email_verified,
-              phone_verified: vendor.phone_verified,
-              identity_verified: vendor.identity_verified,
-              completed_orders: vendor.completed_orders,
-              complaints_count: vendor.complaints_count,
-              rating_avg: vendor.rating,
-              rating_count: vendor.reviewCount,
-            }} credentials={[]} limit={2} />
             <p className="text-[11px] text-muted-foreground truncate">{vendor.locationLabel}</p>
           </div>
           <PriceRange range={vendor.priceRange} />
@@ -274,31 +262,9 @@ function VendorCard({ vendor }: { vendor: Vendor }) {
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-700 mb-1">Known for</p>
               <p className="text-[13px] text-foreground font-600 leading-snug">{vendor.knownFor}</p>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Trust</p>
-              <p className="text-sm font-bold text-foreground">{vendor.trustScore}</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Shield className="w-3.5 h-3.5 text-primary" />
-              <span>{vendor.trustLabel}</span>
-            </div>
             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${vendor.isOpen ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
               {vendor.openLabel}
             </span>
-            {vendor.approvedCredentialsCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
-                <Eye className="w-3.5 h-3.5" />
-                View Credentials
-              </span>
-            )}
-          </div>
-          <div className="space-y-2">
-            <div className="text-[11px] text-muted-foreground">
-              {vendor.badges.length > 0 ? `${vendor.badges.length} badge${vendor.badges.length === 1 ? '' : 's'} earned` : 'No badges earned yet'}
-            </div>
-            <Link href="/badges" className="inline-flex text-[11px] font-semibold text-primary hover:underline">See all badges</Link>
           </div>
         </div>
 

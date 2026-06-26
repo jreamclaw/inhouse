@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Bell, ShoppingBag, ChefHat, ArrowLeft } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '@/lib/supabase/client';
@@ -12,12 +13,15 @@ interface NotificationItem {
   title: string;
   body: string;
   type: 'order' | 'chef' | 'follow' | 'like' | 'tag';
+  entity_id?: string | null;
+  entity_type?: string | null;
 }
 
 const EMPTY_NOTIFICATIONS: NotificationItem[] = [];
 
 export default function NotificationsPage() {
   const { user, profile } = useAuth();
+  const router = useRouter();
   const supabase = createClient();
   const [notifications, setNotifications] = useState<NotificationItem[]>(EMPTY_NOTIFICATIONS);
 
@@ -31,7 +35,7 @@ export default function NotificationsPage() {
     try {
       const { data, error } = await supabase
         .from('notifications')
-        .select('id, title, body, type, created_at')
+        .select('id, title, body, type, entity_id, entity_type, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(25);
@@ -43,9 +47,27 @@ export default function NotificationsPage() {
         title: item.title,
         body: item.body,
         type: item.type,
+        entity_id: item.entity_id ?? null,
+        entity_type: item.entity_type ?? null,
       })));
     } catch {
       setNotifications(EMPTY_NOTIFICATIONS);
+    }
+  };
+
+  const handleNotificationClick = (item: NotificationItem) => {
+    if (item.type === 'order') {
+      router.push(profile?.role === 'chef' ? '/chef-menu?section=orders' : '/profile-screen?tab=orders');
+      return;
+    }
+
+    if (item.entity_type === 'user_profile' && item.entity_id) {
+      router.push(`/profile/${item.entity_id}`);
+      return;
+    }
+
+    if (item.entity_type === 'post') {
+      router.push('/home-feed');
     }
   };
 
@@ -70,7 +92,7 @@ export default function NotificationsPage() {
               <p className="text-sm text-muted-foreground mt-1">New order updates and activity will show up here when they happen.</p>
             </div>
           ) : notifications.map((item) => (
-            <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex items-start gap-3">
+            <button key={item.id} onClick={() => handleNotificationClick(item)} className="w-full text-left bg-card border border-border rounded-2xl p-4 flex items-start gap-3 hover:bg-muted/30 transition-colors">
               <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center shrink-0">
                 {item.type === 'order' ? (
                   <ShoppingBag className="w-5 h-5 text-foreground" />
@@ -88,7 +110,7 @@ export default function NotificationsPage() {
                 <p className="text-sm font-700 text-foreground">{item.title}</p>
                 <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{item.body}</p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
