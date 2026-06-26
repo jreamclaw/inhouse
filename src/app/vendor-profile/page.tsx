@@ -104,8 +104,32 @@ function formatHourLabel(value: string) {
   return `${normalizedHour}:${String(minutes).padStart(2, '0')} ${suffix}`;
 }
 
+const BUSINESS_TIME_ZONE = 'America/Chicago';
+
+function getBusinessNowParts() {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: BUSINESS_TIME_ZONE,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const weekday = parts.find((part) => part.type === 'weekday')?.value || 'Mon';
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value || '0');
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value || '0');
+
+  return {
+    weekday,
+    nowMinutes: hour * 60 + minute,
+  };
+}
+
 function parseWeeklyHours(hoursText?: string | null) {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const { weekday } = getBusinessNowParts();
+
   if (!hoursText) {
     return days.map((day) => ({ day, hours: 'Unavailable', isToday: false }));
   }
@@ -114,12 +138,11 @@ function parseWeeklyHours(hoursText?: string | null) {
   const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
   const timeMatch = timePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
   const rangeLabel = timeMatch ? `${formatHourLabel(timeMatch[1])} – ${formatHourLabel(timeMatch[2])}` : (timePart || 'Unavailable');
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
 
   return days.map((day) => ({
     day,
     hours: openDays.includes(day) ? rangeLabel : 'Closed',
-    isToday: day === today,
+    isToday: day === weekday,
   }));
 }
 
@@ -137,10 +160,10 @@ function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'op
   }
 
   const [daysPart = '', timePart = ''] = hoursText.split('•').map((part) => part.trim());
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+  const { weekday, nowMinutes } = getBusinessNowParts();
   const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
 
-  if (!openDays.includes(today)) {
+  if (!openDays.includes(weekday)) {
     return { label: 'Closed now', isOpen: false, summary: 'Closed · Opens later' };
   }
 
@@ -154,8 +177,6 @@ function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'op
     return hours * 60 + minutes;
   };
 
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const openMinutes = toMinutes(timeMatch[1]);
   const closeMinutes = toMinutes(timeMatch[2]);
   const isOpenNow = nowMinutes >= openMinutes && nowMinutes < closeMinutes;
@@ -953,12 +974,19 @@ function VendorProfileContent() {
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             <button
               suppressHydrationWarning
-              onClick={() => document.getElementById('vendor-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-primary text-white text-[13px] font-600 px-4 py-2.5 rounded-xl active:scale-95 transition-all duration-200 shadow-sm hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20"
+              onClick={() => {
+                if (!openState.isOpen) {
+                  toast.error(openState.summary || 'This chef is closed right now.');
+                  return;
+                }
+                document.getElementById('vendor-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              disabled={!openState.isOpen}
+              className={`flex-1 min-w-[140px] flex items-center justify-center gap-1.5 text-[13px] font-600 px-4 py-2.5 rounded-xl active:scale-95 transition-all duration-200 shadow-sm ${openState.isOpen ? 'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20' : 'bg-muted text-muted-foreground cursor-not-allowed'}`}
               aria-label="Order now"
             >
               <ShoppingBag className="w-4 h-4" />
-              Order Now
+              {openState.isOpen ? 'Order Now' : 'Closed Right Now'}
             </button>
             <button
               suppressHydrationWarning
