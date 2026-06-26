@@ -790,7 +790,7 @@ export default function CheckoutFlow() {
           <div className="bg-card rounded-2xl border border-border p-4 mb-4"><h2 className="text-sm font-700 text-foreground mb-2">What happens next</h2><div className="space-y-2 text-sm text-muted-foreground"><p>• The chef sees this paid order instantly in vendor orders.</p><p>• Your status now updates from the real order record.</p><p>• You can also track the order in your profile under My Orders.</p></div></div>
 
           <div className="space-y-3">
-            <Link href="/profile-screen?tab=orders" className="block"><button className="w-full bg-primary text-white font-700 py-4 rounded-2xl hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20">View My Orders</button></Link>
+            <Link href="/profile-screen?tab=orders" className="block"><button className="w-full bg-primary text-white font-700 py-4 rounded-2xl hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20">Track My Order</button></Link>
             <Link href={primaryChef.id ? `/vendor-profile?id=${primaryChef.id}` : '/nearby'} className="block"><button className="w-full border border-border text-foreground font-600 py-4 rounded-2xl hover:bg-muted transition-colors">View Chef's Profile</button></Link>
           </div>
 
