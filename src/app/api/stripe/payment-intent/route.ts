@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       currency: 'usd',
       automatic_payment_methods: {
         enabled: true,
+        allow_redirects: 'never',
       },
       metadata: {
         customer_id: user.id,

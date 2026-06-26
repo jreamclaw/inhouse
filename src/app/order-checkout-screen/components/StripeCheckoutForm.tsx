@@ -104,6 +104,7 @@ export default function StripeCheckoutForm({
         elements,
         redirect: 'if_required',
         confirmParams: {
+          return_url: typeof window !== 'undefined' ? `${window.location.origin}/order-checkout-screen` : undefined,
           payment_method_data: {
             billing_details: {
               name: deliveryValues.fullName || customerProfileName || customerName || undefined,
@@ -198,7 +199,12 @@ export default function StripeCheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="rounded-2xl border border-border bg-card p-4">
-        <PaymentElement options={{ layout: 'tabs' }} />
+        <PaymentElement
+          options={{
+            layout: 'tabs',
+            paymentMethodOrder: ['card'],
+          }}
+        />
       </div>
 
       <button
