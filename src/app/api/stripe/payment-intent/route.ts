@@ -1,0 +1,114 @@
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { getStripeServer } from '@/lib/stripe';
+
+type PaymentIntentRequest = {
+  chefId?: string;
+  subtotal?: number;
+  deliveryFee?: number;
+  serviceFee?: number;
+  promoDiscount?: number;
+  total?: number;
+};
+
+export async function POST(request: Request) {
+  try {
+    const stripe = getStripeServer();
+    if (!stripe) {
+      return NextResponse.json({ error: 'Stripe is not configured yet.' }, { status: 500 });
+    }
+
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll() {},
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = (await request.json()) as PaymentIntentRequest;
+    const chefId = body.chefId;
+    const subtotal = Number(body.subtotal || 0);
+    const deliveryFee = Number(body.deliveryFee || 0);
+    const serviceFee = Number(body.serviceFee || 0);
+    const promoDiscount = Number(body.promoDiscount || 0);
+    const total = Number(body.total || 0);
+
+    if (!chefId) {
+      return NextResponse.json({ error: 'Missing chef id.' }, { status: 400 });
+    }
+
+    if (!Number.isFinite(total) || total <= 0) {
+      return NextResponse.json({ error: 'Invalid order total.' }, { status: 400 });
+    }
+
+    const amount = Math.round(total * 100);
+
+    const { data: chefProfile, error: chefError } = await supabase
+      .from('user_profiles')
+      .select('id, full_name, stripe_account_id, stripe_charges_enabled')
+      .eq('id', chefId)
+      .maybeSingle();
+
+    if (chefError) {
+      return NextResponse.json({ error: chefError.message || 'Failed to load chef payout profile.' }, { status: 500 });
+    }
+
+    if (!chefProfile?.stripe_account_id) {
+      return NextResponse.json({ error: 'Chef payout account is not connected yet.' }, { status: 400 });
+    }
+
+    if (!chefProfile.stripe_charges_enabled) {
+      return NextResponse.json({ error: 'Chef payouts are not ready to accept payments yet.' }, { status: 400 });
+    }
+
+    const platformFee = Math.round(subtotal * 0.15 * 100) / 100;
+    const transferAmount = Math.round((subtotal - platformFee) * 100);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: 'usd',
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        customer_id: user.id,
+        chef_id: chefId,
+        subtotal: subtotal.toFixed(2),
+        delivery_fee: deliveryFee.toFixed(2),
+        service_fee: serviceFee.toFixed(2),
+        promo_discount: Math.abs(promoDiscount).toFixed(2),
+        total: total.toFixed(2),
+      },
+      application_fee_amount: Math.max(0, Math.round(serviceFee * 100)),
+      transfer_data: {
+        destination: chefProfile.stripe_account_id,
+        amount: Math.max(0, transferAmount),
+      },
+      receipt_email: user.email || undefined,
+    });
+
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'Failed to create payment intent.' }, { status: 500 });
+  }
+}

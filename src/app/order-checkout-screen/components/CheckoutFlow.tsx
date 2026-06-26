@@ -10,7 +10,6 @@ import {
   ChevronRight,
   ShoppingBag,
   MapPin,
-  CreditCard,
   CheckCircle,
   Clock,
   ChefHat,
@@ -19,14 +18,16 @@ import {
   Trash2,
   Star,
   Loader2,
-  AlertCircle,
   Package,
   Bike,
   Home,
   Navigation,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import ReviewModal from './ReviewModal';
+import StripeCheckoutForm from './StripeCheckoutForm';
 import { CheckoutCartSkeleton, CheckoutDeliverySkeleton, CheckoutPaymentSkeleton } from '@/components/ui/SkeletonLoaders';
 
 type CartItem = {
@@ -80,14 +81,6 @@ type DeliveryFormData = {
   instructions: string;
 };
 
-type PaymentFormData = {
-  cardName: string;
-  cardNumber: string;
-  expiry: string;
-  cvv: string;
-  saveCard: boolean;
-};
-
 type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready' | 'on_the_way' | 'delivered';
 
 interface SavedAddress {
@@ -113,6 +106,8 @@ interface DbChefProfile {
   delivery_fee?: number | null;
 }
 
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+
 const ORDER_STEPS: { status: OrderStatus; label: string; icon: React.ElementType; time?: string }[] = [
   { status: 'pending', label: 'Order Placed', icon: ShoppingBag, time: 'Just now' },
   { status: 'accepted', label: 'Chef Accepted', icon: ChefHat, time: '' },
@@ -132,17 +127,18 @@ export default function CheckoutFlow() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [fulfillment, setFulfillment] = useState<'pickup' | 'delivery'>('delivery');
   const [selectedSavedAddress, setSelectedSavedAddress] = useState<string>('');
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isStepTransitioning, setIsStepTransitioning] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [orderStatus, setOrderStatus] = useState<OrderStatus>('pending');
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<'card' | 'apple' | 'google'>('card');
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [chefProfile, setChefProfile] = useState<DbChefProfile | null>(null);
   const [customerOrderPlaced, setCustomerOrderPlaced] = useState(false);
+  const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null);
+  const [paymentIntentLoading, setPaymentIntentLoading] = useState(false);
+  const [paymentIntentError, setPaymentIntentError] = useState('');
 
   const deliveryForm = useForm<DeliveryFormData>({
     defaultValues: {
@@ -155,16 +151,6 @@ export default function CheckoutFlow() {
       zip: '',
       deliveryTime: 'asap',
       instructions: '',
-    },
-  });
-
-  const paymentForm = useForm<PaymentFormData>({
-    defaultValues: {
-      cardName: '',
-      cardNumber: '',
-      expiry: '',
-      cvv: '',
-      saveCard: false,
     },
   });
 
@@ -253,7 +239,7 @@ export default function CheckoutFlow() {
 
       if (chef) setChefProfile(chef);
     } catch {
-      // silent; fallback UI still works
+      // silent fallback
     }
   };
 
@@ -286,16 +272,22 @@ export default function CheckoutFlow() {
       const newQty = item.qty + delta;
       return newQty > 0 ? { ...item, qty: newQty } : item;
     }).filter((item) => !(item.id === id && item.qty + delta <= 0)));
+    setPaymentClientSecret(null);
+    setPaymentIntentError('');
   }, []);
 
   const removeItem = useCallback((id: string, title: string) => {
     setCart((prev) => prev.filter((item) => item.id !== id));
+    setPaymentClientSecret(null);
+    setPaymentIntentError('');
     toast.success(`${title} removed from cart`);
   }, []);
 
   const applyPromo = () => {
     if (promoCode.toLowerCase() === 'inhouse10') {
       setPromoApplied(true);
+      setPaymentClientSecret(null);
+      setPaymentIntentError('');
       toast.success('Promo code applied! $8.00 off your order 🎉');
     } else {
       toast.error('Invalid promo code. Try INHOUSE10 for $8 off.');
@@ -314,124 +306,74 @@ export default function CheckoutFlow() {
     return () => { supabase.removeChannel(channel); };
   };
 
-  const handlePlaceOrder = async () => {
+  const preparePaymentIntent = async () => {
     if (!user?.id) {
-      toast.error('Please sign in before placing an order.');
-      return;
+      toast.error('Please sign in before paying.');
+      return false;
     }
 
     if (cart.length === 0) {
       toast.error('Your cart is empty.');
+      return false;
+    }
+
+    const deliveryValues = deliveryForm.getValues();
+    const chefId = cart[0]?.chef?.id;
+
+    if (!chefId) {
+      toast.error('Chef information is missing for this order.');
+      return false;
+    }
+
+    if (fulfillment === 'delivery' && (!deliveryValues.address || !deliveryValues.city || !deliveryValues.state || !deliveryValues.zip)) {
+      toast.error('Delivery address is incomplete.');
+      return false;
+    }
+
+    setPaymentIntentLoading(true);
+    setPaymentIntentError('');
+
+    try {
+      const response = await fetch('/api/stripe/payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chefId,
+          subtotal,
+          deliveryFee,
+          serviceFee,
+          promoDiscount: Math.abs(promoDiscount),
+          total,
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok || !payload?.clientSecret) {
+        throw new Error(payload?.error || 'Unable to start secure payment.');
+      }
+
+      setPaymentClientSecret(payload.clientSecret);
+      return true;
+    } catch (error: any) {
+      const message = error?.message || 'Unable to start secure payment.';
+      setPaymentIntentError(message);
+      toast.error(message);
+      return false;
+    } finally {
+      setPaymentIntentLoading(false);
+    }
+  };
+
+  const handleAdvanceToPayment = async () => {
+    const valid = await deliveryForm.trigger();
+    if (!valid) {
+      toast.error('Please complete the required details first.');
       return;
     }
 
-    setIsPlacingOrder(true);
-
-    try {
-      const deliveryValues = deliveryForm.getValues();
-      const chefId = cart[0]?.chef?.id;
-
-      if (!chefId) throw new Error('Chef information is missing for this order.');
-      if (fulfillment === 'delivery' && (!deliveryValues.address || !deliveryValues.city || !deliveryValues.state || !deliveryValues.zip)) {
-        throw new Error('Delivery address is incomplete.');
-      }
-
-      const { data: orderRow, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          customer_id: user.id,
-          chef_id: chefId,
-          status: 'pending',
-          fulfillment_type: fulfillment,
-          customer_name: deliveryValues.fullName || profile?.full_name || '',
-          customer_phone: deliveryValues.phone || '',
-          address: fulfillment === 'delivery' ? deliveryValues.address || null : null,
-          apt: fulfillment === 'delivery' ? deliveryValues.apt || null : null,
-          city: fulfillment === 'delivery' ? deliveryValues.city || null : null,
-          state: fulfillment === 'delivery' ? deliveryValues.state || null : null,
-          zip: fulfillment === 'delivery' ? deliveryValues.zip || null : null,
-          instructions: deliveryValues.instructions || null,
-          delivery_time: deliveryValues.deliveryTime || null,
-          subtotal,
-          delivery_fee: deliveryFee,
-          service_fee: serviceFee,
-          promo_discount: Math.abs(promoDiscount),
-          total,
-        })
-        .select('id, status')
-        .single();
-
-      if (orderError || !orderRow?.id) throw orderError || new Error('Could not create order.');
-
-      const orderItemsPayload = cart.map((item) => ({
-        order_id: orderRow.id,
-        meal_id: item.mealId || null,
-        meal_title: item.title,
-        meal_description: item.description,
-        meal_image_url: item.image,
-        unit_price: item.price,
-        qty: item.qty,
-        line_total: +(item.price * item.qty).toFixed(2),
-        customizations: [],
-        notes: null,
-      }));
-
-      const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
-      if (itemsError) throw itemsError;
-
-      const { error: revenueError } = await supabase
-        .from('order_revenue')
-        .insert({
-          order_id: orderRow.id,
-          user_id: user.id,
-          chef_id: chefId,
-          subtotal,
-          delivery_fee: deliveryFee,
-          service_fee: serviceFee,
-          platform_fee_rate: PLATFORM_FEE_RATE,
-          platform_fee: platformFee,
-          chef_earnings: chefEarnings,
-          total,
-          promo_discount: Math.abs(promoDiscount),
-          status: 'pending',
-        });
-
-      if (revenueError) throw revenueError;
-
-      const { data: chefSettings } = await supabase
-        .from('user_settings')
-        .select('notif_order_updates')
-        .eq('user_id', chefId)
-        .maybeSingle();
-
-      if ((chefSettings as any)?.notif_order_updates !== false) {
-        await supabase.from('notifications').insert({
-          user_id: chefId,
-          actor_id: user.id,
-          type: 'order',
-          title: 'New order received',
-          body: `${deliveryValues.fullName || profile?.full_name || 'A customer'} placed a new order.`,
-          entity_id: orderRow.id,
-          entity_type: 'order',
-        });
-      }
-
-      setOrderId(orderRow.id);
-      setOrderStatus('pending');
-      setCustomerOrderPlaced(true);
-      setStep(4);
-      startOrderStatusSubscription(orderRow.id);
-
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('inhouse_checkout_cart');
-      }
-
-      toast.success('Order placed successfully!');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to place order.');
-    } finally {
-      setIsPlacingOrder(false);
-    }
+    const ready = await preparePaymentIntent();
+    if (!ready) return;
+    goToStep(3);
   };
 
   const STEPS = [
@@ -509,11 +451,11 @@ export default function CheckoutFlow() {
           <div className="mx-4 mt-4">
             <div className="relative flex bg-muted rounded-2xl p-1 overflow-hidden">
               <div className="absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl transition-all duration-300 ease-in-out shadow-sm" style={{ backgroundColor: '#FFA500', left: fulfillment === 'pickup' ? '4px' : 'calc(50%)' }} />
-              <button type="button" onClick={() => setFulfillment('pickup')} className="relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 transition-colors duration-300" style={{ color: fulfillment === 'pickup' ? '#ffffff' : undefined }}>
+              <button type="button" onClick={() => { setFulfillment('pickup'); setPaymentClientSecret(null); setPaymentIntentError(''); }} className="relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 transition-colors duration-300" style={{ color: fulfillment === 'pickup' ? '#ffffff' : undefined }}>
                 <ChefHat className={`w-4 h-4 transition-colors duration-300 ${fulfillment === 'pickup' ? 'text-white' : 'text-muted-foreground'}`} />
                 <span className={fulfillment === 'pickup' ? 'text-white' : 'text-muted-foreground'}>Pickup</span>
               </button>
-              <button type="button" onClick={() => setFulfillment('delivery')} className="relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 transition-colors duration-300">
+              <button type="button" onClick={() => { setFulfillment('delivery'); setPaymentClientSecret(null); setPaymentIntentError(''); }} className="relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 transition-colors duration-300">
                 <Bike className={`w-4 h-4 transition-colors duration-300 ${fulfillment === 'delivery' ? 'text-white' : 'text-muted-foreground'}`} />
                 <span className={fulfillment === 'delivery' ? 'text-white' : 'text-muted-foreground'}>Delivery</span>
               </button>
@@ -564,6 +506,8 @@ export default function CheckoutFlow() {
                       deliveryForm.setValue('city', addr.city);
                       deliveryForm.setValue('state', addr.state);
                       deliveryForm.setValue('zip', addr.zip);
+                      setPaymentClientSecret(null);
+                      setPaymentIntentError('');
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 active:scale-[0.98] text-left"
                     style={{ borderColor: selectedSavedAddress === addr.id ? '#FFA500' : undefined, backgroundColor: selectedSavedAddress === addr.id ? '#FFA50010' : undefined }}
@@ -665,7 +609,7 @@ export default function CheckoutFlow() {
       )}
 
       {!isStepTransitioning && step === 2 && (
-        <form onSubmit={deliveryForm.handleSubmit(() => goToStep(3))} className="fade-in px-4 py-4 space-y-4 pb-8">
+        <form onSubmit={deliveryForm.handleSubmit(handleAdvanceToPayment)} className="fade-in px-4 py-4 space-y-4 pb-8">
           <div className="space-y-3">
             <h2 className="text-base font-700 text-foreground">{fulfillment === 'pickup' ? 'Pickup Contact' : 'Delivery Address'}</h2>
 
@@ -738,48 +682,18 @@ export default function CheckoutFlow() {
             <button type="button" onClick={() => setStep(1)} className="text-sm text-primary font-600 hover:underline">Edit</button>
           </div>
 
-          <button type="submit" className="w-full bg-primary text-white font-700 py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20">
-            Continue to Payment
-            <ChevronRight className="w-5 h-5" />
+          <button type="submit" disabled={paymentIntentLoading} className="w-full bg-primary text-white font-700 py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20 disabled:opacity-80 disabled:cursor-not-allowed">
+            {paymentIntentLoading ? <><Loader2 className="w-5 h-5 animate-spin" />Preparing secure payment...</> : <>Continue to Payment<ChevronRight className="w-5 h-5" /></>}
           </button>
         </form>
       )}
 
       {!isStepTransitioning && step === 3 && (
-        <form onSubmit={paymentForm.handleSubmit(handlePlaceOrder)} className="fade-in px-4 py-4 space-y-5 pb-8">
+        <div className="fade-in px-4 py-4 space-y-5 pb-8">
           <div>
-            <h2 className="text-base font-700 text-foreground mb-3">Payment Method</h2>
-            <div className="grid grid-cols-1 gap-2">
-              {[{ id: 'card' as const, label: 'Card', icon: '💳' }].map((method) => (
-                <button key={method.id} type="button" onClick={() => setSelectedPayment(method.id)} className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-150 active:scale-95 ${selectedPayment === method.id ? 'border-primary bg-accent' : 'border-border hover:border-primary/40'}`}>
-                  <span className="text-xl">{method.icon}</span>
-                  <span className="text-xs font-600 text-foreground">{method.label}</span>
-                </button>
-              ))}
-            </div>
+            <h2 className="text-base font-700 text-foreground mb-3">Secure Payment</h2>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-300">Your card will be charged securely with Stripe before the order is created.</div>
           </div>
-
-          {selectedPayment === 'card' && (
-            <div className="space-y-3 fade-in">
-              <div>
-                <label className="block text-sm font-600 text-foreground mb-1.5">Cardholder Name <span className="text-destructive">*</span></label>
-                <input {...paymentForm.register('cardName', { required: 'Cardholder name is required' })} type="text" autoComplete="cc-name" className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all" placeholder="Maya Chen" />
-              </div>
-              <div>
-                <label className="block text-sm font-600 text-foreground mb-1.5">Card Number <span className="text-destructive">*</span></label>
-                <div className="relative">
-                  <input {...paymentForm.register('cardNumber', { required: 'Card number is required', pattern: { value: /^[\d\s]{19}$/, message: 'Enter a valid 16-digit card number' }, onChange: (e) => { let val = e.target.value.replace(/\D/g, '').substring(0, 16); const formatted = val.replace(/(.{4})/g, '$1 ').trim(); paymentForm.setValue('cardNumber', formatted); } })} type="text" autoComplete="cc-number" maxLength={19} className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all font-tabular tracking-wider" placeholder="4242 4242 4242 4242" />
-                  <CreditCard className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-sm font-600 text-foreground mb-1.5">Expiry <span className="text-destructive">*</span></label><input {...paymentForm.register('expiry', { required: 'Expiry required', pattern: { value: /^(0[1-9]|1[0-2])\/\d{2}$/, message: 'Format: MM/YY' }, onChange: (e) => { let val = e.target.value.replace(/\D/g, '').substring(0, 4); if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2); paymentForm.setValue('expiry', val); } })} type="text" autoComplete="cc-exp" maxLength={5} className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all font-tabular" placeholder="08/27" /></div>
-                <div><label className="block text-sm font-600 text-foreground mb-1.5">CVV <span className="text-destructive">*</span></label><input {...paymentForm.register('cvv', { required: 'CVV required', pattern: { value: /^\d{3,4}$/, message: '3 or 4 digits' } })} type="password" autoComplete="cc-csc" maxLength={4} className="w-full bg-muted rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all font-tabular" placeholder="•••" /></div>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">Live in-app card charging is not enabled yet. This step currently places the order and notifies the chef, but it does not charge your card yet.</div>
 
           <div className="p-4 bg-card rounded-2xl border border-border space-y-2">
             <h3 className="text-sm font-700 text-foreground mb-2">Order Total</h3>
@@ -787,13 +701,42 @@ export default function CheckoutFlow() {
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">{fulfillment === 'pickup' ? 'Pickup' : 'Delivery'}</span><span className="font-500 text-foreground font-tabular">${deliveryFee.toFixed(2)}</span></div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service fee</span><span className="font-500 text-foreground font-tabular">${serviceFee.toFixed(2)}</span></div>
             {promoApplied && <div className="flex justify-between text-sm"><span className="text-green-600 dark:text-green-400">Promo discount</span><span className="font-600 text-green-600 dark:text-green-400 font-tabular">−$8.00</span></div>}
-            <div className="border-t border-border pt-2 flex justify-between"><span className="text-base font-700 text-foreground">Order total</span><span className="text-lg font-700 text-primary font-tabular">${total.toFixed(2)}</span></div>
+            <div className="border-t border-border pt-2 flex justify-between"><span className="text-base font-700 text-foreground">Total charged</span><span className="text-lg font-700 text-primary font-tabular">${total.toFixed(2)}</span></div>
           </div>
 
-          <button type="submit" disabled={isPlacingOrder} className="w-full bg-primary text-white font-700 py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20 disabled:opacity-80 disabled:cursor-not-allowed">
-            {isPlacingOrder ? <><Loader2 className="w-5 h-5 animate-spin" />Placing your order...</> : <><ShoppingBag className="w-5 h-5" />Place Order · ${total.toFixed(2)}</>}
-          </button>
-        </form>
+          {paymentIntentError ? <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{paymentIntentError}</div> : null}
+
+          {paymentClientSecret ? (
+            <Elements stripe={stripePromise} options={{ clientSecret: paymentClientSecret }}>
+              <StripeCheckoutForm
+                userId={user?.id || ''}
+                customerName={user?.email || ''}
+                customerProfileName={profile?.full_name || null}
+                chefId={cart[0]?.chef?.id || ''}
+                fulfillment={fulfillment}
+                cart={cart}
+                deliveryValues={deliveryForm.getValues()}
+                subtotal={subtotal}
+                deliveryFee={deliveryFee}
+                serviceFee={serviceFee}
+                promoDiscount={promoDiscount}
+                total={total}
+                platformFeeRate={PLATFORM_FEE_RATE}
+                platformFee={platformFee}
+                chefEarnings={chefEarnings}
+                onSuccess={({ orderId: createdOrderId }) => {
+                  setOrderId(createdOrderId);
+                  setOrderStatus('pending');
+                  setCustomerOrderPlaced(true);
+                  setStep(4);
+                  startOrderStatusSubscription(createdOrderId);
+                }}
+              />
+            </Elements>
+          ) : (
+            <div className="rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">Secure payment form could not be prepared. Go back and try again.</div>
+          )}
+        </div>
       )}
 
       {!isStepTransitioning && step === 4 && (
@@ -801,7 +744,7 @@ export default function CheckoutFlow() {
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4 scale-in"><CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" /></div>
             <h1 className="text-2xl font-700 text-foreground mb-1">Order Placed! 🎉</h1>
-            <p className="text-sm text-muted-foreground">{primaryChef.name} has been notified and can now update your order status. No card charge was processed in-app for this order.</p>
+            <p className="text-sm text-muted-foreground">Your payment was successful and {primaryChef.name} has been notified.</p>
             <div className="mt-3 inline-flex items-center gap-2 bg-muted px-4 py-2 rounded-full"><span className="text-xs text-muted-foreground">Order ID:</span><span className="text-sm font-700 text-foreground font-tabular">{orderId}</span></div>
           </div>
 
@@ -841,10 +784,10 @@ export default function CheckoutFlow() {
           <div className="bg-card rounded-2xl border border-border p-4 mb-4">
             <h2 className="text-sm font-700 text-foreground mb-3">Your Order</h2>
             <div className="space-y-3">{cart.map((item) => <div key={item.id} className="flex items-center gap-3"><div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted"><img src={item.image} alt={item.imageAlt} className="w-full h-full object-cover" /></div><div className="flex-1 min-w-0"><p className="text-sm font-600 text-foreground truncate">{item.title}</p><p className="text-xs text-muted-foreground">×{item.qty}</p></div><span className="text-sm font-700 text-foreground font-tabular shrink-0">${(item.price * item.qty).toFixed(2)}</span></div>)}</div>
-            <div className="border-t border-border mt-3 pt-3 space-y-1.5"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-500 font-tabular">${subtotal.toFixed(2)}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Delivery + fees</span><span className="font-500 font-tabular">${(deliveryFee + serviceFee).toFixed(2)}</span></div><div className="flex justify-between pt-1 border-t border-border"><span className="text-base font-700 text-foreground">Order total</span><span className="text-base font-700 text-primary font-tabular">${total.toFixed(2)}</span></div></div>
+            <div className="border-t border-border mt-3 pt-3 space-y-1.5"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-500 font-tabular">${subtotal.toFixed(2)}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Delivery + fees</span><span className="font-500 font-tabular">${(deliveryFee + serviceFee).toFixed(2)}</span></div><div className="flex justify-between pt-1 border-t border-border"><span className="text-base font-700 text-foreground">Total charged</span><span className="text-base font-700 text-primary font-tabular">${total.toFixed(2)}</span></div></div>
           </div>
 
-          <div className="bg-card rounded-2xl border border-border p-4 mb-4"><h2 className="text-sm font-700 text-foreground mb-2">What happens next</h2><div className="space-y-2 text-sm text-muted-foreground"><p>• The chef sees this order instantly in vendor orders.</p><p>• Your status now updates from the real order record instead of a fake timer.</p><p>• You can also track the order in your profile under My Orders.</p><p>• In-app payment is not live yet, so no card charge was submitted from this screen.</p></div></div>
+          <div className="bg-card rounded-2xl border border-border p-4 mb-4"><h2 className="text-sm font-700 text-foreground mb-2">What happens next</h2><div className="space-y-2 text-sm text-muted-foreground"><p>• The chef sees this paid order instantly in vendor orders.</p><p>• Your status now updates from the real order record.</p><p>• You can also track the order in your profile under My Orders.</p></div></div>
 
           <div className="space-y-3">
             <Link href="/profile-screen?tab=orders" className="block"><button className="w-full bg-primary text-white font-700 py-4 rounded-2xl hover:bg-primary/90 transition-all duration-150 shadow-lg shadow-primary/20">View My Orders</button></Link>
