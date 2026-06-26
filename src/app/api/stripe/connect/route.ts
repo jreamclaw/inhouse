@@ -70,7 +70,7 @@ export async function POST() {
 
     const payoutScheduleLookup = await supabase
       .from('user_profiles')
-      .select('payout_schedule')
+      .select('payout_schedule, payout_schedule_updated_at')
       .eq('id', user.id)
       .maybeSingle();
 

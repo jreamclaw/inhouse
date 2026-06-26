@@ -77,6 +77,13 @@ function nextPayoutLabel(schedule: 'daily' | 'weekly' = 'daily') {
   return payout.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function formatPayoutCooldownLabel(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function ChefMenuPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
@@ -232,6 +239,13 @@ export default function ChefMenuPage() {
 
   const stripeConnected = Boolean(stripeState?.stripe_account_id);
   const stripeReadyForPayouts = Boolean(stripeState?.stripe_onboarding_complete && stripeState?.stripe_charges_enabled && stripeState?.stripe_payouts_enabled);
+  const payoutScheduleLockedUntil = typeof stripeState?.payout_schedule_change_locked_until === 'string'
+    ? stripeState.payout_schedule_change_locked_until
+    : null;
+  const payoutScheduleLocked = Boolean(
+    payoutScheduleLockedUntil && new Date(payoutScheduleLockedUntil).getTime() > Date.now()
+  );
+  const payoutScheduleLockedLabel = formatPayoutCooldownLabel(payoutScheduleLockedUntil);
 
   const syncStripeStatus = async () => {
     try {
@@ -252,6 +266,8 @@ export default function ChefMenuPage() {
         stripe_connected: !!payload?.connected,
         stripe_details_submitted: !!payload?.details_submitted,
         payout_schedule: payload?.payout_schedule === 'weekly' ? 'weekly' : 'daily',
+        payout_schedule_updated_at: payload?.payout_schedule_updated_at ?? prev?.payout_schedule_updated_at ?? null,
+        payout_schedule_change_locked_until: payload?.payout_schedule_change_locked_until ?? prev?.payout_schedule_change_locked_until ?? null,
       }));
       setPayoutSchedule(payload?.payout_schedule === 'weekly' ? 'weekly' : 'daily');
     } catch (error: any) {
@@ -269,15 +285,30 @@ export default function ChefMenuPage() {
       setSavingPayoutSchedule(true);
       setStripeError('');
 
+      const lockedUntil = typeof stripeState?.payout_schedule_change_locked_until === 'string'
+        ? new Date(stripeState.payout_schedule_change_locked_until)
+        : null;
+
+      if (lockedUntil && lockedUntil.getTime() > Date.now() && nextSchedule !== payoutSchedule) {
+        throw new Error(`You can change your payout schedule again on ${lockedUntil.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}.`);
+      }
+
+      const nowIso = new Date().toISOString();
       const { error } = await supabase
         .from('user_profiles')
-        .update({ payout_schedule: nextSchedule, updated_at: new Date().toISOString() })
+        .update({ payout_schedule: nextSchedule, payout_schedule_updated_at: nowIso, updated_at: nowIso })
         .eq('id', user.id);
 
       if (error) throw error;
 
       setPayoutSchedule(nextSchedule);
-      setStripeState((prev: any) => ({ ...prev, payout_schedule: nextSchedule }));
+      const lockedUntilIso = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      setStripeState((prev: any) => ({
+        ...prev,
+        payout_schedule: nextSchedule,
+        payout_schedule_updated_at: nowIso,
+        payout_schedule_change_locked_until: lockedUntilIso,
+      }));
 
       if (stripeConnected) {
         const response = await fetch('/api/stripe/connect', { method: 'POST' });
@@ -667,19 +698,23 @@ export default function ChefMenuPage() {
               <div className="border-t border-border/60 p-3 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Net earnings</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.net.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Completed orders: {earningsSummary.completedOrders}</p></div>
-                  <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending payout</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.pendingPayout.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Estimated payout date: {nextPayoutLabel(payoutSchedule)} · {payoutSchedule === 'weekly' ? 'Weekly payouts' : 'Daily payouts'}</p></div>
+                  <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending payout</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.pendingPayout.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Estimated payout date: {nextPayoutLabel(payoutSchedule)} · {payoutSchedule === 'weekly' ? 'Weekly payouts' : 'Daily payouts'}</p><p className="text-[11px] text-muted-foreground mt-2">Stripe sends payouts automatically on your selected schedule.</p></div>
                   <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Delivery fees earned</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.deliveryFees.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Gross order volume: ${earningsSummary.gross.toFixed(2)}</p></div>
                 </div>
 
                 <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
                   <div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div>
                   <p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeReadyForPayouts ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeConnected ? 'Your Stripe account is connected. Finish payout verification if Stripe still needs more details.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p>
+                  <p className="text-[11px] text-muted-foreground mb-3">Changes affect future Stripe payouts only. They do not change money already sent.</p>
                   {stripeError && <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">{stripeError}</div>}
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={() => void savePayoutSchedule('daily')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'daily' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Daily payouts</button>
-                      <button onClick={() => void savePayoutSchedule('weekly')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Weekly payouts</button>
+                      <button onClick={() => void savePayoutSchedule('daily')} disabled={savingPayoutSchedule || (payoutScheduleLocked && payoutSchedule !== 'daily')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'daily' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'} ${(savingPayoutSchedule || (payoutScheduleLocked && payoutSchedule !== 'daily')) ? 'opacity-60 cursor-not-allowed' : ''}`}>Daily payouts</button>
+                      <button onClick={() => void savePayoutSchedule('weekly')} disabled={savingPayoutSchedule || (payoutScheduleLocked && payoutSchedule !== 'weekly')} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'} ${(savingPayoutSchedule || (payoutScheduleLocked && payoutSchedule !== 'weekly')) ? 'opacity-60 cursor-not-allowed' : ''}`}>Weekly payouts</button>
                     </div>
+                    {payoutScheduleLocked && payoutScheduleLockedLabel && (
+                      <p className="text-[11px] text-muted-foreground">You can change your payout schedule again on {payoutScheduleLockedLabel}. Limit: once per week.</p>
+                    )}
                     <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeReadyForPayouts ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeConnected ? 'Manage Stripe' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
                   </div>
                   <p className="mt-3 text-[11px] text-muted-foreground">Stripe onboarding opens in an external secure page and returns here when finished.</p>
@@ -692,6 +727,7 @@ export default function ChefMenuPage() {
                     <p>• Customers now pay a separate 6% service fee at checkout.</p>
                     <p>• Pending payout reflects orders not yet delivered or paid out.</p>
                     <p>• Stripe payout status must be fully connected for payouts to settle on your selected daily or weekly schedule.</p>
+                    <p>• You can change your payout schedule once per week to avoid payout timing confusion.</p>
                   </div>
                 </div>
               </div>

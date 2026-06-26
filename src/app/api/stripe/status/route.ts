@@ -31,7 +31,7 @@ export async function POST() {
 
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('id, stripe_account_id, payout_schedule')
+      .select('id, stripe_account_id, payout_schedule, payout_schedule_updated_at')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -44,6 +44,8 @@ export async function POST() {
         details_submitted: false,
         onboarding_complete: false,
         payout_schedule: 'daily',
+        payout_schedule_updated_at: null,
+        payout_schedule_change_locked_until: null,
         error: 'Stripe payout fields are not live in the database yet.',
       });
     }
@@ -70,6 +72,10 @@ export async function POST() {
         details_submitted: false,
         onboarding_complete: false,
         payout_schedule: profile?.payout_schedule === 'weekly' ? 'weekly' : 'daily',
+        payout_schedule_updated_at: profile?.payout_schedule_updated_at ?? null,
+        payout_schedule_change_locked_until: profile?.payout_schedule_updated_at
+          ? new Date(new Date(profile.payout_schedule_updated_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          : null,
       });
     }
 
@@ -98,6 +104,10 @@ export async function POST() {
       details_submitted,
       onboarding_complete: stripe_onboarding_complete,
       payout_schedule: profile?.payout_schedule === 'weekly' ? 'weekly' : 'daily',
+      payout_schedule_updated_at: profile?.payout_schedule_updated_at ?? null,
+      payout_schedule_change_locked_until: profile?.payout_schedule_updated_at
+        ? new Date(new Date(profile.payout_schedule_updated_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        : null,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed to sync Stripe status.' }, { status: 500 });
