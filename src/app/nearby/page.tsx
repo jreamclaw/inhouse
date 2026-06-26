@@ -438,9 +438,8 @@ export default function NearbyPage() {
           const chefServiceRadius = row.service_radius_miles || 10;
           const distance = hasCoords ? milesBetween(locationCoords!.latitude, locationCoords!.longitude, row.latitude, row.longitude) : null;
           const insideCustomerRadius = distance == null ? false : distance <= customerRadiusMiles;
-          const insideChefRadius = distance == null ? false : distance <= chefServiceRadius;
 
-          if (hasCoords && (!insideCustomerRadius || !insideChefRadius)) return null;
+          if (hasCoords && !insideCustomerRadius) return null;
           if (!hasCoords) {
             if (!normalizedManual) return null;
             const rowLocation = (row.location || '').toLowerCase();
