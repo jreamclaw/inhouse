@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Play } from 'lucide-react';
+import { Plus, Play, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -130,6 +130,8 @@ export default function StoriesBar() {
   };
 
   const currentStory = activeGroup?.stories?.[activeIndex] || null;
+  const canGoPrev = activeIndex > 0;
+  const canGoNext = !!activeGroup && activeIndex < activeGroup.stories.length - 1;
 
   const handleAddStory = () => {
     if (!user) {
@@ -203,22 +205,40 @@ export default function StoriesBar() {
       </div>
 
       {activeGroup && currentStory && (
-        <div className="fixed inset-0 z-[80] bg-black/90 flex items-center justify-center px-4 py-6">
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white text-sm font-600" onClick={() => setActiveGroup(null)}>
-            Close
-          </button>
+        <div className="fixed inset-0 z-[80] bg-black">
+          <div className="absolute inset-0">
+            {currentStory.media_type === 'video' ? (
+              <video
+                key={currentStory.id}
+                src={currentStory.media_url}
+                className="w-full h-full object-cover bg-black"
+                controls
+                autoPlay
+                muted
+                playsInline
+              />
+            ) : (
+              <img
+                src={currentStory.media_url}
+                alt={currentStory.caption || `${activeGroup.name} story`}
+                className="w-full h-full object-cover bg-black"
+              />
+            )}
+          </div>
 
-          <div className="w-full max-w-md bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-            <div className="flex gap-1 p-3 pb-2">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/10 to-black/65 pointer-events-none" />
+
+          <div className="absolute top-0 inset-x-0 z-10 px-3 pt-[max(env(safe-area-inset-top),12px)] pb-4 pointer-events-none">
+            <div className="flex gap-1 mb-3">
               {activeGroup.stories.map((story, idx) => (
-                <div key={story.id} className="h-1 flex-1 rounded-full bg-white/20 overflow-hidden">
-                  <div className={`h-full rounded-full ${idx <= activeIndex ? 'bg-white' : 'bg-transparent'}`} />
+                <div key={story.id} className="h-1 flex-1 rounded-full bg-white/25 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${idx <= activeIndex ? 'bg-white' : 'bg-transparent'}`} />
                 </div>
               ))}
             </div>
 
-            <div className="px-4 pb-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 shrink-0">
+            <div className="flex items-center gap-3 pointer-events-auto">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 shrink-0 ring-2 ring-white/20">
                 {activeGroup.avatarUrl ? (
                   <img src={activeGroup.avatarUrl} alt={`${activeGroup.name} avatar`} className="w-full h-full object-cover" />
                 ) : (
@@ -227,49 +247,48 @@ export default function StoriesBar() {
                   </div>
                 )}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-700 text-white truncate">{activeGroup.name}</p>
-                <p className="text-xs text-white/60">{new Date(currentStory.created_at).toLocaleString()}</p>
+                <p className="text-xs text-white/75">{new Date(currentStory.created_at).toLocaleString()}</p>
               </div>
-            </div>
-
-            <div className="relative bg-black">
-              {currentStory.media_type === 'video' ? (
-                <video src={currentStory.media_url} className="w-full max-h-[70vh] object-contain bg-black" controls autoPlay muted playsInline />
-              ) : (
-                <img src={currentStory.media_url} alt={currentStory.caption || `${activeGroup.name} story`} className="w-full max-h-[70vh] object-contain bg-black" />
-              )}
-
-              {currentStory.media_type === 'video' && (
-                <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/60 text-white text-xs font-600 px-2.5 py-1 rounded-full">
-                  <Play className="w-3 h-3 fill-white" /> Video
-                </div>
-              )}
-            </div>
-
-            {currentStory.caption && (
-              <div className="px-4 py-3 text-sm text-white/90 border-t border-white/10">
-                {currentStory.caption}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-white/10">
               <button
-                onClick={() => setActiveIndex((idx) => Math.max(0, idx - 1))}
-                disabled={activeIndex === 0}
-                className="px-4 py-2 rounded-full bg-white/10 text-white text-sm font-600 disabled:opacity-30"
+                className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white/90 hover:text-white"
+                onClick={() => setActiveGroup(null)}
+                aria-label="Close story viewer"
               >
-                Prev
-              </button>
-              <button
-                onClick={() => setActiveIndex((idx) => Math.min(activeGroup.stories.length - 1, idx + 1))}
-                disabled={activeIndex === activeGroup.stories.length - 1}
-                className="px-4 py-2 rounded-full bg-white/10 text-white text-sm font-600 disabled:opacity-30"
-              >
-                Next
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
+
+          <div className="absolute inset-0 z-20 flex">
+            <button
+              type="button"
+              aria-label="Previous story"
+              onClick={() => canGoPrev && setActiveIndex((idx) => Math.max(0, idx - 1))}
+              className="flex-1 h-full bg-transparent"
+            />
+            <button
+              type="button"
+              aria-label="Next story"
+              onClick={() => canGoNext ? setActiveIndex((idx) => Math.min(activeGroup.stories.length - 1, idx + 1)) : setActiveGroup(null)}
+              className="flex-1 h-full bg-transparent"
+            />
+          </div>
+
+          {currentStory.media_type === 'video' && (
+            <div className="absolute bottom-24 left-4 z-20 inline-flex items-center gap-1 bg-black/55 backdrop-blur-sm text-white text-xs font-600 px-2.5 py-1 rounded-full pointer-events-none">
+              <Play className="w-3 h-3 fill-white" /> Video
+            </div>
+          )}
+
+          {currentStory.caption && (
+            <div className="absolute left-0 right-0 bottom-0 z-20 px-4 pb-[max(env(safe-area-inset-bottom),20px)] pt-16 pointer-events-none">
+              <div className="max-w-xl rounded-2xl bg-black/35 backdrop-blur-md px-4 py-3 text-sm text-white/95 shadow-lg">
+                {currentStory.caption}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
