@@ -31,6 +31,7 @@ import CustomizationModal, {
 import CartDrawer from './components/CartDrawer';
 import OrdersTab from './components/OrdersTab';
 import ChefReviews, { MOCK_REVIEWS } from './components/ChefReviews';
+import ProfileStoryAvatar from '@/components/stories/ProfileStoryAvatar';
 import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
 import { calculateTrustScore } from '@/lib/trust/score';
@@ -923,9 +924,18 @@ function VendorProfileContent() {
         <div className="px-4 pb-4 pt-3 bg-card border-b border-border/50">
           <div className="flex items-start gap-3 -mt-7 sm:-mt-8 mb-2.5">
             <div className="relative shrink-0">
-              <div className="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-2xl overflow-hidden border-[3px] border-card shadow-elevated bg-card">
-                <img src={vendor.avatar} alt={`${vendor.name} chef avatar`} className="w-full h-full object-cover" />
-              </div>
+              <ProfileStoryAvatar
+                userId={vendor.id}
+                displayName={vendor.name}
+                avatarUrl={vendor.avatar}
+                sizeClassName="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px]"
+                ringClassName="p-[3px]"
+                innerClassName="ring-[2px] ring-card"
+                roundedClassName="rounded-2xl"
+                borderClassName="border-[3px] border-card shadow-elevated bg-card overflow-hidden"
+                fallbackClassName="bg-card"
+                fallbackTextClassName="text-2xl font-700 text-foreground"
+              />
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border-2 border-card text-xs shadow-sm">
                 👨‍🍳
               </div>

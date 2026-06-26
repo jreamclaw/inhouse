@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
 import TrustVerificationSection from '@/components/trust/TrustVerificationSection';
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
+import ProfileStoryAvatar from '@/components/stories/ProfileStoryAvatar';
 import { calculateTrustScore } from '@/lib/trust/score';
 import type { TrustCredentialShape } from '@/lib/trust/types';
 import { getPublicLocationLabel } from '@/lib/location/display';
@@ -442,13 +443,18 @@ export default function PublicProfilePage() {
 
         <div className="px-4">
           <div className="-mt-10 relative z-10 mb-4 flex items-end gap-4">
-            <div className="w-20 h-20 rounded-3xl overflow-hidden border-4 border-card bg-card shadow-lg flex items-center justify-center">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-2xl font-700 text-foreground">{initials}</span>
-              )}
-            </div>
+            <ProfileStoryAvatar
+              userId={profile.id}
+              displayName={displayName}
+              avatarUrl={profile.avatar_url || null}
+              sizeClassName="w-20 h-20"
+              ringClassName="p-[3px]"
+              innerClassName="ring-[2px] ring-card"
+              roundedClassName="rounded-3xl"
+              borderClassName="border-4 border-card bg-card shadow-lg overflow-hidden"
+              fallbackClassName="bg-card"
+              fallbackTextClassName="text-2xl font-700 text-foreground"
+            />
             <div className={`grid gap-3 flex-1 ${isChef ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <button onClick={() => setSheetMode('followers')} className="rounded-2xl bg-card border border-border px-4 py-3 text-center hover:bg-muted/40 transition-colors">
                 <p className="text-lg font-700 text-foreground">{profile.followers_count ?? 0}</p>

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
+import ProfileStoryAvatar from '@/components/stories/ProfileStoryAvatar';
 import { getChefPublicLocationLabel, getPublicLocationLabel } from '@/lib/location/display';
 
 function parseHoursFromBio(bio?: string | null) {
@@ -144,15 +145,20 @@ export default function ProfileHeader() {
       <div className="px-4 pb-4 pt-3">
         <div className="flex items-start gap-3 -mt-7 sm:-mt-8 mb-3">
           <div className="relative shrink-0">
-            <div className={`w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-full overflow-hidden border-[3px] ${isChef ? 'border-[#F97316]' : 'border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated`}>
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" />
-              ) : (
-                <div className={`w-full h-full flex items-center justify-center text-3xl font-bold text-white ${isChef ? 'bg-gradient-to-br from-orange-400 to-amber-500' : 'bg-gradient-to-br from-violet-400 to-purple-500'}`}>
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
+            <ProfileStoryAvatar
+              userId={profile?.id}
+              displayName={displayName}
+              avatarUrl={avatarUrl}
+              sizeClassName="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px]"
+              ringClassName="p-[3px]"
+              innerClassName="ring-[2px] ring-card"
+              roundedClassName="rounded-full"
+              borderClassName={`${isChef ? 'border-[3px] border-[#F97316]' : 'border-[3px] border-white'} bg-[#F7F7F7] dark:bg-white/5 shadow-elevated overflow-hidden`}
+              fallbackClassName={isChef ? 'bg-gradient-to-br from-orange-400 to-amber-500' : 'bg-gradient-to-br from-violet-400 to-purple-500'}
+              fallbackTextClassName="text-3xl font-bold text-white"
+              showAddBadge={profile?.id === user?.id}
+              onAddStory={() => router.push('/create-story')}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-2 flex-1 min-w-0 pt-5 sm:pt-6">
