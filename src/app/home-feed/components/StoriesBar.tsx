@@ -416,7 +416,6 @@ export default function StoriesBar() {
                 key={currentStory.id}
                 src={currentStory.media_url}
                 className="w-full h-full object-cover bg-black"
-                controls
                 autoPlay
                 muted
                 playsInline
