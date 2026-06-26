@@ -62,13 +62,12 @@ export function getPreferredAuthRedirectUrl(path: string) {
 }
 
 export function getOAuthCallbackRedirect(provider: 'google' | 'apple') {
-  const target = getAuthRedirectTarget(provider === 'google' ? '/oauth-complete' : '/auth/callback');
-  const query = provider === 'google' ? '' : '?next=role-based';
+  const target = getAuthRedirectTarget('/oauth-complete');
 
   return {
-    redirectTo: `${target.webUrl}${query}`,
+    redirectTo: target.webUrl,
     handoffToNative: target.shouldUseNativeFlow,
-    nativeUrl: `${target.nativeUrl}${query}`,
-    webUrl: `${target.webUrl}${query}`,
+    nativeUrl: target.nativeUrl,
+    webUrl: target.webUrl,
   };
 }
