@@ -104,6 +104,10 @@ interface DbChefProfile {
   avatar_url: string | null;
   location: string | null;
   delivery_fee?: number | null;
+  delivery_enabled?: boolean | null;
+  service_radius_miles?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -135,6 +139,7 @@ export default function CheckoutFlow() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [chefProfile, setChefProfile] = useState<DbChefProfile | null>(null);
+  const [customerCoords, setCustomerCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [customerOrderPlaced, setCustomerOrderPlaced] = useState(false);
   const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null);
   const [paymentIntentLoading, setPaymentIntentLoading] = useState(false);
@@ -167,6 +172,10 @@ export default function CheckoutFlow() {
       const vendorLocation = window.localStorage.getItem('inhouse_vendor_location') || undefined;
       const vendorDeliveryFeeRaw = window.localStorage.getItem('inhouse_vendor_delivery_fee');
       const vendorDeliveryFee = vendorDeliveryFeeRaw ? Number(vendorDeliveryFeeRaw) : undefined;
+      const vendorDeliveryEnabledRaw = window.localStorage.getItem('inhouse_vendor_delivery_enabled');
+      const vendorServiceRadiusRaw = window.localStorage.getItem('inhouse_vendor_service_radius_miles');
+      const vendorLatitudeRaw = window.localStorage.getItem('inhouse_vendor_latitude');
+      const vendorLongitudeRaw = window.localStorage.getItem('inhouse_vendor_longitude');
 
       const mapped: CartItem[] = parsed.map((item) => ({
         id: item.id,
@@ -184,6 +193,10 @@ export default function CheckoutFlow() {
           rating: item.chef?.rating || 5,
           location: item.chef?.location || vendorLocation,
           deliveryFee: item.chef?.deliveryFee ?? vendorDeliveryFee,
+          deliveryEnabled: vendorDeliveryEnabledRaw !== 'false',
+          serviceRadiusMiles: vendorServiceRadiusRaw ? Number(vendorServiceRadiusRaw) : undefined,
+          latitude: vendorLatitudeRaw ? Number(vendorLatitudeRaw) : undefined,
+          longitude: vendorLongitudeRaw ? Number(vendorLongitudeRaw) : undefined,
         },
       }));
 
@@ -211,7 +224,7 @@ export default function CheckoutFlow() {
       const chefPromise = chefId
         ? supabase
             .from('user_profiles')
-            .select('id, full_name, avatar_url, location, delivery_fee')
+            .select('id, full_name, avatar_url, location, delivery_fee, delivery_enabled, service_radius_miles, latitude, longitude')
             .eq('id', chefId)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null } as any);
@@ -238,6 +251,16 @@ export default function CheckoutFlow() {
       }
 
       if (chef) setChefProfile(chef);
+
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setCustomerCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+          },
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+        );
+      }
     } catch {
       // silent fallback
     }
@@ -254,6 +277,54 @@ export default function CheckoutFlow() {
   const pickupLocationLabel = useMemo(() => {
     return chefProfile?.location || cart[0]?.chef?.location || 'Chef pickup location not set';
   }, [chefProfile, cart]);
+
+  const chefDeliveryEnabled = useMemo(() => {
+    if (typeof chefProfile?.delivery_enabled === 'boolean') return chefProfile.delivery_enabled;
+    const cartChef = cart[0]?.chef as any;
+    if (typeof cartChef?.deliveryEnabled === 'boolean') return cartChef.deliveryEnabled;
+    return true;
+  }, [chefProfile, cart]);
+
+  const chefServiceRadiusMiles = useMemo(() => {
+    const profileRadius = Number(chefProfile?.service_radius_miles ?? NaN);
+    if (!Number.isNaN(profileRadius) && profileRadius > 0) return profileRadius;
+    const cartRadius = Number((cart[0]?.chef as any)?.serviceRadiusMiles ?? NaN);
+    if (!Number.isNaN(cartRadius) && cartRadius > 0) return cartRadius;
+    return 10;
+  }, [chefProfile, cart]);
+
+  const chefCoords = useMemo(() => {
+    const latitude = Number(chefProfile?.latitude ?? (cart[0]?.chef as any)?.latitude ?? NaN);
+    const longitude = Number(chefProfile?.longitude ?? (cart[0]?.chef as any)?.longitude ?? NaN);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
+    return { latitude, longitude };
+  }, [chefProfile, cart]);
+
+  const deliveryDistanceMiles = useMemo(() => {
+    if (!customerCoords || !chefCoords) return null;
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const earthRadiusMiles = 3958.8;
+    const dLat = toRad(chefCoords.latitude - customerCoords.latitude);
+    const dLon = toRad(chefCoords.longitude - customerCoords.longitude);
+    const lat1 = toRad(customerCoords.latitude);
+    const lat2 = toRad(chefCoords.latitude);
+    const a = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+    return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }, [customerCoords, chefCoords]);
+
+  const deliveryAvailable = useMemo(() => {
+    if (!chefDeliveryEnabled) return false;
+    if (deliveryDistanceMiles == null) return true;
+    return deliveryDistanceMiles <= chefServiceRadiusMiles;
+  }, [chefDeliveryEnabled, deliveryDistanceMiles, chefServiceRadiusMiles]);
+
+  useEffect(() => {
+    if (fulfillment === 'delivery' && !deliveryAvailable) {
+      setFulfillment('pickup');
+      setPaymentClientSecret(null);
+      setPaymentIntentError('');
+    }
+  }, [deliveryAvailable, fulfillment]);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const deliveryFee = fulfillment === 'delivery' && subtotal > 0 ? vendorDeliveryFee : 0;
@@ -457,11 +528,19 @@ export default function CheckoutFlow() {
                 <ChefHat className={`w-4 h-4 transition-colors duration-300 ${fulfillment === 'pickup' ? 'text-white' : 'text-muted-foreground'}`} />
                 <span className={fulfillment === 'pickup' ? 'text-white' : 'text-muted-foreground'}>Pickup</span>
               </button>
-              <button type="button" onClick={() => { setFulfillment('delivery'); setPaymentClientSecret(null); setPaymentIntentError(''); }} className="relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 transition-colors duration-300">
+              <button type="button" disabled={!deliveryAvailable} onClick={() => { if (!deliveryAvailable) return; setFulfillment('delivery'); setPaymentClientSecret(null); setPaymentIntentError(''); }} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-600 transition-colors duration-300 ${!deliveryAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <Bike className={`w-4 h-4 transition-colors duration-300 ${fulfillment === 'delivery' ? 'text-white' : 'text-muted-foreground'}`} />
                 <span className={fulfillment === 'delivery' ? 'text-white' : 'text-muted-foreground'}>Delivery</span>
               </button>
             </div>
+
+            {!deliveryAvailable && (
+              <div className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300 fade-in">
+                {chefDeliveryEnabled
+                  ? `Delivery is unavailable for this order outside the chef's ${chefServiceRadiusMiles}-mile radius. Pickup is still available.`
+                  : 'This chef currently has delivery turned off. Pickup is still available.'}
+              </div>
+            )}
 
             {fulfillment === 'pickup' && (
               <div className="mt-3 rounded-2xl overflow-hidden border border-border transition-all duration-300 fade-in">

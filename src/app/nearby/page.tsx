@@ -71,6 +71,8 @@ interface DbVendorRow {
   latitude: number | null;
   longitude: number | null;
   service_radius_miles: number | null;
+  delivery_enabled?: boolean | null;
+  delivery_fee?: number | null;
   business_hours?: string | null;
   availability_override?: 'open' | 'closed' | null;
   trust_score?: number | null;
@@ -469,7 +471,7 @@ export default function NearbyPage() {
             reviewCount: Number(row.rating_count || 0),
             distance: distance == null ? 0 : Number(distance.toFixed(1)),
             deliveryTime: '25–35 min',
-            deliveryFee: 0,
+            deliveryFee: Number(row.delivery_fee || 0),
             priceRange: '$$',
             isOpen: openState.isOpen,
             openLabel: openState.label,

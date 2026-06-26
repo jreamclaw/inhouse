@@ -513,7 +513,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }, { data: credentials }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, delivery_fee, role')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, delivery_enabled, delivery_fee, service_radius_miles, latitude, longitude, role')
           .eq('id', vendorId)
           .maybeSingle(),
         supabase
@@ -603,7 +603,7 @@ function VendorProfileContent() {
 
       const { data: profileExtras } = await supabase
         .from('user_profiles')
-        .select('business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count')
+        .select('business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, delivery_enabled, service_radius_miles, latitude, longitude')
         .eq('id', vendorId)
         .maybeSingle();
 
@@ -642,6 +642,10 @@ function VendorProfileContent() {
         location: dbVendor.privacy_show_location === false ? 'Location private' : (dbVendor.location || 'Location unavailable'),
         distance: undefined,
         deliveryFee: Number(dbVendor.delivery_fee || 0),
+        deliveryEnabled: dbVendor.delivery_enabled !== false,
+        serviceRadiusMiles: Number(dbVendor.service_radius_miles || 10),
+        latitude: typeof dbVendor.latitude === 'number' ? dbVendor.latitude : null,
+        longitude: typeof dbVendor.longitude === 'number' ? dbVendor.longitude : null,
         deliveryTime: 'TBD',
         minOrder: mappedMenu.length > 0 ? Math.min(...mappedMenu.map((item) => item.price)) : 0,
         menu: mappedMenu,
@@ -664,6 +668,10 @@ function VendorProfileContent() {
     window.localStorage.setItem('inhouse_vendor_avatar', vendor.avatar);
     window.localStorage.setItem('inhouse_vendor_location', vendor.location || '');
     window.localStorage.setItem('inhouse_vendor_delivery_fee', String((vendor as any).deliveryFee ?? 0));
+    window.localStorage.setItem('inhouse_vendor_delivery_enabled', String((vendor as any).deliveryEnabled !== false));
+    window.localStorage.setItem('inhouse_vendor_service_radius_miles', String((vendor as any).serviceRadiusMiles ?? 10));
+    window.localStorage.setItem('inhouse_vendor_latitude', String((vendor as any).latitude ?? ''));
+    window.localStorage.setItem('inhouse_vendor_longitude', String((vendor as any).longitude ?? ''));
   }, [vendor]);
 
   const categories = vendor ? ['all', ...Array.from(new Set(vendor.menu.map((item) => item.category)))] : ['all'];
