@@ -278,6 +278,21 @@ export default function OrdersTab() {
     loadOrders();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`chef-orders-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `chef_id=eq.${user.id}` }, async () => {
+        await loadOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, user?.id]);
+
   const loadOrders = async () => {
     if (!user?.id) {
       setLoading(false);
