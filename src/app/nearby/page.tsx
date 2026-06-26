@@ -431,6 +431,7 @@ export default function NearbyPage() {
 
       const hasCoords = typeof locationCoords?.latitude === 'number' && typeof locationCoords?.longitude === 'number';
       const normalizedManual = manualLocationLabel.trim().toLowerCase();
+      const hasManualFilter = !hasCoords && !!normalizedManual;
 
       const rawRows = ((payload?.chefs as DbVendorRow[] | null) ?? []);
 
@@ -439,12 +440,11 @@ export default function NearbyPage() {
           if (typeof row.latitude !== 'number' || typeof row.longitude !== 'number') return null;
           const chefServiceRadius = row.service_radius_miles || 10;
           const distance = hasCoords ? milesBetween(locationCoords!.latitude, locationCoords!.longitude, row.latitude, row.longitude) : null;
-          const insideCustomerRadius = distance == null ? false : distance <= customerRadiusMiles;
-          const insideChefRadius = distance == null ? false : distance <= chefServiceRadius;
+          const insideCustomerRadius = distance == null ? true : distance <= customerRadiusMiles;
+          const insideChefRadius = distance == null ? true : distance <= chefServiceRadius;
 
           if (hasCoords && (!insideCustomerRadius || !insideChefRadius)) return null;
-          if (!hasCoords) {
-            if (!normalizedManual) return null;
+          if (hasManualFilter) {
             const rowLocation = (row.location || '').toLowerCase();
             if (!rowLocation.includes(normalizedManual)) return null;
           }
