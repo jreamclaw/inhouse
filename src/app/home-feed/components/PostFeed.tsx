@@ -341,6 +341,7 @@ function dbPostToMockShape(p: DbPost): MockPost {
     likes: p.likes_count,
     comments: p.comments_count,
     timeAgo: timeAgoFromDate(p.created_at),
+    createdAt: p.created_at,
     location: p.location,
     distance: null,
     isLiked: Boolean(p.viewer_has_liked && p.viewer_has_liked.length > 0),
@@ -911,6 +912,18 @@ function CommentInput({ comment, setComment, handleComment }: CommentInputProps)
   );
 }
 
+function getForYouScore(post: MockPost, followedUserIds: Set<string>) {
+  const isFollowed = followedUserIds.has(post.user.id);
+  const likesScore = Math.min(post.likes || 0, 200) * 2;
+  const commentsScore = Math.min(post.comments || 0, 80) * 3;
+  const postAgeHours = Math.max(0, (Date.now() - new Date((post as any).createdAt || Date.now()).getTime()) / 3600000);
+  const recencyScore = Math.max(0, 72 - Math.min(postAgeHours, 72)) * 4;
+  const followedBoost = isFollowed ? 100000 : 0;
+  const localBoost = post.isLocal ? 250 : 0;
+
+  return followedBoost + localBoost + likesScore + commentsScore + recencyScore;
+}
+
 interface PostFeedProps {
   mode: 'local' | 'explore';
 }
@@ -1080,8 +1093,11 @@ export default function PostFeed({ mode }: PostFeedProps) {
   const localPosts = dbPosts;
   const explorePosts = dbPosts.filter((p) => !p.isLocal);
 
+  const rankedLocalPosts = [...localPosts].sort((a, b) => getForYouScore(b, followedUserIds) - getForYouScore(a, followedUserIds));
+  const rankedExplorePosts = [...explorePosts].sort((a, b) => getForYouScore(b, followedUserIds) - getForYouScore(a, followedUserIds));
+
   // Filter posts based on mode
-  const modePosts = mode === 'local' ? localPosts : explorePosts;
+  const modePosts = mode === 'local' ? rankedLocalPosts : rankedExplorePosts;
 
   // Filter by following if selected
   const filteredPosts = feedFilter === 'following' && followedUserIds.size > 0
