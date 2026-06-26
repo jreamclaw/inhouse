@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Play, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -275,12 +275,6 @@ export default function StoriesBar() {
               className="flex-1 h-full bg-transparent"
             />
           </div>
-
-          {currentStory.media_type === 'video' && (
-            <div className="absolute bottom-24 left-4 z-20 inline-flex items-center gap-1 bg-black/55 backdrop-blur-sm text-white text-xs font-600 px-2.5 py-1 rounded-full pointer-events-none">
-              <Play className="w-3 h-3 fill-white" /> Video
-            </div>
-          )}
 
           {currentStory.caption && (
             <div className="absolute left-0 right-0 bottom-0 z-20 px-4 pb-[max(env(safe-area-inset-bottom),20px)] pt-16 pointer-events-none">
