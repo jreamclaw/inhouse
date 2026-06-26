@@ -703,7 +703,11 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
         <video src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} className="w-full h-full object-cover" muted loop playsInline controls /> :
         <img src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} alt={post.imageAlt} className="w-full h-full object-cover" loading="lazy" />
         }
-        {((post as any).mediaItems?.length || 0) > 1 && <><button onClick={() => setMediaIndex((i) => Math.max(0, i - 1))} disabled={mediaIndex === 0} className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white disabled:opacity-30">?</button><button onClick={() => setMediaIndex((i) => Math.min(((post as any).mediaItems?.length || 1) - 1, i + 1))} disabled={mediaIndex === ((post as any).mediaItems?.length || 1) - 1} className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white disabled:opacity-30">?</button><div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-600 px-2 py-1 rounded-full">{mediaIndex + 1}/{(post as any).mediaItems?.length}</div></>}
+        {((post as any).mediaItems?.length || 0) > 1 && (
+          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-600 px-2 py-1 rounded-full">
+            {mediaIndex + 1}/{(post as any).mediaItems?.length}
+          </div>
+        )}
 
         {/* Meal tag overlay */}
         {post.mealTag &&
