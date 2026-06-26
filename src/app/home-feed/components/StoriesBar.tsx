@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Heart, MessageCircle, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +15,9 @@ type StoryRow = {
   caption: string | null;
   created_at: string;
   expires_at: string;
+  views_count?: number | null;
+  likes_count?: number | null;
+  replies_count?: number | null;
   user_profiles: {
     id: string;
     full_name: string;
@@ -31,6 +34,33 @@ type StoryGroup = {
   stories: StoryRow[];
 };
 
+type StoryReplyRow = {
+  id: string;
+  story_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  user_profiles?: {
+    full_name: string;
+    avatar_url: string | null;
+  } | null;
+};
+
+async function shouldCreateNotification(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  key: 'notif_post_likes' | 'notif_comments'
+) {
+  const { data } = await supabase
+    .from('user_settings')
+    .select(key)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!data) return true;
+  return data[key] !== false;
+}
+
 export default function StoriesBar() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -42,6 +72,11 @@ export default function StoriesBar() {
   const [storiesAvailable, setStoriesAvailable] = useState(true);
   const [activeGroup, setActiveGroup] = useState<StoryGroup | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [likedStoryIds, setLikedStoryIds] = useState<string[]>([]);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [repliesByStory, setRepliesByStory] = useState<Record<string, StoryReplyRow[]>>({});
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const [sendingReply, setSendingReply] = useState(false);
 
   const userAvatarUrl = profile?.avatar_url || null;
   const displayName = profile?.full_name || user?.email?.split('@')?.[0] || 'You';
@@ -49,6 +84,18 @@ export default function StoriesBar() {
   useEffect(() => {
     loadStories();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void loadLikedStories();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const storyId = activeGroup?.stories?.[activeIndex]?.id;
+    if (!storyId || !user?.id) return;
+    void registerStoryView(storyId);
+    void loadReplies(storyId);
+  }, [activeGroup?.userId, activeIndex, user?.id]);
 
   const loadStories = async () => {
     setLoading(true);
@@ -63,6 +110,9 @@ export default function StoriesBar() {
           caption,
           created_at,
           expires_at,
+          views_count,
+          likes_count,
+          replies_count,
           user_profiles:user_id (
             id,
             full_name,
@@ -114,6 +164,54 @@ export default function StoriesBar() {
     }
   };
 
+  const loadLikedStories = async () => {
+    const { data } = await supabase.from('story_likes').select('story_id').eq('user_id', user?.id || '');
+    setLikedStoryIds(((data as { story_id: string }[] | null) || []).map((row) => row.story_id));
+  };
+
+  const loadReplies = async (storyId: string) => {
+    setLoadingReplies(true);
+    try {
+      const { data, error } = await supabase
+        .from('story_replies')
+        .select(`
+          id,
+          story_id,
+          user_id,
+          body,
+          created_at,
+          user_profiles:user_id (
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('story_id', storyId)
+        .order('created_at', { ascending: true })
+        .limit(8);
+
+      if (error) throw error;
+      setRepliesByStory((prev) => ({ ...prev, [storyId]: (data as StoryReplyRow[] | null) || [] }));
+    } catch {
+      setRepliesByStory((prev) => ({ ...prev, [storyId]: [] }));
+    } finally {
+      setLoadingReplies(false);
+    }
+  };
+
+  const registerStoryView = async (storyId: string) => {
+    if (!user?.id) return;
+
+    const { error } = await supabase.from('story_views').insert({ story_id: storyId, viewer_id: user.id });
+    if (error && !String(error.message || '').toLowerCase().includes('duplicate')) return;
+
+    setStoryGroups((prev) => prev.map((group) => ({
+      ...group,
+      stories: group.stories.map((story) => story.id === storyId
+        ? { ...story, views_count: Math.max(Number(story.views_count || 0), Number(story.views_count || 0) + (error ? 0 : 1)) }
+        : story),
+    })));
+  };
+
   const ownStoryGroup = useMemo(
     () => storyGroups.find((group) => group.userId === user?.id) || null,
     [storyGroups, user?.id]
@@ -127,11 +225,15 @@ export default function StoriesBar() {
   const openStoryViewer = (group: StoryGroup) => {
     setActiveGroup(group);
     setActiveIndex(Math.max(0, group.stories.length - 1));
+    setReplyDraft('');
   };
 
   const currentStory = activeGroup?.stories?.[activeIndex] || null;
   const canGoPrev = activeIndex > 0;
   const canGoNext = !!activeGroup && activeIndex < activeGroup.stories.length - 1;
+  const isCurrentStoryLiked = currentStory ? likedStoryIds.includes(currentStory.id) : false;
+  const currentReplies = currentStory ? repliesByStory[currentStory.id] || [] : [];
+  const isOwnCurrentStory = Boolean(currentStory && user?.id && currentStory.user_id === user.id);
 
   const handleAddStory = () => {
     if (!user) {
@@ -139,6 +241,108 @@ export default function StoriesBar() {
       return;
     }
     router.push('/create-story');
+  };
+
+  const bumpCurrentStoryCounts = (updates: Partial<Pick<StoryRow, 'views_count' | 'likes_count' | 'replies_count'>>) => {
+    if (!currentStory) return;
+    setStoryGroups((prev) => prev.map((group) => ({
+      ...group,
+      stories: group.stories.map((story) => story.id === currentStory.id ? { ...story, ...updates } : story),
+    })));
+  };
+
+  const handleToggleLike = async () => {
+    if (!user?.id || !currentStory) return;
+
+    const alreadyLiked = likedStoryIds.includes(currentStory.id);
+    const ownerId = currentStory.user_id;
+
+    if (alreadyLiked) {
+      const { error } = await supabase.from('story_likes').delete().eq('story_id', currentStory.id).eq('user_id', user.id);
+      if (error) {
+        toast.error('Could not remove heart right now.');
+        return;
+      }
+      setLikedStoryIds((prev) => prev.filter((id) => id !== currentStory.id));
+      bumpCurrentStoryCounts({ likes_count: Math.max(0, Number(currentStory.likes_count || 0) - 1) });
+      return;
+    }
+
+    const { error } = await supabase.from('story_likes').insert({ story_id: currentStory.id, user_id: user.id });
+    if (error) {
+      toast.error('Could not heart this story right now.');
+      return;
+    }
+
+    setLikedStoryIds((prev) => [...prev, currentStory.id]);
+    bumpCurrentStoryCounts({ likes_count: Number(currentStory.likes_count || 0) + 1 });
+
+    if (ownerId !== user.id) {
+      const shouldNotify = await shouldCreateNotification(supabase, ownerId, 'notif_post_likes');
+      if (shouldNotify) {
+        await supabase.from('notifications').insert({
+          user_id: ownerId,
+          actor_id: user.id,
+          type: 'like',
+          title: 'Someone liked your story',
+          body: `${displayName} hearted your story.`,
+          entity_id: currentStory.id,
+          entity_type: 'story',
+        });
+      }
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!user?.id || !currentStory || !replyDraft.trim()) return;
+
+    const body = replyDraft.trim();
+    setSendingReply(true);
+    try {
+      const { data, error } = await supabase
+        .from('story_replies')
+        .insert({ story_id: currentStory.id, user_id: user.id, body })
+        .select(`
+          id,
+          story_id,
+          user_id,
+          body,
+          created_at,
+          user_profiles:user_id (
+            full_name,
+            avatar_url
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+
+      setRepliesByStory((prev) => ({
+        ...prev,
+        [currentStory.id]: [...(prev[currentStory.id] || []), data as StoryReplyRow],
+      }));
+      bumpCurrentStoryCounts({ replies_count: Number(currentStory.replies_count || 0) + 1 });
+      setReplyDraft('');
+
+      if (currentStory.user_id !== user.id) {
+        const shouldNotify = await shouldCreateNotification(supabase, currentStory.user_id, 'notif_comments');
+        if (shouldNotify) {
+          await supabase.from('notifications').insert({
+            user_id: currentStory.user_id,
+            actor_id: user.id,
+            type: 'chef',
+            title: 'New reply on your story',
+            body: `${displayName}: ${body.slice(0, 80)}${body.length > 80 ? '…' : ''}`,
+            entity_id: currentStory.id,
+            entity_type: 'story',
+          });
+        }
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Could not send reply right now.');
+    } finally {
+      setSendingReply(false);
+    }
   };
 
   if (!storiesAvailable) {
@@ -226,7 +430,7 @@ export default function StoriesBar() {
             )}
           </div>
 
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/10 to-black/65 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/10 to-black/75 pointer-events-none" />
 
           <div className="absolute top-0 inset-x-0 z-10 px-3 pt-[max(env(safe-area-inset-top),12px)] pb-4 pointer-events-none">
             <div className="flex gap-1 mb-3">
@@ -276,13 +480,68 @@ export default function StoriesBar() {
             />
           </div>
 
-          {currentStory.caption && (
-            <div className="absolute left-0 right-0 bottom-0 z-20 px-4 pb-[max(env(safe-area-inset-bottom),20px)] pt-16 pointer-events-none">
-              <div className="max-w-xl rounded-2xl bg-black/35 backdrop-blur-md px-4 py-3 text-sm text-white/95 shadow-lg">
+          <div className="absolute left-0 right-0 bottom-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-16">
+            {currentStory.caption && (
+              <div className="mb-3 rounded-2xl bg-black/35 backdrop-blur-md px-4 py-3 text-sm text-white/95 shadow-lg">
                 {currentStory.caption}
               </div>
+            )}
+
+            <div className="mb-3 rounded-2xl bg-black/35 backdrop-blur-md px-4 py-3 text-white shadow-lg">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-4 text-xs text-white/85">
+                  {isOwnCurrentStory && (
+                    <span className="inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{Number(currentStory.views_count || 0)}</span>
+                  )}
+                  <span className="inline-flex items-center gap-1"><Heart className={`w-3.5 h-3.5 ${isCurrentStoryLiked ? 'fill-red-500 text-red-500' : ''}`} />{Number(currentStory.likes_count || 0)}</span>
+                  <span className="inline-flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" />{Number(currentStory.replies_count || 0)}</span>
+                </div>
+                <button
+                  onClick={handleToggleLike}
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-700 transition-all ${isCurrentStoryLiked ? 'bg-red-500/20 text-red-300 border border-red-400/30' : 'bg-white/10 text-white border border-white/15'}`}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isCurrentStoryLiked ? 'fill-red-400 text-red-400' : ''}`} />
+                  {isCurrentStoryLiked ? 'Hearted' : 'Heart'}
+                </button>
+              </div>
+
+              <div className="space-y-2 mb-3 max-h-28 overflow-y-auto pr-1">
+                {loadingReplies ? (
+                  <p className="text-xs text-white/70">Loading replies...</p>
+                ) : currentReplies.length > 0 ? currentReplies.map((reply) => (
+                  <div key={reply.id} className="text-xs text-white/90 leading-relaxed">
+                    <span className="font-700 mr-1">{reply.user_profiles?.full_name || 'User'}</span>
+                    <span>{reply.body}</span>
+                  </div>
+                )) : (
+                  <p className="text-xs text-white/65">No replies yet. Start the conversation.</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={replyDraft}
+                  onChange={(e) => setReplyDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleSendReply();
+                    }
+                  }}
+                  placeholder="Reply to this story..."
+                  className="flex-1 rounded-full bg-white/12 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/55 outline-none"
+                />
+                <button
+                  onClick={() => void handleSendReply()}
+                  disabled={!replyDraft.trim() || sendingReply}
+                  className="rounded-full bg-primary px-4 py-2.5 text-xs font-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingReply ? 'Sending...' : 'Send'}
+                </button>
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
     </>
