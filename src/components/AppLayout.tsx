@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -28,6 +29,8 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { profile, user, loading } = useAuth();
+  const supabase = createClient();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -42,6 +45,40 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
     if (loading) return;
     if (!user) router.replace('/login');
   }, [loading, user, router]);
+
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (!user?.id) {
+        setUnreadNotifications(0);
+        return;
+      }
+
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .is('read_at', null);
+
+      if (!error) {
+        setUnreadNotifications(count || 0);
+      }
+    };
+
+    void loadUnreadCount();
+
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`notification-badge-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
+        void loadUnreadCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, user?.id]);
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -83,7 +120,7 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
           <div className="absolute left-0 right-0 flex justify-center pointer-events-none px-16">{headerCenter ? <div className="pointer-events-auto">{headerCenter}</div> : <span className="font-script text-[32px] leading-none text-[#111111] dark:text-white tracking-wide pointer-events-none select-none">InHouse</span>}</div>
           <div className="flex items-center gap-1">
             <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Toggle theme">{mounted && (isDark ? <Sun className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /> : <Moon className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />)}</button>
-            <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /></Link>
+            <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />{unreadNotifications > 0 ? <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#F97316] text-white text-[10px] font-700 flex items-center justify-center leading-none">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span> : null}</Link>
             <Link href="/search" className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Search people">
               <Search className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />
             </Link>

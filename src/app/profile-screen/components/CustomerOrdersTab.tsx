@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { ShoppingBag, Clock, MapPin, Package, Bike, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -100,6 +101,35 @@ export default function CustomerOrdersTab() {
   useEffect(() => {
     loadOrders();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`customer-orders-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `customer_id=eq.${user.id}` }, async (payload: any) => {
+        const nextStatus = mapStatus(payload.new?.status || 'pending');
+
+        setOrders((prev) => prev.map((order) => order.id === payload.new?.id ? {
+          ...order,
+          status: nextStatus,
+        } : order));
+
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          await loadOrders();
+        }
+
+        if (payload.eventType === 'UPDATE') {
+          const label = STATUS_UI[nextStatus]?.label || 'Updated';
+          toast.success(`Order update: ${label}`);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, user?.id]);
 
   const loadOrders = async () => {
     if (!user?.id) {

@@ -15,6 +15,7 @@ interface NotificationItem {
   type: 'order' | 'chef' | 'follow' | 'like' | 'tag';
   entity_id?: string | null;
   entity_type?: string | null;
+  read_at?: string | null;
 }
 
 const EMPTY_NOTIFICATIONS: NotificationItem[] = [];
@@ -29,13 +30,28 @@ export default function NotificationsPage() {
     loadNotifications();
   }, [user?.id, profile?.role]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`notifications-page-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
+        void loadNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, user?.id]);
+
   const loadNotifications = async () => {
     if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
         .from('notifications')
-        .select('id, title, body, type, entity_id, entity_type, created_at')
+        .select('id, title, body, type, entity_id, entity_type, created_at, read_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(25);
@@ -49,13 +65,28 @@ export default function NotificationsPage() {
         type: item.type,
         entity_id: item.entity_id ?? null,
         entity_type: item.entity_type ?? null,
+        read_at: item.read_at ?? null,
       })));
+
+      await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .is('read_at', null);
     } catch {
       setNotifications(EMPTY_NOTIFICATIONS);
     }
   };
 
-  const handleNotificationClick = (item: NotificationItem) => {
+  const handleNotificationClick = async (item: NotificationItem) => {
+    if (!item.read_at) {
+      await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', item.id)
+        .eq('user_id', user?.id || '');
+    }
+
     if (item.type === 'order') {
       router.push(profile?.role === 'chef' ? '/chef-menu?section=orders' : '/profile-screen?tab=orders');
       return;
@@ -92,7 +123,7 @@ export default function NotificationsPage() {
               <p className="text-sm text-muted-foreground mt-1">New order updates and activity will show up here when they happen.</p>
             </div>
           ) : notifications.map((item) => (
-            <button key={item.id} onClick={() => handleNotificationClick(item)} className="w-full text-left bg-card border border-border rounded-2xl p-4 flex items-start gap-3 hover:bg-muted/30 transition-colors">
+            <button key={item.id} onClick={() => void handleNotificationClick(item)} className={`w-full text-left bg-card border rounded-2xl p-4 flex items-start gap-3 hover:bg-muted/30 transition-colors ${item.read_at ? 'border-border' : 'border-primary/30 bg-primary/5'}`}>
               <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center shrink-0">
                 {item.type === 'order' ? (
                   <ShoppingBag className="w-5 h-5 text-foreground" />
