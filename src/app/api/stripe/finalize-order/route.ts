@@ -110,6 +110,33 @@ export async function POST(request: Request) {
     const platformFee = Number(body.platformFee || 0);
     const chefEarnings = Number(body.chefEarnings || 0);
 
+    const expectedServiceFee = subtotal > 0 ? Number((subtotal * 0.06).toFixed(2)) : 0;
+    const expectedChefPlatformFee = subtotal > 0 ? Number((subtotal * 0.06).toFixed(2)) : 0;
+    const expectedPlatformFee = Number((expectedServiceFee + expectedChefPlatformFee).toFixed(2));
+    const expectedChefEarnings = Number((subtotal - expectedChefPlatformFee).toFixed(2));
+    const expectedPlatformFeeRate = 0.12;
+    const expectedTotalValue = Number((subtotal + deliveryFee + expectedServiceFee - promoDiscount).toFixed(2));
+
+    if (Math.abs(serviceFee - expectedServiceFee) > 0.01) {
+      return NextResponse.json({ error: 'Order service fee does not match current marketplace pricing.' }, { status: 400 });
+    }
+
+    if (Math.abs(platformFee - expectedPlatformFee) > 0.01) {
+      return NextResponse.json({ error: 'Platform fee does not match current marketplace pricing.' }, { status: 400 });
+    }
+
+    if (Math.abs(chefEarnings - expectedChefEarnings) > 0.01) {
+      return NextResponse.json({ error: 'Chef payout amount does not match current marketplace pricing.' }, { status: 400 });
+    }
+
+    if (Math.abs(platformFeeRate - expectedPlatformFeeRate) > 0.0001) {
+      return NextResponse.json({ error: 'Platform fee rate does not match current marketplace pricing.' }, { status: 400 });
+    }
+
+    if (Math.abs(total - expectedTotalValue) > 0.01) {
+      return NextResponse.json({ error: 'Order total does not match current marketplace pricing.' }, { status: 400 });
+    }
+
     const expectedAmount = Math.round(total * 100);
     if (!Number.isFinite(total) || total <= 0 || paymentIntent.amount !== expectedAmount) {
       return NextResponse.json({ error: 'Paid amount does not match the order total.' }, { status: 400 });

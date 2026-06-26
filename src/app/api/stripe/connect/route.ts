@@ -52,6 +52,7 @@ export async function POST() {
     }
 
     let stripeAccountId: string | null = null;
+    let payoutSchedule: 'daily' | 'weekly' = 'daily';
 
     const stripeFieldLookup = await supabase
       .from('user_profiles')
@@ -67,6 +68,16 @@ export async function POST() {
       stripeAccountId = stripeFieldLookup.data?.stripe_account_id ?? null;
     }
 
+    const payoutScheduleLookup = await supabase
+      .from('user_profiles')
+      .select('payout_schedule')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!payoutScheduleLookup.error) {
+      payoutSchedule = payoutScheduleLookup.data?.payout_schedule === 'weekly' ? 'weekly' : 'daily';
+    }
+
     if (!stripeAccountId) {
       let account;
       try {
@@ -76,6 +87,11 @@ export async function POST() {
           business_type: 'individual',
           business_profile: {
             name: profile.full_name || 'InHouse Chef',
+          },
+          settings: {
+            payouts: payoutSchedule === 'weekly'
+              ? { schedule: { interval: 'weekly', weekly_anchor: 'friday' } }
+              : { schedule: { interval: 'daily' } },
           },
         });
       } catch (createError: any) {
@@ -97,6 +113,14 @@ export async function POST() {
         return NextResponse.json({ error: updateError.message || 'Failed to save Stripe account' }, { status: 500 });
       }
     }
+
+    await stripe.accounts.update(stripeAccountId, {
+      settings: {
+        payouts: payoutSchedule === 'weekly'
+          ? { schedule: { interval: 'weekly', weekly_anchor: 'friday' } }
+          : { schedule: { interval: 'daily' } },
+      },
+    });
 
     const payoutReturnUrl = `${APP_URL}/chef-menu?section=payouts`;
 

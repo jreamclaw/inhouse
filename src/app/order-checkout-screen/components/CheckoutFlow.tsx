@@ -257,14 +257,16 @@ export default function CheckoutFlow() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const deliveryFee = fulfillment === 'delivery' && subtotal > 0 ? vendorDeliveryFee : 0;
-  const serviceFee = subtotal > 0 ? +(subtotal * 0.05).toFixed(2) : 0;
+  const serviceFee = subtotal > 0 ? +(subtotal * 0.06).toFixed(2) : 0;
   const promoDiscount = promoApplied ? -8.0 : 0;
   const total = +(subtotal + deliveryFee + serviceFee + promoDiscount).toFixed(2);
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
-  const PLATFORM_FEE_RATE = 0.15;
+  const CUSTOMER_FEE_RATE = 0.06;
+  const CHEF_FEE_RATE = 0.06;
+  const PLATFORM_FEE_RATE = CUSTOMER_FEE_RATE + CHEF_FEE_RATE;
   const platformFee = +(subtotal * PLATFORM_FEE_RATE).toFixed(2);
-  const chefEarnings = +(subtotal * (1 - PLATFORM_FEE_RATE)).toFixed(2);
+  const chefEarnings = +(subtotal * (1 - CHEF_FEE_RATE)).toFixed(2);
 
   const updateQty = useCallback((id: string, delta: number) => {
     setCart((prev) => prev.map((item) => {
@@ -592,7 +594,7 @@ export default function CheckoutFlow() {
                 ) : (
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Pickup</span><span className="font-600 text-emerald-600 dark:text-emerald-400">Free</span></div>
                 )}
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service fee (5%)</span><span className="font-500 text-foreground font-tabular">${serviceFee.toFixed(2)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service fee (6%)</span><span className="font-500 text-foreground font-tabular">${serviceFee.toFixed(2)}</span></div>
                 {promoApplied && <div className="flex justify-between text-sm"><span className="text-green-600 dark:text-green-400">Promo (INHOUSE10)</span><span className="font-600 text-green-600 dark:text-green-400 font-tabular">−$8.00</span></div>}
                 <div className="border-t border-border pt-2 mt-2 flex justify-between"><span className="text-base font-700 text-foreground">Total</span><span className="text-base font-700 text-primary font-tabular">${total.toFixed(2)}</span></div>
               </div>

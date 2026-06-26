@@ -61,8 +61,15 @@ function formatBusinessHours(rows: BusinessHourRow[]) {
   return `${openDays.join(', ')} • ${baseHours.openTime} - ${baseHours.closeTime}`;
 }
 
-function nextPayoutLabel() {
+function nextPayoutLabel(schedule: 'daily' | 'weekly' = 'daily') {
   const now = new Date();
+
+  if (schedule === 'daily') {
+    const payout = new Date(now);
+    payout.setDate(now.getDate() + 1);
+    return payout.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
   const day = now.getDay();
   const daysUntilFriday = (5 - day + 7) % 7 || 7;
   const payout = new Date(now);
@@ -79,6 +86,8 @@ export default function ChefMenuPage() {
   const [loading, setLoading] = useState(true);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [stripeState, setStripeState] = useState<any>(null);
+  const [payoutSchedule, setPayoutSchedule] = useState<'daily' | 'weekly'>('daily');
+  const [savingPayoutSchedule, setSavingPayoutSchedule] = useState(false);
   const [stripeLoading, setStripeLoading] = useState(false);
   const [stripeSyncing, setStripeSyncing] = useState(false);
   const [stripeError, setStripeError] = useState('');
@@ -144,13 +153,13 @@ export default function ChefMenuPage() {
   const loadChefData = async () => {
     if (!user) return;
     try {
-      const profileSelect = 'delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count';
+      const profileSelect = 'delivery_enabled, delivery_fee, stripe_account_id, stripe_onboarding_complete, stripe_charges_enabled, stripe_payouts_enabled, payout_schedule, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count';
       let profileResult = await supabase.from('user_profiles').select(profileSelect).eq('id', user.id).single();
 
       if (profileResult.error && String(profileResult.error.message || '').includes('stripe_')) {
         profileResult = await supabase
           .from('user_profiles')
-          .select('delivery_enabled, delivery_fee, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count')
+          .select('delivery_enabled, delivery_fee, payout_schedule, bio, business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, approved_certificate_count, approved_license_count')
           .eq('id', user.id)
           .single();
       }
@@ -167,8 +176,10 @@ export default function ChefMenuPage() {
         stripe_onboarding_complete: profileRow?.stripe_onboarding_complete ?? false,
         stripe_charges_enabled: profileRow?.stripe_charges_enabled ?? false,
         stripe_payouts_enabled: profileRow?.stripe_payouts_enabled ?? false,
+        payout_schedule: profileRow?.payout_schedule === 'weekly' ? 'weekly' : 'daily',
         ...profileRow,
       });
+      setPayoutSchedule(profileRow?.payout_schedule === 'weekly' ? 'weekly' : 'daily');
       setMeals(mealRows || []);
 
       const summaryRows = (revenueRows as any[] | null) ?? [];
@@ -231,12 +242,46 @@ export default function ChefMenuPage() {
         stripe_payouts_enabled: !!payload?.payouts_enabled,
         stripe_connected: !!payload?.connected,
         stripe_details_submitted: !!payload?.details_submitted,
+        payout_schedule: payload?.payout_schedule === 'weekly' ? 'weekly' : 'daily',
       }));
+      setPayoutSchedule(payload?.payout_schedule === 'weekly' ? 'weekly' : 'daily');
     } catch (error: any) {
       console.error(error);
       setStripeError(error?.message || 'Unable to check payout status.');
     } finally {
       setStripeSyncing(false);
+    }
+  };
+
+  const savePayoutSchedule = async (nextSchedule: 'daily' | 'weekly') => {
+    if (!user) return;
+
+    try {
+      setSavingPayoutSchedule(true);
+      setStripeError('');
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ payout_schedule: nextSchedule, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setPayoutSchedule(nextSchedule);
+      setStripeState((prev: any) => ({ ...prev, payout_schedule: nextSchedule }));
+
+      if (stripeConnected) {
+        const response = await fetch('/api/stripe/connect', { method: 'POST' });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || 'Unable to sync payout schedule with Stripe.');
+      }
+
+      toast.success(`Payout schedule set to ${nextSchedule}.`);
+    } catch (error: any) {
+      setStripeError(error?.message || 'Unable to update payout schedule.');
+      toast.error(error?.message || 'Unable to update payout schedule.');
+    } finally {
+      setSavingPayoutSchedule(false);
     }
   };
 
@@ -537,7 +582,7 @@ export default function ChefMenuPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Net earnings</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.net.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Completed orders: {earningsSummary.completedOrders}</p></div>
-              <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending payout</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.pendingPayout.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Estimated payout date: {nextPayoutLabel()}</p></div>
+              <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending payout</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.pendingPayout.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Estimated payout date: {nextPayoutLabel(payoutSchedule)} · {payoutSchedule === 'weekly' ? 'Weekly payouts' : 'Daily payouts'}</p></div>
               <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Delivery fees earned</p><p className="text-2xl font-700 text-foreground mt-1">${earningsSummary.deliveryFees.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Gross order volume: ${earningsSummary.gross.toFixed(2)}</p></div>
             </div>
 
@@ -545,16 +590,23 @@ export default function ChefMenuPage() {
               <div className="flex items-center gap-3 mb-2"><Wallet className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Payout setup</p></div>
               <p className="text-xs text-muted-foreground mb-3">{stripeSyncing ? 'Checking payout setup...' : stripeReadyForPayouts ? 'Payouts connected. Your Stripe onboarding is complete.' : stripeConnected ? 'Your Stripe account is connected. Finish payout verification if Stripe still needs more details.' : 'Connect Stripe so you can receive payouts from customer orders.'}</p>
               {stripeError && <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">{stripeError}</div>}
-              <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeReadyForPayouts ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeConnected ? 'Manage Stripe' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => void savePayoutSchedule('daily')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'daily' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Daily payouts</button>
+                  <button onClick={() => void savePayoutSchedule('weekly')} disabled={savingPayoutSchedule} className={`px-3 py-2 rounded-full text-xs font-700 border transition-all ${payoutSchedule === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>Weekly payouts</button>
+                </div>
+                <div className="flex flex-wrap gap-3"><button onClick={handleStripeConnect} className="inline-flex items-center gap-2 bg-primary text-white text-sm font-600 px-4 py-2 rounded-full"><Wallet className="w-4 h-4" />{stripeReadyForPayouts ? 'Manage Stripe' : stripeLoading ? 'Connecting...' : stripeConnected ? 'Manage Stripe' : 'Connect Stripe'}</button><button onClick={syncStripeStatus} className="inline-flex items-center gap-2 border border-border text-sm font-600 text-foreground px-4 py-2 rounded-full">{stripeSyncing ? 'Checking...' : 'Refresh status'}</button></div>
+              </div>
               <p className="mt-3 text-[11px] text-muted-foreground">Stripe onboarding opens in an external secure page and returns here when finished.</p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-3 mb-3"><DollarSign className="w-5 h-5 text-green-600" /><p className="text-sm font-700 text-foreground">Earnings details</p></div>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>• Net earnings are calculated from delivered orders using stored `chef_earnings` values.</p>
+                <p>• Net earnings are calculated from delivered orders using stored `chef_earnings` values after the 6% chef platform fee.</p>
+                <p>• Customers now pay a separate 6% service fee at checkout.</p>
                 <p>• Pending payout reflects orders not yet delivered or paid out.</p>
-                <p>• Stripe payout status must be fully connected for payouts to settle.</p>
+                <p>• Stripe payout status must be fully connected for payouts to settle on your selected daily or weekly schedule.</p>
               </div>
             </div>
           </div>

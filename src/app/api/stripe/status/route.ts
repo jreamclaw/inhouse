@@ -31,7 +31,7 @@ export async function POST() {
 
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('id, stripe_account_id')
+      .select('id, stripe_account_id, payout_schedule')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -43,6 +43,7 @@ export async function POST() {
         payouts_enabled: false,
         details_submitted: false,
         onboarding_complete: false,
+        payout_schedule: 'daily',
         error: 'Stripe payout fields are not live in the database yet.',
       });
     }
@@ -68,6 +69,7 @@ export async function POST() {
         payouts_enabled: false,
         details_submitted: false,
         onboarding_complete: false,
+        payout_schedule: profile?.payout_schedule === 'weekly' ? 'weekly' : 'daily',
       });
     }
 
@@ -95,6 +97,7 @@ export async function POST() {
       payouts_enabled: stripe_payouts_enabled,
       details_submitted,
       onboarding_complete: stripe_onboarding_complete,
+      payout_schedule: profile?.payout_schedule === 'weekly' ? 'weekly' : 'daily',
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed to sync Stripe status.' }, { status: 500 });

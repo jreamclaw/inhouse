@@ -58,6 +58,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid order total.' }, { status: 400 });
     }
 
+    const customerServiceFee = subtotal > 0 ? Number((subtotal * 0.06).toFixed(2)) : 0;
+    const chefPlatformFee = subtotal > 0 ? Number((subtotal * 0.06).toFixed(2)) : 0;
+    const totalPlatformFee = Number((customerServiceFee + chefPlatformFee).toFixed(2));
+    const expectedTotal = Number((subtotal + deliveryFee + customerServiceFee - promoDiscount).toFixed(2));
+
+    if (Math.abs(serviceFee - customerServiceFee) > 0.01) {
+      return NextResponse.json({ error: 'Checkout service fee is out of sync. Please refresh and try again.' }, { status: 400 });
+    }
+
+    if (Math.abs(total - expectedTotal) > 0.01) {
+      return NextResponse.json({ error: 'Checkout total is out of sync. Please refresh and try again.' }, { status: 400 });
+    }
+
     const amount = Math.round(total * 100);
 
     const { data: chefProfile, error: chefError } = await supabase
@@ -91,10 +104,12 @@ export async function POST(request: Request) {
         subtotal: subtotal.toFixed(2),
         delivery_fee: deliveryFee.toFixed(2),
         service_fee: serviceFee.toFixed(2),
+        chef_platform_fee: chefPlatformFee.toFixed(2),
+        total_platform_fee: totalPlatformFee.toFixed(2),
         promo_discount: Math.abs(promoDiscount).toFixed(2),
         total: total.toFixed(2),
       },
-      application_fee_amount: Math.max(0, Math.round(serviceFee * 100)),
+      application_fee_amount: Math.max(0, Math.round(totalPlatformFee * 100)),
       transfer_data: {
         destination: chefProfile.stripe_account_id,
       },
