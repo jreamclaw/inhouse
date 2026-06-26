@@ -77,6 +77,7 @@ export default function StoriesBar() {
   const [repliesByStory, setRepliesByStory] = useState<Record<string, StoryReplyRow[]>>({});
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
+  const [showRepliesSheet, setShowRepliesSheet] = useState(false);
 
   const userAvatarUrl = profile?.avatar_url || null;
   const displayName = profile?.full_name || user?.email?.split('@')?.[0] || 'You';
@@ -226,6 +227,7 @@ export default function StoriesBar() {
     setActiveGroup(group);
     setActiveIndex(Math.max(0, group.stories.length - 1));
     setReplyDraft('');
+    setShowRepliesSheet(false);
   };
 
   const currentStory = activeGroup?.stories?.[activeIndex] || null;
@@ -479,45 +481,23 @@ export default function StoriesBar() {
             />
           </div>
 
-          <div className="absolute left-0 right-0 bottom-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-16">
+          <div className="absolute left-0 right-0 bottom-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-16">
             {currentStory.caption && (
-              <div className="mb-3 rounded-2xl bg-black/35 backdrop-blur-md px-4 py-3 text-sm text-white/95 shadow-lg">
+              <div className="mb-2 rounded-2xl bg-black/35 backdrop-blur-md px-4 py-3 text-sm text-white/95 shadow-lg">
                 {currentStory.caption}
               </div>
             )}
 
-            <div className="mb-3 rounded-2xl bg-black/35 backdrop-blur-md px-4 py-3 text-white shadow-lg">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="flex items-center gap-4 text-xs text-white/85">
-                  {isOwnCurrentStory && (
-                    <span className="inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{Number(currentStory.views_count || 0)}</span>
-                  )}
-                  <span className="inline-flex items-center gap-1"><Heart className={`w-3.5 h-3.5 ${isCurrentStoryLiked ? 'fill-red-500 text-red-500' : ''}`} />{Number(currentStory.likes_count || 0)}</span>
-                  <span className="inline-flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" />{Number(currentStory.replies_count || 0)}</span>
-                </div>
-                <button
-                  onClick={handleToggleLike}
-                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-700 transition-all ${isCurrentStoryLiked ? 'bg-red-500/20 text-red-300 border border-red-400/30' : 'bg-white/10 text-white border border-white/15'}`}
-                >
-                  <Heart className={`w-3.5 h-3.5 ${isCurrentStoryLiked ? 'fill-red-400 text-red-400' : ''}`} />
-                  {isCurrentStoryLiked ? 'Hearted' : 'Heart'}
-                </button>
-              </div>
-
-              <div className="space-y-2 mb-3 max-h-28 overflow-y-auto pr-1">
-                {loadingReplies ? (
-                  <p className="text-xs text-white/70">Loading replies...</p>
-                ) : currentReplies.length > 0 ? currentReplies.map((reply) => (
-                  <div key={reply.id} className="text-xs text-white/90 leading-relaxed">
-                    <span className="font-700 mr-1">{reply.user_profiles?.full_name || 'User'}</span>
-                    <span>{reply.body}</span>
-                  </div>
-                )) : (
-                  <p className="text-xs text-white/65">No replies yet. Start the conversation.</p>
-                )}
-              </div>
-
+            <div className="mb-2 rounded-2xl bg-black/30 backdrop-blur-md px-3 py-3 text-white shadow-lg">
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowRepliesSheet(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3 py-2 text-xs text-white/90 shrink-0"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  {Number(currentStory.replies_count || 0)}
+                </button>
+
                 <input
                   type="text"
                   value={replyDraft}
@@ -528,19 +508,66 @@ export default function StoriesBar() {
                       void handleSendReply();
                     }
                   }}
-                  placeholder="Reply to this story..."
-                  className="flex-1 rounded-full bg-white/12 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/55 outline-none"
+                  placeholder="Reply..."
+                  className="flex-1 min-w-0 rounded-full bg-black/35 border border-white/12 px-4 py-2.5 text-sm text-white placeholder:text-white/60 outline-none"
                 />
+
+                <button
+                  onClick={handleToggleLike}
+                  className={`inline-flex items-center justify-center rounded-full w-10 h-10 shrink-0 transition-all ${isCurrentStoryLiked ? 'bg-red-500/20 text-red-300 border border-red-400/30' : 'bg-white/10 text-white border border-white/10'}`}
+                  aria-label={isCurrentStoryLiked ? 'Unlike story' : 'Like story'}
+                >
+                  <Heart className={`w-4 h-4 ${isCurrentStoryLiked ? 'fill-red-400 text-red-400' : ''}`} />
+                </button>
+
                 <button
                   onClick={() => void handleSendReply()}
                   disabled={!replyDraft.trim() || sendingReply}
-                  className="rounded-full bg-primary px-4 py-2.5 text-xs font-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-full bg-primary px-4 py-2.5 text-xs font-700 text-white shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {sendingReply ? 'Sending...' : 'Send'}
+                  {sendingReply ? '...' : 'Send'}
+                </button>
+              </div>
+
+              <div className="mt-2 flex items-center gap-4 text-[11px] text-white/78 pl-1">
+                {isOwnCurrentStory && (
+                  <span className="inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{Number(currentStory.views_count || 0)} views</span>
+                )}
+                <span className="inline-flex items-center gap-1"><Heart className={`w-3.5 h-3.5 ${isCurrentStoryLiked ? 'fill-red-500 text-red-500' : ''}`} />{Number(currentStory.likes_count || 0)} hearts</span>
+                <button onClick={() => setShowRepliesSheet(true)} className="inline-flex items-center gap-1 text-white/78">
+                  <MessageCircle className="w-3.5 h-3.5" />{Number(currentStory.replies_count || 0)} replies
                 </button>
               </div>
             </div>
           </div>
+
+          {showRepliesSheet && (
+            <div className="absolute inset-0 z-40 flex items-end bg-black/40" onClick={() => setShowRepliesSheet(false)}>
+              <div className="w-full rounded-t-3xl bg-zinc-950/96 border-t border-white/10 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] max-h-[50vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-center mb-3">
+                  <div className="w-10 h-1 rounded-full bg-white/20" />
+                </div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-700 text-white">Replies</p>
+                  <button onClick={() => setShowRepliesSheet(false)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/90">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-3 overflow-y-auto max-h-[calc(50vh-84px)] pr-1">
+                  {loadingReplies ? (
+                    <p className="text-xs text-white/70">Loading replies...</p>
+                  ) : currentReplies.length > 0 ? currentReplies.map((reply) => (
+                    <div key={reply.id} className="rounded-2xl bg-white/5 px-3 py-2.5 text-sm text-white/90 leading-relaxed">
+                      <span className="font-700 mr-1">{reply.user_profiles?.full_name || 'User'}</span>
+                      <span>{reply.body}</span>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-white/65">No replies yet. Start the conversation.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
