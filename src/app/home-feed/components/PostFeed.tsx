@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Heart,
   MessageCircle,
-  Share2,
+  Send,
   Bookmark,
   MoreHorizontal,
   ShoppingBag,
@@ -751,7 +751,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
                 liked ? 'fill-red-500 text-red-500' : 'text-muted-foreground group-hover:text-red-400'}`} />
             </button>
             <button onClick={handleShare} className="p-2 group rounded-full hover:bg-muted/60 transition-colors" aria-label="Share post">
-              <Share2 className="w-[22px] h-[22px] text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
+              <Send className="w-[20px] h-[20px] text-muted-foreground group-hover:text-foreground transition-colors duration-150" />
             </button>
             <button
               onClick={() => setShowComments((v) => !v)}
