@@ -110,11 +110,33 @@ function formatHourLabel(value: string) {
   return `${normalizedHour}:${String(minutes).padStart(2, '0')} ${suffix}`;
 }
 
-const BUSINESS_TIME_ZONE = 'America/Chicago';
+const DEFAULT_BUSINESS_TIME_ZONE = 'America/Chicago';
 
-function getBusinessNowParts() {
+function getBusinessTimeZone(location?: string | null) {
+  const normalized = (location || '').toLowerCase();
+
+  if (normalized.includes('maryland') || normalized.includes('bethesda') || normalized.includes('washington, dc') || normalized.includes('dc') || normalized.includes('new york') || normalized.includes('atlanta') || normalized.includes('georgia') || normalized.includes('miami') || normalized.includes('florida')) {
+    return 'America/New_York';
+  }
+
+  if (normalized.includes('chicago') || normalized.includes('illinois') || normalized.includes('texas') || normalized.includes('dallas') || normalized.includes('houston')) {
+    return 'America/Chicago';
+  }
+
+  if (normalized.includes('denver') || normalized.includes('colorado') || normalized.includes('phoenix') || normalized.includes('arizona')) {
+    return 'America/Denver';
+  }
+
+  if (normalized.includes('los angeles') || normalized.includes('california') || normalized.includes('seattle') || normalized.includes('washington state') || normalized.includes('las vegas') || normalized.includes('nevada')) {
+    return 'America/Los_Angeles';
+  }
+
+  return DEFAULT_BUSINESS_TIME_ZONE;
+}
+
+function getBusinessNowParts(timeZone?: string) {
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: BUSINESS_TIME_ZONE,
+    timeZone: timeZone || DEFAULT_BUSINESS_TIME_ZONE,
     weekday: 'short',
     hour: '2-digit',
     minute: '2-digit',
@@ -132,9 +154,9 @@ function getBusinessNowParts() {
   };
 }
 
-function parseWeeklyHours(hoursText?: string | null) {
+function parseWeeklyHours(hoursText?: string | null, timeZone?: string) {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const { weekday } = getBusinessNowParts();
+  const { weekday } = getBusinessNowParts(timeZone);
 
   if (!hoursText) {
     return days.map((day) => ({ day, hours: 'Unavailable', isToday: false }));
@@ -152,7 +174,7 @@ function parseWeeklyHours(hoursText?: string | null) {
   }));
 }
 
-function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'open' | 'closed' | null) {
+function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'open' | 'closed' | null, timeZone?: string) {
   if (availabilityOverride === 'open') {
     return { label: 'Open now', isOpen: true, summary: 'Open now' };
   }
@@ -166,7 +188,7 @@ function getTodayOpenState(hoursText?: string | null, availabilityOverride?: 'op
   }
 
   const [daysPart = '', timePart = ''] = hoursText.split('•').map((part) => part.trim());
-  const { weekday, nowMinutes } = getBusinessNowParts();
+  const { weekday, nowMinutes } = getBusinessNowParts(timeZone);
   const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
 
   if (!openDays.includes(weekday)) {
@@ -498,9 +520,10 @@ function VendorProfileContent() {
     didUnavailableBranchRun: false,
   });
   const businessHours = vendor ? resolveBusinessHours(vendor as any) : null;
+  const businessTimeZone = getBusinessTimeZone(vendor?.location);
   const activeAvailabilityOverride = (vendorOverride as any)?.availability_override ?? (vendor as any)?.availability_override ?? null;
-  const openState = getTodayOpenState(businessHours, activeAvailabilityOverride);
-  const weeklyHours = parseWeeklyHours(businessHours);
+  const openState = getTodayOpenState(businessHours, activeAvailabilityOverride, businessTimeZone);
+  const weeklyHours = parseWeeklyHours(businessHours, businessTimeZone);
   const headerSummary = [vendor?.location, openState.summary].filter(Boolean).join(' • ');
   const isOwnVendorProfile = !!user?.id && !!vendor?.id && user.id === vendor.id;
 
