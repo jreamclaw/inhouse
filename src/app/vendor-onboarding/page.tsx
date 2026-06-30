@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import AppLogo from '@/components/ui/AppLogo';
-import { ChefHat, MapPin, UtensilsCrossed, Camera, ArrowRight, ArrowLeft, Loader2, Check, Store, Clock } from 'lucide-react';
+import { ChefHat, MapPin, UtensilsCrossed, Camera, ArrowRight, ArrowLeft, Loader2, Check, Store, Clock, Truck } from 'lucide-react';
 
 const FOOD_CATEGORIES = ['Soul Food', 'BBQ', 'Seafood', 'Wings', 'Pizza', 'Tacos / Mexican', 'Vegan / Plant-Based', 'Desserts', 'Breakfast', 'Italian', 'Asian Fusion', 'Caribbean', 'Burgers', 'Sandwiches', 'Healthy Bowls', 'Other'];
 const STEPS = [
   { id: 1, label: 'Business Info', icon: Store },
-  { id: 2, label: 'Food Category', icon: UtensilsCrossed },
-  { id: 3, label: 'Location', icon: MapPin },
-  { id: 4, label: 'Hours', icon: Clock },
-  { id: 5, label: 'Profile Image', icon: Camera },
+  { id: 2, label: 'Business Type', icon: Truck },
+  { id: 3, label: 'Food Category', icon: UtensilsCrossed },
+  { id: 4, label: 'Location', icon: MapPin },
+  { id: 5, label: 'Hours', icon: Clock },
+  { id: 6, label: 'Profile Image', icon: Camera },
 ];
 
 export default function VendorOnboardingPage() {
@@ -27,6 +28,7 @@ export default function VendorOnboardingPage() {
   const [businessName, setBusinessName] = useState('');
   const [bio, setBio] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [businessType, setBusinessType] = useState<'personal_chef' | 'food_truck'>('personal_chef');
   const [location, setLocation] = useState('');
   const [openTime, setOpenTime] = useState('10:00');
   const [closeTime, setCloseTime] = useState('21:00');
@@ -103,9 +105,10 @@ export default function VendorOnboardingPage() {
 
   const canProceed = () => {
     if (step === 1) return businessName.trim().length > 0;
-    if (step === 2) return selectedCategories.length > 0;
-    if (step === 3) return location.trim().length > 0;
-    if (step === 4) return daysOpen.length > 0;
+    if (step === 2) return !!businessType;
+    if (step === 3) return selectedCategories.length > 0;
+    if (step === 4) return location.trim().length > 0;
+    if (step === 5) return daysOpen.length > 0;
     return true;
   };
 
@@ -128,6 +131,7 @@ export default function VendorOnboardingPage() {
           avatar_url: avatarUrl || null,
           business_hours: hoursText,
           closed_days: closedDays,
+          business_type: businessType,
           vendor_onboarding_complete: true,
           updated_at: new Date().toISOString(),
         })
@@ -230,20 +234,36 @@ export default function VendorOnboardingPage() {
 
           {step === 2 && (
             <div className="space-y-5">
+              <div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><Truck className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">What kind of food business are you?</h1></div>
+              <div className="grid grid-cols-1 gap-3">
+                <button type="button" onClick={() => setBusinessType('personal_chef')} className={`rounded-2xl border p-4 text-left transition-all ${businessType === 'personal_chef' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card hover:border-primary/40'}`}>
+                  <div className="flex items-center gap-3 mb-1"><ChefHat className="w-5 h-5 text-primary" /><p className="text-sm font-700 text-foreground">Personal Chef</p></div>
+                  <p className="text-sm text-muted-foreground">Private chef, meal prep, catering, home kitchen, pop-up chef, or local food seller.</p>
+                </button>
+                <button type="button" onClick={() => setBusinessType('food_truck')} className={`rounded-2xl border p-4 text-left transition-all ${businessType === 'food_truck' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card hover:border-primary/40'}`}>
+                  <div className="flex items-center gap-3 mb-1"><Truck className="w-5 h-5 text-primary" /><p className="text-sm font-700 text-foreground">Food Truck</p></div>
+                  <p className="text-sm text-muted-foreground">Mobile food truck business that changes stops, events, or service locations.</p>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-5">
               <div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><UtensilsCrossed className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">What do you cook?</h1></div>
               <div className="flex flex-wrap gap-2">{FOOD_CATEGORIES.map((cat) => { const isSelected = selectedCategories.includes(cat); return <button key={cat} type="button" onClick={() => toggleCategory(cat)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${isSelected ? 'bg-primary text-white border-primary shadow-sm' : 'bg-card text-foreground border-border hover:border-primary/40'}`}>{cat}</button>; })}</div>
             </div>
           )}
 
-          {step === 3 && (
-            <div className="space-y-5"><div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><MapPin className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">Where are you based?</h1></div><input type="text" placeholder="e.g. Atlanta, GA or Midtown Atlanta" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full h-12 px-4 rounded-2xl border border-input bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" /></div>
-          )}
-
           {step === 4 && (
-            <div className="space-y-5"><div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><Clock className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">Business hours</h1></div><div className="flex flex-wrap gap-2">{DAYS.map((day) => { const isSelected = daysOpen.includes(day); return <button key={day} type="button" onClick={() => toggleDay(day)} className={`w-12 h-10 rounded-xl text-sm font-medium transition-all border ${isSelected ? 'bg-primary text-white border-primary' : 'bg-card text-foreground border-border hover:border-primary/40'}`}>{day}</button>; })}</div></div>
+            <div className="space-y-5"><div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><MapPin className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">Where are you based?</h1></div><input type="text" placeholder={businessType === 'food_truck' ? 'e.g. Atlanta, GA or today\'s main truck area' : 'e.g. Atlanta, GA or Midtown Atlanta'} value={location} onChange={(e) => setLocation(e.target.value)} className="w-full h-12 px-4 rounded-2xl border border-input bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" /></div>
           )}
 
           {step === 5 && (
+            <div className="space-y-5"><div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><Clock className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">Business hours</h1></div><div className="flex flex-wrap gap-2">{DAYS.map((day) => { const isSelected = daysOpen.includes(day); return <button key={day} type="button" onClick={() => toggleDay(day)} className={`w-12 h-10 rounded-xl text-sm font-medium transition-all border ${isSelected ? 'bg-primary text-white border-primary' : 'bg-card text-foreground border-border hover:border-primary/40'}`}>{day}</button>; })}</div></div>
+          )}
+
+          {step === 6 && (
             <div className="space-y-5">
               <div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><Camera className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">Add a profile photo</h1></div>
               <div className="flex justify-center mb-4"><div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20 bg-muted flex items-center justify-center">{avatarUrl ? <img src={avatarUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <ChefHat className="w-10 h-10 text-muted-foreground" />}</div></div>

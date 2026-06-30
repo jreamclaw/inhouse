@@ -34,6 +34,7 @@ interface Vendor {
   name: string;
   cuisine: string;
   category: string;
+  businessType?: 'personal_chef' | 'food_truck' | null;
   image: string;
   imageAlt: string;
   avatar: string;
@@ -90,6 +91,7 @@ interface DbVendorRow {
   is_licensed?: boolean | null;
   is_top_rated?: boolean | null;
   is_pro_chef?: boolean | null;
+  business_type?: 'personal_chef' | 'food_truck' | null;
 }
 
 interface SavedAddressOption {
@@ -107,6 +109,7 @@ interface DisplayLocation {
 const CATEGORIES = [
   { id: 'all', label: 'All', emoji: '🍽️' },
   { id: 'chef', label: 'Chefs', emoji: '👨‍🍳' },
+  { id: 'food_truck', label: 'Food Trucks', emoji: '🚚' },
 ];
 
 const SORT_OPTIONS: { id: SortOption; label: string; icon: string }[] = [
@@ -458,8 +461,8 @@ export default function NearbyPage() {
           return {
             id: row.id,
             name: row.full_name || 'Chef',
-            cuisine: row.bio?.split('.')[0] || 'Personal Chef',
-            category: 'chef',
+            cuisine: row.business_type === 'food_truck' ? 'Food Truck' : (row.bio?.split('.')[0] || 'Personal Chef'),
+            category: row.business_type === 'food_truck' ? 'food_truck' : 'chef',
             image: row.avatar_url || VENDOR_AVATAR_FALLBACK,
             imageAlt: `${row.full_name || 'Chef'} profile preview`,
             avatar: row.avatar_url || VENDOR_AVATAR_FALLBACK,
@@ -471,6 +474,7 @@ export default function NearbyPage() {
             distance: distance == null ? 0 : Number(distance.toFixed(1)),
             deliveryTime: '25–35 min',
             deliveryFee: Number(row.delivery_fee || 0),
+            businessType: row.business_type || 'personal_chef',
             priceRange: '$$',
             isOpen: openState.isOpen,
             openLabel: openState.label,
@@ -555,7 +559,7 @@ export default function NearbyPage() {
       <div className="max-w-screen-lg mx-auto px-4 py-4">
         <div className="flex items-center justify-between py-1 gap-3 flex-wrap">
           <p className="text-sm text-muted-foreground">
-            <span className="font-700 text-foreground">{filteredVendors.length}</span> chefs nearby
+            <span className="font-700 text-foreground">{filteredVendors.length}</span> food businesses nearby
           </p>
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <button
@@ -634,7 +638,7 @@ export default function NearbyPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chefs, dishes, or cuisines"
+            placeholder="Search chefs, food trucks, dishes, or cuisines"
             className="w-full bg-muted rounded-xl pl-9 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
           {searchQuery && (
@@ -649,7 +653,7 @@ export default function NearbyPage() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-[15px] font-700 text-foreground">Popular near you</h2>
-                <p className="text-[12px] text-muted-foreground">Popular local chefs customers are checking out.</p>
+                <p className="text-[12px] text-muted-foreground">Popular local chefs and food trucks customers are checking out.</p>
               </div>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">

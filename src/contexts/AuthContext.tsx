@@ -16,6 +16,7 @@ export interface UserProfile {
   bio: string | null;
   location: string | null;
   role: 'chef' | 'customer' | null;
+  business_type?: 'personal_chef' | 'food_truck' | null;
   availability_override?: 'open' | 'closed' | null;
   privacy_show_location?: boolean;
   chef_hide_exact_location?: boolean;

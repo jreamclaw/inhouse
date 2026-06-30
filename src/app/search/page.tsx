@@ -14,6 +14,7 @@ interface SearchUser {
   avatar_url: string | null;
   bio: string | null;
   role: 'chef' | 'customer' | null;
+  business_type?: 'personal_chef' | 'food_truck' | null;
   vendor_onboarding_complete?: boolean | null;
 }
 
@@ -45,7 +46,7 @@ export default function SearchPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, bio, role, vendor_onboarding_complete')
+        .select('id, full_name, username, avatar_url, bio, role, business_type, vendor_onboarding_complete')
         .or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
         .neq('id', user?.id || '')
         .limit(20);
@@ -109,7 +110,7 @@ export default function SearchPage() {
                       <p className="text-sm font-700 text-foreground truncate">{person.full_name || person.username || 'User'}</p>
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${person.role === 'chef' && person.vendor_onboarding_complete ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground'}`}>
                         {person.role === 'chef' && person.vendor_onboarding_complete ? <ChefHat className="w-3 h-3" /> : <UserRound className="w-3 h-3" />}
-                        {person.role === 'chef' && person.vendor_onboarding_complete ? 'Chef' : 'User'}
+                        {person.role === 'chef' && person.vendor_onboarding_complete ? (person.business_type === 'food_truck' ? 'Food Truck' : 'Chef') : 'User'}
                       </span>
                     </div>
                     {person.username && <p className="text-xs text-muted-foreground mt-0.5">@{person.username}</p>}

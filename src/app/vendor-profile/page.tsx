@@ -52,6 +52,7 @@ interface DbMeal {
 interface DbVendorProfile {
   id: string;
   full_name: string;
+  business_type?: 'personal_chef' | 'food_truck' | null;
   username: string | null;
   avatar_url: string | null;
   cover_url?: string | null;
@@ -566,7 +567,7 @@ function VendorProfileContent() {
       const [{ data: profile, error: profileError }, { data: meals, error: mealsError }, { data: credentials }] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, chef_hide_exact_location, delivery_enabled, delivery_fee, service_radius_miles, latitude, longitude, role')
+          .select('id, full_name, username, avatar_url, cover_url, bio, location, followers_count, chef_hide_exact_location, delivery_enabled, delivery_fee, service_radius_miles, latitude, longitude, role, business_type')
           .eq('id', vendorId)
           .maybeSingle(),
         supabase
@@ -656,7 +657,7 @@ function VendorProfileContent() {
 
       const { data: profileExtras } = await supabase
         .from('user_profiles')
-        .select('business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, chef_hide_exact_location, delivery_enabled, service_radius_miles, latitude, longitude')
+        .select('business_hours, closed_days, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count, approved_credentials_count, chef_hide_exact_location, delivery_enabled, service_radius_miles, latitude, longitude, business_type')
         .eq('id', vendorId)
         .maybeSingle();
 
@@ -686,7 +687,7 @@ function VendorProfileContent() {
         avatar: dbVendor.avatar_url || '/assets/images/no_image.png',
         coverImage: dbVendor.cover_url || dbVendor.avatar_url || '/assets/images/no_image.png',
         coverAlt: `${dbVendor.full_name || 'Chef'} profile`,
-        cuisine: 'Local Chef',
+        cuisine: dbVendor.business_type === 'food_truck' ? 'Food Truck' : 'Local Chef',
         bio: dbVendor.bio || 'Local chef on InHouse.',
         rating: Number(dbVendor.rating_avg || 0),
         reviewCount: Number(dbVendor.rating_count || 0),
