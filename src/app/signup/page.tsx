@@ -124,7 +124,13 @@ export default function SignUpPage() {
         if (!launchUrl) {
           throw new Error('Google sign-in URL was not returned.');
         }
-        window.location.assign(launchUrl);
+
+        const capacitorBrowser = (window as any)?.Capacitor?.Plugins?.Browser;
+        if (capacitorBrowser?.open) {
+          await capacitorBrowser.open({ url: launchUrl });
+        } else {
+          window.open(launchUrl, '_blank', 'noopener,noreferrer');
+        }
         return;
       }
     } catch (err: any) {
