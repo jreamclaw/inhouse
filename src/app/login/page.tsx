@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [error, setError] = useState('');
   const [routingStatus, setRoutingStatus] = useState('');
-  const showGoogleOAuth = !isCapacitorLikeRuntime();
+  const showGoogleOAuth = false;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

@@ -24,7 +24,7 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [error, setError] = useState('');
-  const showGoogleOAuth = !isCapacitorLikeRuntime();
+  const showGoogleOAuth = false;
 
   useEffect(() => {
     if (authLoading) return;
