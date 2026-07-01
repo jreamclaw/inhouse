@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import AppLayout from '@/components/AppLayout';
 import { ArrowLeft, BadgeCheck, FileWarning, ShieldAlert } from 'lucide-react';
 
 export default function TermsOfServicePage() {
   return (
-    <AppLayout>
+    <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-6 pb-24 space-y-6">
         <div className="flex items-center gap-3">
           <Link href="/signup" className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors">
@@ -57,6 +56,6 @@ export default function TermsOfServicePage() {
           </p>
         </section>
       </div>
-    </AppLayout>
+    </div>
   );
 }
