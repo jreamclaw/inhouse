@@ -87,6 +87,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteRequestSubmitted, setDeleteRequestSubmitted] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -159,8 +161,25 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    toast.error('Account deletion requires contacting support. Please email support@inhousapp.net');
-    setShowDeleteConfirm(false);
+    setDeletingAccount(true);
+    try {
+      const response = await fetch('/api/account/delete-request', {
+        method: 'POST',
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to submit deletion request.');
+      }
+
+      setDeleteRequestSubmitted(true);
+      setShowDeleteConfirm(false);
+      toast.success(payload?.alreadyRequested ? 'Deletion request already on file.' : 'Account deletion request submitted.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to submit deletion request.');
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   if (!user) return null;
@@ -359,7 +378,14 @@ export default function SettingsPage() {
 
             {/* Danger Zone */}
             <div className="px-4 pt-4 pb-2">
-              {!showDeleteConfirm ? (
+              {deleteRequestSubmitted ? (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                  <p className="text-sm font-700 text-red-700 mb-1">Deletion request submitted</p>
+                  <p className="text-xs text-red-600">
+                    Your request is now on file and can be processed for account deletion.
+                  </p>
+                </div>
+              ) : !showDeleteConfirm ? (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="w-full flex items-center justify-center gap-2.5 py-3 text-xs font-600 text-red-500/70 hover:text-red-600 transition-colors"
@@ -371,20 +397,22 @@ export default function SettingsPage() {
                 <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
                   <p className="text-sm font-700 text-red-700 mb-1">Delete your account?</p>
                   <p className="text-xs text-red-600 mb-4">
-                    This action cannot be undone. All your data will be permanently removed.
+                    Submit a real deletion request for this account.
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
-                      className="flex-1 py-2.5 rounded-xl border border-border text-sm font-600 text-foreground hover:bg-muted transition-colors"
+                      disabled={deletingAccount}
+                      className="flex-1 py-2.5 rounded-xl border border-border text-sm font-600 text-foreground hover:bg-muted transition-colors disabled:opacity-60"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleDeleteAccount}
-                      className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-700 hover:bg-red-700 transition-colors"
+                      disabled={deletingAccount}
+                      className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-700 hover:bg-red-700 transition-colors disabled:opacity-60"
                     >
-                      Delete
+                      {deletingAccount ? 'Submitting...' : 'Delete'}
                     </button>
                   </div>
                 </div>
