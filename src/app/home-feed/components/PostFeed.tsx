@@ -705,7 +705,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
       {/* Post Image */}
       <div className="relative aspect-square overflow-hidden bg-muted mx-0">
         {((post as any).mediaItems?.[mediaIndex]?.media_type === 'video') ?
-        <video src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} className="w-full h-full object-cover" muted loop playsInline controls /> :
+        <video src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} className="w-full h-full object-cover" autoPlay muted loop playsInline /> :
         <img src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} alt={post.imageAlt} className="w-full h-full object-cover" loading="lazy" />
         }
         {((post as any).mediaItems?.length || 0) > 1 && (
