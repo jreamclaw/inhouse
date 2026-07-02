@@ -308,9 +308,11 @@ interface DbComment {
   created_at: string;
   user_id: string;
   user_profiles?: {
+    id?: string | null;
     full_name: string | null;
     username: string | null;
     avatar_url: string | null;
+    role?: 'chef' | 'customer' | null;
   } | null;
 }
 
@@ -415,9 +417,11 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
           created_at,
           user_id,
           user_profiles:user_id (
+            id,
             full_name,
             username,
-            avatar_url
+            avatar_url,
+            role
           )
         `)
         .eq('post_id', post.id)
@@ -796,12 +800,14 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
             })}
           </div>
         )}
-        <p className="text-[13px] text-foreground leading-relaxed">
-          <Link href={`/vendor-profile?id=${post.user.id}`} className="font-700 hover:underline mr-1 tracking-snug">
-            {post.user.username}
-          </Link>
-          {post.caption}
-        </p>
+        <div className="rounded-2xl bg-muted/45 px-3 py-2.5">
+          <p className="text-[13px] text-foreground leading-relaxed">
+            <Link href={post.user.role === 'chef' ? `/vendor-profile?id=${post.user.id}` : `/profile/${post.user.id}`} className="font-800 hover:underline mr-1 tracking-snug">
+              {post.user.username}
+            </Link>
+            <span className="text-foreground/95">{post.caption}</span>
+          </p>
+        </div>
 
         {/* Order from chef CTA */}
         {post.user.role === 'chef' && post.mealTag &&
@@ -836,24 +842,30 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
               <p className="text-sm text-muted-foreground">Loading comments...</p>
             ) : comments.length > 0 ? (
               <div className="space-y-3">
-                {comments.map((entry) => (
-                  <div key={entry.id} className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-border bg-muted flex items-center justify-center">
-                      {entry.user_profiles?.avatar_url ? (
-                        <img src={entry.user_profiles.avatar_url} alt={entry.user_profiles?.full_name || 'User'} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[11px] font-700 text-foreground">{(entry.user_profiles?.full_name || 'U').charAt(0).toUpperCase()}</span>
-                      )}
+                {comments.map((entry) => {
+                  const commentProfileId = entry.user_profiles?.id || entry.user_id;
+                  const commentHref = entry.user_profiles?.role === 'chef' ? `/vendor-profile?id=${commentProfileId}` : `/profile/${commentProfileId}`;
+                  return (
+                    <div key={entry.id} className="flex items-start gap-2.5">
+                      <Link href={commentHref} className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-border bg-muted flex items-center justify-center">
+                        {entry.user_profiles?.avatar_url ? (
+                          <img src={entry.user_profiles.avatar_url} alt={entry.user_profiles?.full_name || 'User'} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[11px] font-700 text-foreground">{(entry.user_profiles?.full_name || 'U').charAt(0).toUpperCase()}</span>
+                        )}
+                      </Link>
+                      <div className="min-w-0">
+                        <p className="text-[13px] text-foreground leading-relaxed">
+                          <Link href={commentHref} className="font-700 mr-1 hover:underline">
+                            {entry.user_profiles?.username || entry.user_profiles?.full_name || 'user'}
+                          </Link>
+                          {entry.body}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{timeAgoFromDate(entry.created_at)}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-[13px] text-foreground leading-relaxed">
-                        <span className="font-700 mr-1">{entry.user_profiles?.username || entry.user_profiles?.full_name || 'user'}</span>
-                        {entry.body}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{timeAgoFromDate(entry.created_at)}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p>

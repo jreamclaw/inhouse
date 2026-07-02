@@ -987,6 +987,7 @@ export default function ProfileTabs() {
               <PostFeedSkeleton count={2} />
             ) : savedVendors.length > 0 ? (
               <div className="space-y-3">
+                <p className="text-[11px] text-muted-foreground mb-2">Signed in as: {user?.id || 'unknown'}</p>
                 {savedVendors.map((vendor) => (
                   <Link key={vendor.following_id} href={`/vendor-profile?id=${vendor.id}`}>
                     <div className="rounded-2xl border border-border bg-card p-4 hover:bg-muted/30 transition-colors">
@@ -1172,7 +1173,9 @@ export default function ProfileTabs() {
                   </div>
                 ) : null}
                 {selectedPost.caption ? (
-                  <p className="text-sm text-white/88 leading-relaxed line-clamp-3">{selectedPost.caption}</p>
+                  <div className="rounded-2xl bg-white/10 px-3 py-2.5">
+                    <p className="text-sm text-white leading-relaxed line-clamp-3 font-semibold">{selectedPost.caption}</p>
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -1191,14 +1194,18 @@ export default function ProfileTabs() {
                 {commentsLoading ? (
                   <p className="text-sm text-muted-foreground">Loading comments...</p>
                 ) : selectedPostComments.length > 0 ? (
-                  selectedPostComments.map((comment) => (
-                    <div key={comment.id} className="rounded-2xl bg-muted/50 px-3 py-2.5">
-                      <p className="text-[12px] font-700 text-foreground">
-                        {comment.user_profiles?.full_name || comment.user_profiles?.username || 'User'}
-                      </p>
-                      <p className="text-sm text-foreground mt-1 leading-relaxed">{comment.body}</p>
-                    </div>
-                  ))
+                  selectedPostComments.map((comment) => {
+                    const commentProfileId = comment.user_profiles?.id || comment.user_id;
+                    const commentHref = comment.user_profiles?.role === 'chef' ? `/vendor-profile?id=${commentProfileId}` : `/profile/${commentProfileId}`;
+                    return (
+                      <div key={comment.id} className="rounded-2xl bg-muted/50 px-3 py-2.5">
+                        <Link href={commentHref} className="text-[12px] font-700 text-foreground hover:underline">
+                          {comment.user_profiles?.full_name || comment.user_profiles?.username || 'User'}
+                        </Link>
+                        <p className="text-sm text-foreground mt-1 leading-relaxed">{comment.body}</p>
+                      </div>
+                    );
+                  })
                 ) : (
                   <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p>
                 )}
