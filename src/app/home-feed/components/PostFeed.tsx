@@ -778,15 +778,6 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
           {likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}
         </p>
 
-        {commentsCount > 0 && (
-          <button
-            onClick={() => setShowComments((v) => !v)}
-            className="text-[13px] text-muted-foreground mb-1.5 hover:text-foreground transition-colors"
-          >
-            View all {commentsCount} comments
-          </button>
-        )}
-
         {/* Caption */}
         {Array.isArray((post as any).taggedUsers) && (post as any).taggedUsers.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
@@ -800,14 +791,23 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
             })}
           </div>
         )}
-        <div className="rounded-2xl bg-muted/45 px-3 py-2.5">
-          <p className="text-[13px] text-foreground leading-relaxed">
-            <Link href={post.user.role === 'chef' ? `/vendor-profile?id=${post.user.id}` : `/profile/${post.user.id}`} className="font-800 hover:underline mr-1 tracking-snug">
+        <div className="mb-2 rounded-2xl bg-muted/45 px-3 py-2.5">
+          <p className="text-[13px] text-foreground leading-relaxed font-medium">
+            <Link href={post.user.role === 'chef' ? `/vendor-profile?id=${post.user.id}` : `/profile/${post.user.id}`} className="font-extrabold hover:underline mr-1 tracking-snug">
               {post.user.username}
             </Link>
-            <span className="text-foreground/95">{post.caption}</span>
+            <span className="text-foreground font-semibold">{post.caption}</span>
           </p>
         </div>
+
+        {commentsCount > 0 && (
+          <button
+            onClick={() => setShowComments((v) => !v)}
+            className="text-[13px] text-muted-foreground mb-1.5 hover:text-foreground transition-colors"
+          >
+            View all {commentsCount} comments
+          </button>
+        )}
 
         {/* Order from chef CTA */}
         {post.user.role === 'chef' && post.mealTag &&
