@@ -291,6 +291,17 @@ export default function ProfileTabs() {
   const loadSavedVendors = async () => {
     if (!user?.id) return;
     try {
+      const {
+        data: { user: verifiedUser },
+        error: verifiedUserError,
+      } = await supabase.auth.getUser();
+
+      const activeUserId = verifiedUser?.id;
+      if (verifiedUserError || !activeUserId || activeUserId !== user.id) {
+        setSavedVendors([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('user_follows')
         .select(`
@@ -306,7 +317,7 @@ export default function ProfileTabs() {
             role
           )
         `)
-        .eq('follower_id', user.id)
+        .eq('follower_id', activeUserId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -314,7 +325,7 @@ export default function ProfileTabs() {
       const normalized = (data || [])
         .map((row: any) => {
           const vendor = Array.isArray(row.user_profiles) ? row.user_profiles[0] : row.user_profiles;
-          if (!vendor || vendor.role !== 'chef') return null;
+          if (!vendor || vendor.role !== 'chef' || vendor.id === activeUserId) return null;
           return {
             id: vendor.id,
             full_name: vendor.full_name,
