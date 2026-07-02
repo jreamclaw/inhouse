@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
 
-const PUBLIC_ROUTES = ['/splash', '/login', '/signup', '/forgot-password', '/role-selection', '/auth'];
+const PUBLIC_ROUTES = ['/splash', '/login', '/signup', '/forgot-password', '/role-selection', '/auth', '/terms-of-service', '/privacy-policy'];
 const AUTH_ONLY_ROUTES = ['/login', '/signup', '/forgot-password'];
 
 function authDebug(scope: string, payload: Record<string, unknown>) {
