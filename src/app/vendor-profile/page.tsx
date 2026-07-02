@@ -1362,41 +1362,45 @@ function VendorProfileContent() {
                 )}
               </div>
 
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-600 text-foreground">Verified</span>
+              {isOwnVendorProfile ? (
+                <>
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-600 text-foreground">Verified</span>
+                      </div>
+                      <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.email_verified || (vendorOverride as any)?.phone_verified || (vendorOverride as any)?.identity_verified ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-600 text-foreground">Certified</span>
+                      </div>
+                      <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_certified ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-600 text-foreground">Licensed</span>
+                      </div>
+                      <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_licensed ? 'Yes' : 'No'}</span>
+                    </div>
                   </div>
-                  <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.email_verified || (vendorOverride as any)?.phone_verified || (vendorOverride as any)?.identity_verified ? 'Yes' : 'No'}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-600 text-foreground">Certified</span>
-                  </div>
-                  <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_certified ? 'Yes' : 'No'}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-600 text-foreground">Licensed</span>
-                  </div>
-                  <span className="text-xs font-semibold text-muted-foreground">{(vendorOverride as any)?.is_licensed ? 'Yes' : 'No'}</span>
-                </div>
-              </div>
 
-              <TrustBadgeRow badges={trustScore.badges} compact showLocked={false} profile={{
-                avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
-                bio: vendor.bio,
-                email_verified: (vendorOverride as any)?.email_verified ?? false,
-                phone_verified: (vendorOverride as any)?.phone_verified ?? false,
-                identity_verified: (vendorOverride as any)?.identity_verified ?? false,
-                completed_orders: (vendorOverride as any)?.completed_orders ?? 0,
-                complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
-                rating_avg: vendor.rating,
-                rating_count: vendor.reviewCount,
-              }} credentials={vendorCredentials} limit={3} />
+                  <TrustBadgeRow badges={trustScore.badges} compact showLocked={false} profile={{
+                    avatar_url: (vendorOverride as any)?.avatar || (vendor as any)?.avatar,
+                    bio: vendor.bio,
+                    email_verified: (vendorOverride as any)?.email_verified ?? false,
+                    phone_verified: (vendorOverride as any)?.phone_verified ?? false,
+                    identity_verified: (vendorOverride as any)?.identity_verified ?? false,
+                    completed_orders: (vendorOverride as any)?.completed_orders ?? 0,
+                    complaints_count: (vendorOverride as any)?.complaints_count ?? 0,
+                    rating_avg: vendor.rating,
+                    rating_count: vendor.reviewCount,
+                  }} credentials={vendorCredentials} limit={3} />
+                </>
+              ) : null}
             </section>
           )}
         </div>
