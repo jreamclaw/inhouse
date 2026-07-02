@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import AppLogo from '@/components/ui/AppLogo';
 import { ChefHat, MapPin, UtensilsCrossed, Camera, ArrowRight, ArrowLeft, Loader2, Check, Store, Clock, Truck } from 'lucide-react';
+import { toast } from 'sonner';
 
 const FOOD_CATEGORIES = ['Soul Food', 'BBQ', 'Seafood', 'Wings', 'Pizza', 'Tacos / Mexican', 'Vegan / Plant-Based', 'Desserts', 'Breakfast', 'Italian', 'Asian Fusion', 'Caribbean', 'Burgers', 'Sandwiches', 'Healthy Bowls', 'Other'];
 const STEPS = [
@@ -24,6 +26,7 @@ export default function VendorOnboardingPage() {
 
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [bio, setBio] = useState('');
@@ -97,10 +100,37 @@ export default function VendorOnboardingPage() {
     setDaysOpen((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
   };
 
-  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadAvatarImage = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    const ext = file.name.split('.').pop();
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from('posts')
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      toast.error('Image upload failed');
+      return null;
+    }
+
+    const { data } = supabase.storage.from('posts').getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setAvatarUrl(URL.createObjectURL(file));
+
+    setUploadingAvatar(true);
+    try {
+      const uploadedUrl = await uploadAvatarImage(file);
+      if (uploadedUrl) {
+        setAvatarUrl(uploadedUrl);
+      }
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const canProceed = () => {
@@ -265,11 +295,38 @@ export default function VendorOnboardingPage() {
 
           {step === 6 && (
             <div className="space-y-5">
-              <div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><Camera className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">Add a profile photo</h1></div>
-              <div className="flex justify-center mb-4"><div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20 bg-muted flex items-center justify-center">{avatarUrl ? <img src={avatarUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <ChefHat className="w-10 h-10 text-muted-foreground" />}</div></div>
-              <div>
-                <input type="url" placeholder="https://example.com/your-photo.jpg" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className="w-full h-12 px-4 rounded-2xl border border-input bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-              </div>
+              <div className="text-center mb-6"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white mx-auto mb-3"><Camera className="w-7 h-7" /></div><h1 className="text-2xl font-bold text-foreground">Add a profile photo</h1><p className="text-sm text-muted-foreground mt-1">Upload a photo from your phone so customers recognize your business.</p></div>
+              <div className="flex justify-center mb-4"><div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20 bg-muted flex items-center justify-center relative">{avatarUrl ? <Image src={avatarUrl} alt="Profile preview" fill sizes="96px" className="object-cover" unoptimized /> : <ChefHat className="w-10 h-10 text-muted-foreground" />}</div></div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarFileChange}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="w-full h-12 rounded-2xl border border-border bg-card text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:bg-muted transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {uploadingAvatar ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading photo...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-4 h-4" />
+                    Choose photo
+                  </>
+                )}
+              </button>
+              {avatarUrl ? (
+                <p className="text-xs text-center text-muted-foreground">Photo ready. You can continue or choose a different one.</p>
+              ) : (
+                <p className="text-xs text-center text-muted-foreground">You can also finish later and add a photo from your profile settings.</p>
+              )}
             </div>
           )}
         </div>
