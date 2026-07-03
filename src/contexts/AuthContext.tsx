@@ -247,6 +247,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         data: {
           full_name: metadata?.fullName || '',
           avatar_url: metadata?.avatarUrl || '',
+          terms_accepted_at: metadata?.termsAcceptedAt || null,
+          privacy_accepted_at: metadata?.privacyAcceptedAt || null,
           ...(metadata?.role ? { role: metadata.role } : {}),
         },
         emailRedirectTo: getPreferredAuthRedirectUrl('/auth/callback')

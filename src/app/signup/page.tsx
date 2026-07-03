@@ -21,6 +21,8 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [error, setError] = useState('');
@@ -44,9 +46,18 @@ export default function SignUpPage() {
       setError('Password must be at least 6 characters.');
       return;
     }
+    if (!acceptedTerms || !acceptedPrivacy) {
+      setError('You must accept the Terms of Service and Privacy Policy to create an account.');
+      return;
+    }
     setLoading(true);
     try {
-      const signUpResult = await signUp(email, password, { fullName: name });
+      const acceptedAt = new Date().toISOString();
+      const signUpResult = await signUp(email, password, {
+        fullName: name,
+        termsAcceptedAt: acceptedAt,
+        privacyAcceptedAt: acceptedAt,
+      });
 
       const signedUpUser = signUpResult?.user ?? signUpResult?.session?.user ?? null;
       const hasImmediateSession = Boolean(signUpResult?.session?.user);
@@ -62,6 +73,14 @@ export default function SignUpPage() {
         router.replace('/login');
         return;
       }
+
+      await supabase
+        .from('user_profiles')
+        .update({
+          terms_accepted_at: acceptedAt,
+          privacy_accepted_at: acceptedAt,
+        })
+        .eq('id', signedUpUser.id);
 
       const { data: profile } = await supabase
         .from('user_profiles')
@@ -290,6 +309,31 @@ export default function SignUpPage() {
               </button>
             </div>
 
+            <div className="rounded-2xl border border-border bg-card px-4 py-3 space-y-3">
+              <label className="flex items-start gap-3 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  I agree to the <Link href="/terms-of-service" className="text-primary hover:underline font-semibold">Terms of Service</Link>.
+                </span>
+              </label>
+              <label className="flex items-start gap-3 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={acceptedPrivacy}
+                  onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  I acknowledge the <Link href="/privacy-policy" className="text-primary hover:underline font-semibold">Privacy Policy</Link>.
+                </span>
+              </label>
+            </div>
+
             <button
               type="submit"
               disabled={loading || !!oauthLoading}
@@ -307,10 +351,7 @@ export default function SignUpPage() {
           </form>
 
           <p className="text-center text-xs text-muted-foreground mt-4 leading-relaxed">
-            By creating an account, you agree to our{' '}
-            <Link href="/terms-of-service" className="text-primary hover:underline">Terms of Service</Link>{' '}
-            and{' '}
-            <Link href="/privacy-policy" className="text-primary hover:underline">Privacy Policy</Link>.
+            You must review and accept the Terms of Service and Privacy Policy before creating an account.
           </p>
 
           <p className="text-center text-sm text-muted-foreground mt-5">
