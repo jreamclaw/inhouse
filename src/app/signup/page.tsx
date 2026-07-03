@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,8 @@ import { getOAuthCallbackRedirect, isCapacitorLikeRuntime } from '@/lib/auth/red
 import AppLogo from '@/components/ui/AppLogo';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const SIGNUP_DRAFT_KEY = 'inhouse.signupDraft';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -27,6 +29,42 @@ export default function SignUpPage() {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [error, setError] = useState('');
   const showGoogleOAuth = false;
+  const signupDraft = useMemo(() => ({
+    name,
+    email,
+    password,
+    acceptedTerms,
+    acceptedPrivacy,
+  }), [acceptedPrivacy, acceptedTerms, email, name, password]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const rawDraft = window.sessionStorage.getItem(SIGNUP_DRAFT_KEY);
+      if (!rawDraft) return;
+      const parsedDraft = JSON.parse(rawDraft) as Partial<{
+        name: string;
+        email: string;
+        password: string;
+        acceptedTerms: boolean;
+        acceptedPrivacy: boolean;
+      }>;
+      setName(parsedDraft.name || '');
+      setEmail(parsedDraft.email || '');
+      setPassword(parsedDraft.password || '');
+      setAcceptedTerms(Boolean(parsedDraft.acceptedTerms));
+      setAcceptedPrivacy(Boolean(parsedDraft.acceptedPrivacy));
+    } catch {
+      window.sessionStorage.removeItem(SIGNUP_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(SIGNUP_DRAFT_KEY, JSON.stringify(signupDraft));
+    } catch {}
+  }, [signupDraft]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -61,6 +99,10 @@ export default function SignUpPage() {
 
       const signedUpUser = signUpResult?.user ?? signUpResult?.session?.user ?? null;
       const hasImmediateSession = Boolean(signUpResult?.session?.user);
+
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem(SIGNUP_DRAFT_KEY);
+      }
 
       toast.success('🎉 Account created!', {
         description: hasImmediateSession
