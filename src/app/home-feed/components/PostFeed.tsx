@@ -25,6 +25,7 @@ import { createClient } from '@/lib/supabase/client';
 import Icon from '@/components/ui/AppIcon';
 import { PostFeedSkeleton } from '@/components/ui/SkeletonLoaders';
 import { useAuth } from '@/contexts/AuthContext';
+import ReportContentModal from '@/components/moderation/ReportContentModal';
 
 async function syncFollowerCounts(supabase: ReturnType<typeof createClient>, followerId: string, followingId: string) {
   const [{ count: followingCount }, { count: followersCount }] = await Promise.all([
@@ -395,6 +396,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
   const [isSaveAnimating, setIsSaveAnimating] = useState(false);
   const [isCartAnimating, setIsCartAnimating] = useState(false);
   const [mediaIndex, setMediaIndex] = useState(0);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     setMediaIndex(0);
@@ -683,6 +685,9 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
             {showPostMenu && (
               <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-border bg-card shadow-xl z-20 overflow-hidden">
                 <button onClick={() => { setShowPostMenu(false); handleShare(); }} className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors">Share post</button>
+                {user?.id !== post.user.id && (
+                  <button onClick={() => { setShowPostMenu(false); setShowReportModal(true); }} className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors">Report post</button>
+                )}
                 {user?.id === post.user.id && (
                   <button onClick={handleDeletePost} className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">Delete post</button>
                 )}
@@ -740,6 +745,17 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
           </div>
         }
       </div>
+
+      {user?.id !== post.user.id ? (
+        <ReportContentModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          targetType="post"
+          targetId={post.id}
+          targetUserId={post.user.id}
+          targetLabel="Post"
+        />
+      ) : null}
 
       {/* Engagement Bar */}
       <div className="px-4 pt-3 pb-4">
@@ -946,15 +962,34 @@ export default function PostFeed({ mode }: PostFeedProps) {
   const [followedUserIds, setFollowedUserIds] = useState<Set<string>>(new Set());
   const [feedFilter, setFeedFilter] = useState<'all' | 'following'>('all');
   const [showInviteBanner, setShowInviteBanner] = useState(true);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const supabase = createClient();
 
   useEffect(() => {
+    void loadBlockedUsers();
     loadDbPosts();
     if (user?.id) {
       loadFollowedUsers();
     }
   }, [user?.id]);
+
+  const loadBlockedUsers = async () => {
+    if (!user?.id) {
+      setBlockedUserIds(new Set());
+      return;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('user_blocks')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+      setBlockedUserIds(new Set(((data as { blocked_id: string }[] | null) || []).map((row) => row.blocked_id)));
+    } catch {
+      setBlockedUserIds(new Set());
+    }
+  };
 
   const loadDbPosts = async () => {
     try {
@@ -1024,12 +1059,14 @@ export default function PostFeed({ mode }: PostFeedProps) {
           // keep feed posts even if tag lookup fails
         }
 
-        setDbPosts((data as DbPost[]).map((post) => dbPostToMockShape({
-          ...post,
-          tagged_users: tagsByPostId.get(post.id) || [],
-          viewer_has_liked: likedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
-          viewer_has_saved: savedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
-        })));
+        setDbPosts((data as DbPost[])
+          .filter((post) => !blockedUserIds.has(post.user_profiles?.id || post.user_id))
+          .map((post) => dbPostToMockShape({
+            ...post,
+            tagged_users: tagsByPostId.get(post.id) || [],
+            viewer_has_liked: likedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
+            viewer_has_saved: savedPostIds.has(post.id) ? [{ user_id: user?.id || '' }] : [],
+          })));
       } else {
         setDbPosts([]);
       }

@@ -24,8 +24,13 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
 
   const normalizedQuery = useMemo(() => query.trim().replace(/^@+/, ''), [query]);
+
+  useEffect(() => {
+    void loadBlockedUsers();
+  }, [user?.id]);
 
   useEffect(() => {
     if (normalizedQuery.length < 2) {
@@ -38,7 +43,25 @@ export default function SearchPage() {
     }, 180);
 
     return () => clearTimeout(timeout);
-  }, [user?.id, normalizedQuery]);
+  }, [blockedUserIds, user?.id, normalizedQuery]);
+
+  const loadBlockedUsers = async () => {
+    if (!user?.id) {
+      setBlockedUserIds(new Set());
+      return;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('user_blocks')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+
+      setBlockedUserIds(new Set(((data as { blocked_id: string }[] | null) || []).map((row) => row.blocked_id)));
+    } catch {
+      setBlockedUserIds(new Set());
+    }
+  };
 
   const runSearch = async () => {
     if (!normalizedQuery || normalizedQuery.length < 2) return;
@@ -50,8 +73,7 @@ export default function SearchPage() {
         .or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
         .limit(20);
 
-      const filtered = ((data || []) as SearchUser[]).filter((person) => person.id !== user?.id);
-
+      const filtered = ((data || []) as SearchUser[]).filter((person) => person.id !== user?.id && !blockedUserIds.has(person.id));
 
       if (error) throw error;
       setResults(filtered);

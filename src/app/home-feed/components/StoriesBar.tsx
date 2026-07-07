@@ -78,11 +78,15 @@ export default function StoriesBar() {
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
   const [showRepliesSheet, setShowRepliesSheet] = useState(false);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [showStoryActions, setShowStoryActions] = useState(false);
+  const [showStoryReportModal, setShowStoryReportModal] = useState(false);
 
   const userAvatarUrl = profile?.avatar_url || null;
   const displayName = profile?.full_name || user?.email?.split('@')?.[0] || 'You';
 
   useEffect(() => {
+    void loadBlockedUsers();
     loadStories();
   }, [user?.id]);
 
@@ -97,6 +101,23 @@ export default function StoriesBar() {
     void registerStoryView(storyId);
     void loadReplies(storyId);
   }, [activeGroup?.userId, activeIndex, user?.id]);
+
+  const loadBlockedUsers = async () => {
+    if (!user?.id) {
+      setBlockedUserIds(new Set());
+      return;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('user_blocks')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+      setBlockedUserIds(new Set(((data as { blocked_id: string }[] | null) || []).map((row) => row.blocked_id)));
+    } catch {
+      setBlockedUserIds(new Set());
+    }
+  };
 
   const loadStories = async () => {
     setLoading(true);
@@ -138,6 +159,7 @@ export default function StoriesBar() {
 
       const grouped = new Map<string, StoryGroup>();
       for (const row of (data as StoryRow[] | null) ?? []) {
+        if (blockedUserIds.has(row.user_id)) continue;
         const existing = grouped.get(row.user_id);
         if (existing) {
           existing.stories.push(row);
@@ -228,6 +250,8 @@ export default function StoriesBar() {
     setActiveIndex(Math.max(0, group.stories.length - 1));
     setReplyDraft('');
     setShowRepliesSheet(false);
+    setShowStoryActions(false);
+    setShowStoryReportModal(false);
   };
 
   const currentStory = activeGroup?.stories?.[activeIndex] || null;
@@ -456,6 +480,31 @@ export default function StoriesBar() {
                 <p className="text-sm font-700 text-white truncate">{activeGroup.name}</p>
                 <p className="text-xs text-white/75">{new Date(currentStory.created_at).toLocaleString()}</p>
               </div>
+              {!isOwnCurrentStory ? (
+                <div className="relative">
+                  <button
+                    className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white/90 hover:text-white"
+                    onClick={() => setShowStoryActions((prev) => !prev)}
+                    aria-label="Story safety actions"
+                  >
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                  {showStoryActions ? (
+                    <div className="absolute right-0 mt-2 w-44 rounded-2xl border border-white/10 bg-black/85 p-1.5 shadow-xl backdrop-blur-md">
+                      <button
+                        onClick={() => {
+                          setShowStoryActions(false);
+                          setShowStoryReportModal(true);
+                        }}
+                        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-white/10"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                        Report story
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <button
                 className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white/90 hover:text-white"
                 onClick={() => setActiveGroup(null)}
@@ -540,6 +589,17 @@ export default function StoriesBar() {
               </div>
             </div>
           </div>
+
+          {currentStory ? (
+            <ReportContentModal
+              isOpen={showStoryReportModal}
+              onClose={() => setShowStoryReportModal(false)}
+              targetType="story"
+              targetId={currentStory.id}
+              targetUserId={currentStory.user_id}
+              targetLabel="Story"
+            />
+          ) : null}
 
           {showRepliesSheet && (
             <div className="absolute inset-0 z-40 flex items-end bg-black/40" onClick={() => setShowRepliesSheet(false)}>
