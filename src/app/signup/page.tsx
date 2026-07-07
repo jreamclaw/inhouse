@@ -252,6 +252,13 @@ export default function SignUpPage() {
             <p className="text-muted-foreground">Join InHouse and start discovering local chefs</p>
           </div>
 
+          <Link
+            href="/nearby"
+            className="w-full mb-4 flex items-center justify-center h-12 rounded-2xl border border-border bg-muted/40 hover:bg-muted hover:border-primary/30 transition-all duration-200 font-semibold text-foreground text-sm"
+          >
+            Browse as guest
+          </Link>
+
           {/* OAuth Buttons */}
           <div className="flex flex-col gap-3 mb-6">
             {showGoogleOAuth && (
@@ -393,7 +400,7 @@ export default function SignUpPage() {
           </form>
 
           <p className="text-center text-xs text-muted-foreground mt-4 leading-relaxed">
-            You must review and accept the Terms of Service and Privacy Policy before creating an account.
+            You can browse public chef pages without an account. You must review and accept the Terms of Service and Privacy Policy before creating an account.
           </p>
 
           <p className="text-center text-sm text-muted-foreground mt-5">

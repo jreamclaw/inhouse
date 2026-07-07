@@ -223,6 +223,13 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
 
+          <Link
+            href="/nearby"
+            className="w-full mb-4 flex items-center justify-center h-12 rounded-2xl border border-border bg-muted/40 hover:bg-muted hover:border-primary/30 transition-all duration-200 font-semibold text-foreground text-sm"
+          >
+            Browse as guest
+          </Link>
+
           <div className="flex flex-col gap-3 mb-6">
             {showGoogleOAuth && (
               <button
@@ -335,6 +342,10 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <p className="text-center text-xs text-muted-foreground mt-4 leading-relaxed">
+            Browse public chef pages without an account. Sign in when you want to order, post, or manage your profile.
+          </p>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don&apos;t have an account?{' '}
