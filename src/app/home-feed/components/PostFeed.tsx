@@ -712,8 +712,8 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
       <div className={`relative overflow-hidden mx-0 ${((post as any).mediaItems?.[mediaIndex]?.media_type === 'video') || (((post as any).mediaItems?.length || 0) > 1) ? 'aspect-square bg-muted' : 'bg-[#0f0f10]'}`}>
         {((post as any).mediaItems?.[mediaIndex]?.media_type === 'video') ?
         <video src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} className="w-full h-full object-cover" autoPlay muted loop playsInline /> :
-        <div className={`${(((post as any).mediaItems?.length || 0) > 1) ? 'aspect-square' : 'max-h-[78vh] min-h-[280px] flex items-center justify-center bg-[#0f0f10]'}`}>
-            <img src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} alt={post.imageAlt} className={`${(((post as any).mediaItems?.length || 0) > 1) ? 'w-full h-full object-cover' : 'w-full h-auto max-h-[78vh] object-contain'}`} loading="lazy" />
+        <div className={`${(((post as any).mediaItems?.length || 0) > 1) ? 'aspect-square' : 'max-h-[84vh] min-h-[340px] flex items-center justify-center bg-[#0f0f10]'}`}>
+            <img src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} alt={post.imageAlt} className={`${(((post as any).mediaItems?.length || 0) > 1) ? 'w-full h-full object-cover' : 'w-full h-auto max-h-[84vh] object-contain'}`} loading="lazy" />
           </div>
         }
         {((post as any).mediaItems?.length || 0) > 1 && (
