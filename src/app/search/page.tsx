@@ -28,7 +28,7 @@ export default function SearchPage() {
   const normalizedQuery = useMemo(() => query.trim().replace(/^@+/, ''), [query]);
 
   useEffect(() => {
-    if (!user?.id || normalizedQuery.length < 2) {
+    if (normalizedQuery.length < 2) {
       setResults([]);
       return;
     }
@@ -48,11 +48,13 @@ export default function SearchPage() {
         .from('user_profiles')
         .select('id, full_name, username, avatar_url, bio, role, business_type, vendor_onboarding_complete')
         .or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
-        .neq('id', user?.id || '')
         .limit(20);
 
+      const filtered = ((data || []) as SearchUser[]).filter((person) => person.id !== user?.id);
+
+
       if (error) throw error;
-      setResults((data || []) as SearchUser[]);
+      setResults(filtered);
     } catch {
       setResults([]);
     } finally {

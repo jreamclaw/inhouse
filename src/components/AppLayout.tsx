@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -23,6 +23,8 @@ const BASE_NAV_ITEMS = [
   { href: '/profile-screen', icon: 'UserCircleIcon', label: 'Profile' },
 ] as const;
 
+const PUBLIC_LAYOUT_ROUTES = ['/nearby', '/search', '/vendor-profile'];
+
 export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -31,6 +33,9 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   const { profile, user, loading } = useAuth();
   const supabase = createClient();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const isPublicPage = useMemo(() => {
+    return PUBLIC_LAYOUT_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  }, [pathname]);
 
   useEffect(() => {
     setMounted(true);
@@ -42,9 +47,9 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || isPublicPage) return;
     if (!user) router.replace('/login');
-  }, [loading, user, router]);
+  }, [isPublicPage, loading, user, router]);
 
   useEffect(() => {
     const loadUnreadCount = async () => {
@@ -96,20 +101,19 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
     return <div className="min-h-screen bg-background flex items-center justify-center px-4"><div className="flex items-center gap-3 text-[#777777] dark:text-[#CBD5E1]"><div className="w-5 h-5 border-2 border-[#F97316] border-t-transparent rounded-full animate-spin" /><span className="text-sm font-semibold text-[#555555] dark:text-[#E5E7EB]">Loading app...</span></div></div>;
   }
 
-  if (!user) {
-    return null;
-  }
-
   const avatarUrl = profile?.avatar_url || null;
-  const displayName = profile?.full_name || user.email?.split('@')[0] || '';
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || '';
   const roleLabel = profile?.role === 'chef' ? 'Chef' : profile?.role === 'customer' ? 'Customer' : '';
   const ordersHref = profile?.role === 'chef' ? '/chef-menu?section=orders' : '/profile-screen?tab=orders';
-  const navItems = [
+  const navItems = user ? [
     BASE_NAV_ITEMS[0],
     BASE_NAV_ITEMS[1],
     BASE_NAV_ITEMS[2],
     { href: ordersHref, icon: 'ShoppingBagIcon', label: 'Orders' },
     BASE_NAV_ITEMS[3],
+  ] : [
+    BASE_NAV_ITEMS[0],
+    BASE_NAV_ITEMS[1],
   ];
 
   return (
@@ -120,7 +124,9 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
           <div className="absolute left-0 right-0 flex justify-center pointer-events-none px-16">{headerCenter ? <div className="pointer-events-auto">{headerCenter}</div> : <span className="font-script text-[32px] leading-none text-[#111111] dark:text-white tracking-wide pointer-events-none select-none">InHouse</span>}</div>
           <div className="flex items-center gap-1">
             <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Toggle theme">{mounted && (isDark ? <Sun className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" /> : <Moon className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />)}</button>
-            <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />{unreadNotifications > 0 ? <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#F97316] text-white text-[10px] font-700 flex items-center justify-center leading-none">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span> : null}</Link>
+            {user ? (
+              <Link href="/notifications" className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors"><Bell className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />{unreadNotifications > 0 ? <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#F97316] text-white text-[10px] font-700 flex items-center justify-center leading-none">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span> : null}</Link>
+            ) : null}
             <Link href="/search" className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Search people">
               <Search className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />
             </Link>
@@ -130,7 +136,7 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
       <div className="flex flex-1 max-w-screen-2xl mx-auto w-full">
         <aside className="hidden lg:flex flex-col w-56 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] border-r border-[#E5E5E5] dark:border-white/15 py-5 px-3">
           <nav className="flex flex-col gap-0.5 flex-1">{navItems.map((item) => { const isActive = item.label === 'Orders' ? pathname === '/order-checkout-screen' || pathname === '/chef-menu' || pathname === '/profile-screen' : pathname === item.href; return <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] transition-all duration-200 group border border-transparent ${isActive ? 'bg-[#FFF4ED] text-[#F97316] font-semibold dark:bg-orange-500/15 dark:text-[#F97316]' : 'text-[#666666] dark:text-[#D1D5DB] font-medium hover:bg-[#F7F7F7] dark:bg-white/5 hover:text-[#111111] dark:text-white'}`}><Icon name={item.icon as any} size={18} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-[#F97316]' : 'text-[#666666] dark:text-[#D1D5DB] group-hover:text-[#111111] dark:text-white'} /><span className="tracking-snug">{item.label}</span></Link>; })}</nav>
-          <div className="mt-auto pt-4 border-t border-[#E5E5E5] dark:border-white/15"><Link href="/profile-screen" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#F7F7F7] dark:bg-white/5 transition-all duration-200 group border border-[#E5E5E5] dark:border-white/15"><div className="w-7 h-7 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-white/15 group-hover:border-[#F97316] transition-colors bg-[#F7F7F7] dark:bg-white/5 flex items-center justify-center shrink-0">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-[10px] font-700 text-[#555555] dark:text-[#E5E7EB]">{displayName.charAt(0).toUpperCase()}</span>}</div><div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-[#111111] dark:text-white truncate tracking-snug">{displayName}</p>{roleLabel ? <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] truncate">{roleLabel}</p> : null}</div></Link></div>
+          {user ? <div className="mt-auto pt-4 border-t border-[#E5E5E5] dark:border-white/15"><Link href="/profile-screen" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#F7F7F7] dark:bg-white/5 transition-all duration-200 group border border-[#E5E5E5] dark:border-white/15"><div className="w-7 h-7 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-white/15 group-hover:border-[#F97316] transition-colors bg-[#F7F7F7] dark:bg-white/5 flex items-center justify-center shrink-0">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-[10px] font-700 text-[#555555] dark:text-[#E5E7EB]">{displayName.charAt(0).toUpperCase()}</span>}</div><div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-[#111111] dark:text-white truncate tracking-snug">{displayName}</p>{roleLabel ? <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] truncate">{roleLabel}</p> : null}</div></Link></div> : null}
         </aside>
         <main className="flex-1 min-w-0 pb-20 lg:pb-6"><ProfileCompletionBanner />{children}</main>
       </div>
