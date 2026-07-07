@@ -1075,108 +1075,109 @@ export default function ProfileTabs() {
         </div>
       )}
       {selectedPost && selectedPostMedia.length > 0 && (
-        <div className="fixed inset-0 z-[90] bg-black text-white overflow-hidden">
-          <div className="absolute inset-x-0 top-0 z-20 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 bg-gradient-to-b from-black/70 via-black/35 to-transparent">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 pt-1">
-                <p className="text-sm font-700 truncate">Your Post</p>
-                <p className="text-xs text-white/75 truncate">{selectedPost.caption || 'Swipe to view media'}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button onClick={handleDeleteSelectedPost} className="w-10 h-10 rounded-full bg-white/12 backdrop-blur-sm flex items-center justify-center" aria-label="Delete post">
-                  <Trash2 className="w-5 h-5" />
-                </button>
-                <button onClick={closePostViewer} className="w-10 h-10 rounded-full bg-white/12 backdrop-blur-sm flex items-center justify-center" aria-label="Close post viewer">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-screen flex flex-col justify-center">
-            <div className="relative w-full h-[75vh]" onTouchStart={handleViewerTouchStart} onTouchEnd={handleViewerTouchEnd}>
-              <div
-                ref={viewerScrollRef}
-                onScroll={handleViewerScroll}
-                className="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-                style={{ scrollSnapType: 'x mandatory' }}
-              >
-                {selectedPostMedia.map((media, index) => (
-                  <div
-                    key={`${media.media_url}-${index}`}
-                    className="w-full h-full shrink-0 snap-center bg-black flex items-center justify-center relative"
-                  >
-                    {media.media_type === 'video' ? (
-                      <video src={media.media_url} className="w-full h-full object-cover" controls autoPlay={index === selectedMediaIndex} playsInline />
-                    ) : (
-                      <img src={media.media_url} alt={selectedPost.caption || 'Post media'} className="w-full h-full object-cover" />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-              <div className="absolute left-0 right-0 bottom-4 px-4 flex items-end justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <button onClick={handleToggleLike} className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Like post">
-                    <Heart className={`w-5 h-5 ${selectedPostLiked ? 'fill-white text-white' : 'text-white'}`} />
+        <div className="fixed inset-0 z-[90] bg-black/95 text-white overflow-hidden">
+          <div className="h-screen flex flex-col">
+            <div className="sticky top-0 z-20 px-4 pt-[max(0.875rem,env(safe-area-inset-top))] pb-3 bg-black/88 backdrop-blur-xl border-b border-white/10">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <p className="text-sm font-700 tracking-tight">Your Post</p>
+                  <p className="text-xs text-white/65 mt-1">Post {selectedPostIndex + 1} of {dbPosts.length}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={handleDeleteSelectedPost} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center" aria-label="Delete post">
+                    <Trash2 className="w-5 h-5" />
                   </button>
-                  <button onClick={handleOpenComments} className="w-11 h-11 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center" aria-label="Comment on post">
-                    <MessageCircle className="w-5 h-5" />
+                  <button onClick={closePostViewer} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center" aria-label="Close post viewer">
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
+              </div>
+            </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
-                    ♥ {(selectedPost.likes_count || 0).toLocaleString()}
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+              <div className="px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-4">
+                <div className="relative w-full overflow-hidden rounded-[28px] bg-[#0f0f10] border border-white/10 shadow-[0_18px_60px_rgba(0,0,0,0.4)]" onTouchStart={handleViewerTouchStart} onTouchEnd={handleViewerTouchEnd}>
+                  <div
+                    ref={viewerScrollRef}
+                    onScroll={handleViewerScroll}
+                    className="flex max-h-[68vh] min-h-[360px] overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                    style={{ scrollSnapType: 'x mandatory' }}
+                  >
+                    {selectedPostMedia.map((media, index) => (
+                      <div
+                        key={`${media.media_url}-${index}`}
+                        className="w-full shrink-0 snap-center bg-black flex items-center justify-center relative aspect-[4/5] sm:aspect-[3/4]"
+                      >
+                        {media.media_type === 'video' ? (
+                          <video src={media.media_url} className="w-full h-full object-contain bg-black" controls autoPlay={index === selectedMediaIndex} playsInline />
+                        ) : (
+                          <img src={media.media_url} alt={selectedPost.caption || 'Post media'} className="w-full h-full object-contain bg-black" />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className="rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
-                    💬 {(selectedPost.comments_count || 0).toLocaleString()}
-                  </div>
-                  {selectedPostMedia.length > 1 && (
-                    <div className="rounded-full bg-black/55 px-3 py-1 text-xs font-700 text-white">
-                      {selectedMediaIndex + 1}/{selectedPostMedia.length}
+
+                  <div className="absolute left-0 right-0 bottom-0 px-4 py-4 bg-gradient-to-t from-black/80 via-black/35 to-transparent">
+                    <div className="flex items-end justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <button onClick={handleToggleLike} className="w-11 h-11 rounded-full bg-white/12 backdrop-blur-sm border border-white/10 flex items-center justify-center" aria-label="Like post">
+                          <Heart className={`w-5 h-5 ${selectedPostLiked ? 'fill-white text-white' : 'text-white'}`} />
+                        </button>
+                        <button onClick={handleOpenComments} className="w-11 h-11 rounded-full bg-white/12 backdrop-blur-sm border border-white/10 flex items-center justify-center" aria-label="Comment on post">
+                          <MessageCircle className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        <div className="rounded-full bg-black/45 border border-white/10 px-3 py-1 text-xs font-700 text-white">
+                          ♥ {(selectedPost.likes_count || 0).toLocaleString()}
+                        </div>
+                        <div className="rounded-full bg-black/45 border border-white/10 px-3 py-1 text-xs font-700 text-white">
+                          💬 {(selectedPost.comments_count || 0).toLocaleString()}
+                        </div>
+                        {selectedPostMedia.length > 1 && (
+                          <div className="rounded-full bg-black/45 border border-white/10 px-3 py-1 text-xs font-700 text-white">
+                            {selectedMediaIndex + 1}/{selectedPostMedia.length}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  </div>
+                </div>
+
+                {selectedPostMedia.length > 1 && (
+                  <div className="flex items-center justify-center gap-1.5">
+                    {selectedPostMedia.map((media, index) => (
+                      <button
+                        key={`${media.media_url}-${index}`}
+                        onClick={() => scrollToMediaIndex(index)}
+                        className={`h-1.5 rounded-full transition-all ${selectedMediaIndex === index ? 'w-6 bg-white' : 'w-2 bg-white/30'}`}
+                        aria-label={`View media ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <div className="rounded-[24px] border border-white/10 bg-white/[0.06] backdrop-blur-sm px-4 py-4 space-y-3">
+                  {selectedPost.tagged_users && selectedPost.tagged_users.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPost.tagged_users.map((taggedUser: any) => {
+                        const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
+                        return (
+                          <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-white/10 border border-white/10 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/15 transition-colors">
+                            @{taggedUser.username || taggedUser.full_name || 'user'}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  {selectedPost.caption ? (
+                    <p className="text-[15px] leading-6 text-white/95 break-words">{selectedPost.caption}</p>
+                  ) : (
+                    <p className="text-sm text-white/50">No caption</p>
                   )}
                 </div>
-              </div>
-            </div>
-
-            <div className="px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {selectedPostMedia.length > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mb-3">
-                  {selectedPostMedia.map((media, index) => (
-                    <button
-                      key={`${media.media_url}-${index}`}
-                      onClick={() => scrollToMediaIndex(index)}
-                      className={`h-1.5 rounded-full transition-all ${selectedMediaIndex === index ? 'w-5 bg-white' : 'w-2 bg-white/35'}`}
-                      aria-label={`View media ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <p className="text-[12px] text-white/60">Post {selectedPostIndex + 1} of {dbPosts.length}</p>
-                {selectedPost.tagged_users && selectedPost.tagged_users.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedPost.tagged_users.map((taggedUser: any) => {
-                      const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
-                      return (
-                        <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/15 transition-colors">
-                          @{taggedUser.username || taggedUser.full_name || 'user'}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : null}
-                {selectedPost.caption ? (
-                  <div className="rounded-2xl bg-white/10 px-3 py-2.5">
-                    <p className="text-sm text-white leading-relaxed line-clamp-3 font-semibold">{selectedPost.caption}</p>
-                  </div>
-                ) : null}
               </div>
             </div>
           </div>
