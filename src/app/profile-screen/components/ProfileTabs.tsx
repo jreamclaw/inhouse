@@ -1158,26 +1158,26 @@ export default function ProfileTabs() {
                   </div>
                 )}
 
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.06] backdrop-blur-sm px-4 py-4 space-y-3">
-                  {selectedPost.tagged_users && selectedPost.tagged_users.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedPost.tagged_users.map((taggedUser: any) => {
-                        const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
-                        return (
-                          <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-white/10 border border-white/10 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/15 transition-colors">
-                            @{taggedUser.username || taggedUser.full_name || 'user'}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                {(selectedPost.tagged_users && selectedPost.tagged_users.length > 0) || selectedPost.caption ? (
+                  <div className="space-y-3">
+                    {selectedPost.tagged_users && selectedPost.tagged_users.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPost.tagged_users.map((taggedUser: any) => {
+                          const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
+                          return (
+                            <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-white/10 border border-white/10 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/15 transition-colors">
+                              @{taggedUser.username || taggedUser.full_name || 'user'}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : null}
 
-                  {selectedPost.caption ? (
-                    <p className="text-[15px] leading-6 text-white/95 break-words">{selectedPost.caption}</p>
-                  ) : (
-                    <p className="text-sm text-white/50">No caption</p>
-                  )}
-                </div>
+                    {selectedPost.caption ? (
+                      <p className="text-[14px] leading-6 text-white/82 break-words px-1">{selectedPost.caption}</p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
