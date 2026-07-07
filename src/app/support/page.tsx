@@ -63,6 +63,23 @@ export default function SupportPage() {
 
           <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
             <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-red-500/10 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-sm font-700 text-foreground">Safety and moderation</h2>
+                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">InHouse does not allow harassment, hateful conduct, scams, explicit sexual content, violent threats, impersonation, or other abusive user-generated content.</p>
+                <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                  <li>• users can report profiles, posts, stories, and comments in the app</li>
+                  <li>• users can block accounts they do not want to interact with</li>
+                  <li>• reported content is reviewed and abusive accounts can be removed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5 text-foreground" />
               </div>

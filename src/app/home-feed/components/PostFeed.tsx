@@ -390,6 +390,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState<DbComment[]>([]);
+  const [reportingComment, setReportingComment] = useState<DbComment | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsCount, setCommentsCount] = useState(post.comments);
   const [isHeartAnimating, setIsHeartAnimating] = useState(false);
@@ -870,14 +871,24 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
                           <span className="text-[11px] font-700 text-foreground">{(entry.user_profiles?.full_name || 'U').charAt(0).toUpperCase()}</span>
                         )}
                       </Link>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-[13px] text-foreground leading-relaxed">
                           <Link href={commentHref} className="font-700 mr-1 hover:underline">
                             {entry.user_profiles?.username || entry.user_profiles?.full_name || 'user'}
                           </Link>
                           {entry.body}
                         </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{timeAgoFromDate(entry.created_at)}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[11px] text-muted-foreground">{timeAgoFromDate(entry.created_at)}</p>
+                          {user?.id && user.id !== entry.user_id ? (
+                            <button
+                              onClick={() => setReportingComment(entry)}
+                              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Report
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   );
@@ -886,6 +897,17 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
             ) : (
               <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p>
             )}
+
+            {reportingComment ? (
+              <ReportContentModal
+                isOpen={!!reportingComment}
+                onClose={() => setReportingComment(null)}
+                targetType="comment"
+                targetId={reportingComment.id}
+                targetUserId={reportingComment.user_id}
+                targetLabel="Comment"
+              />
+            ) : null}
 
             <CommentInput comment={comment} setComment={setComment} handleComment={handleComment} />
           </div>
