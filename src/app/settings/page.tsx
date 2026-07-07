@@ -21,8 +21,6 @@ import {
   UserPlus,
   ShoppingBag,
   Tag,
-  ShieldCheck,
-  FileWarning,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,8 +76,6 @@ function ToggleSwitch({
     </button>
   );
 }
-
-const ADMIN_EMAILS = ['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'];
 
 export default function SettingsPage() {
   const { user, profile, signOut } = useAuth();
@@ -190,7 +186,6 @@ export default function SettingsPage() {
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
   const email = user?.email || '';
-  const isAdminUser = ADMIN_EMAILS.includes(email);
 
   return (
     <AppLayout>
@@ -284,29 +279,6 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-
-            {isAdminUser && (
-              <div className="px-4 pt-6 pb-2">
-                <div className="flex items-center gap-2 mb-4">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  <h2 className="text-sm font-700 text-foreground">Admin</h2>
-                </div>
-                <div className="bg-muted/40 rounded-2xl border border-border/60 overflow-hidden divide-y divide-border/60">
-                  <ActionRow
-                    icon={<ShieldCheck className="w-4 h-4 text-red-500" />}
-                    label="Moderation Reports"
-                    description="Review user, post, story, and comment reports"
-                    onClick={() => router.push('/admin/moderation')}
-                  />
-                  <ActionRow
-                    icon={<FileWarning className="w-4 h-4 text-amber-500" />}
-                    label="Credential Review"
-                    description="Review chef verification documents"
-                    onClick={() => router.push('/admin/credentials')}
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Privacy */}
             <div className="px-4 pt-6 pb-2">
@@ -450,34 +422,6 @@ export default function SettingsPage() {
         )}
       </div>
     </AppLayout>
-  );
-}
-
-function ActionRow({
-  icon,
-  label,
-  description,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted/60 transition-colors text-left"
-    >
-      <div className="flex items-center gap-3">
-        {icon}
-        <div>
-          <p className="text-sm font-600 text-foreground">{label}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-    </button>
   );
 }
 
