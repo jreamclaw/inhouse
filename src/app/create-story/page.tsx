@@ -10,9 +10,28 @@ import { toast } from 'sonner';
 
 type StoryMedia = {
   file: File;
-  preview: string;
+  preview: string | null;
   type: 'image' | 'video';
 };
+
+function detectStoryMediaType(file: File): 'image' | 'video' | null {
+  const mime = (file.type || '').toLowerCase();
+  const name = (file.name || '').toLowerCase();
+
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('image/')) return 'image';
+  if (/\.(mp4|mov|m4v|webm|avi)$/i.test(name)) return 'video';
+  if (/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(name)) return 'image';
+  return null;
+}
+
+function safeCreatePreviewUrl(file: File) {
+  try {
+    return URL.createObjectURL(file);
+  } catch {
+    return null;
+  }
+}
 
 export default function CreateStoryPage() {
   const router = useRouter();
@@ -25,6 +44,14 @@ export default function CreateStoryPage() {
   const [uploading, setUploading] = useState(false);
   const [storiesAvailable, setStoriesAvailable] = useState(true);
   const [checkingStories, setCheckingStories] = useState(true);
+
+  useEffect(() => {
+    return () => {
+      if (media?.preview) {
+        URL.revokeObjectURL(media.preview);
+      }
+    };
+  }, [media?.preview]);
 
   useEffect(() => {
     const verifyStories = async () => {
@@ -57,23 +84,32 @@ export default function CreateStoryPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isVideo = file.type.startsWith('video/');
-    const isImage = file.type.startsWith('image/');
+    const mediaType = detectStoryMediaType(file);
 
-    if (!isVideo && !isImage) {
+    if (!mediaType) {
       toast.error('Please select an image or video');
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
     if (file.size > 52428800) {
       toast.error('Story media must be under 50MB');
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
-    setMedia({
-      file,
-      preview: URL.createObjectURL(file),
-      type: isVideo ? 'video' : 'image',
+    const previewUrl = safeCreatePreviewUrl(file);
+
+    setMedia((current) => {
+      if (current?.preview) {
+        URL.revokeObjectURL(current.preview);
+      }
+
+      return {
+        file,
+        preview: previewUrl,
+        type: mediaType,
+      };
     });
 
     if (inputRef.current) inputRef.current.value = '';
@@ -160,7 +196,10 @@ export default function CreateStoryPage() {
         <div
           onClick={() => {
             if (!storiesAvailable || checkingStories) return;
-            inputRef.current?.click();
+            inputRef.current?.showPicker?.();
+            if (!inputRef.current?.showPicker) {
+              inputRef.current?.click();
+            }
           }}
           className={`relative rounded-2xl border-2 border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-4 transition-all duration-200 mb-6 p-6 ${storiesAvailable && !checkingStories ? 'cursor-pointer hover:border-primary/50 hover:bg-muted/50' : 'opacity-60 cursor-not-allowed'}`}
         >
@@ -172,22 +211,31 @@ export default function CreateStoryPage() {
             <p className="text-sm text-muted-foreground mt-1">One image or video per story</p>
             <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, GIF, WEBP, MP4, MOV, WEBM · Max 50MB</p>
           </div>
-          <input ref={inputRef} type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" disabled={!storiesAvailable || checkingStories} />
+          <input ref={inputRef} type="file" accept="image/*,video/*,.mov,.mp4,.m4v,.webm,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif" onChange={handleFileChange} className="hidden" disabled={!storiesAvailable || checkingStories} />
         </div>
 
         {media && (
           <div className="relative rounded-2xl overflow-hidden bg-muted mb-6 border border-border">
             <button
-              onClick={() => setMedia(null)}
+              onClick={() => setMedia((current) => {
+                if (current?.preview) {
+                  URL.revokeObjectURL(current.preview);
+                }
+                return null;
+              })}
               className="absolute top-3 right-3 z-10 w-8 h-8 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
               aria-label="Remove story media"
             >
               <X className="w-4 h-4 text-white" />
             </button>
             {media.type === 'video' ? (
-              <video src={media.preview} className="w-full max-h-[520px] object-cover bg-black" controls muted playsInline />
+              media.preview ? (
+                <video src={media.preview} className="w-full max-h-[520px] object-cover bg-black" controls muted playsInline preload="metadata" />
+              ) : (
+                <div className="w-full min-h-[280px] flex items-center justify-center bg-black text-white text-sm px-6 text-center">Video selected. Preview is unavailable on this device, but you can still post it.</div>
+              )
             ) : (
-              <img src={media.preview} alt="Story preview" className="w-full max-h-[520px] object-cover" />
+              media.preview ? <img src={media.preview} alt="Story preview" className="w-full max-h-[520px] object-cover" /> : <div className="w-full min-h-[280px] flex items-center justify-center bg-muted text-foreground text-sm px-6 text-center">Image selected. Preview unavailable on this device.</div>
             )}
             <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/60 text-white text-xs font-600 px-3 py-1.5 rounded-full">
               {media.type === 'video' ? <Video className="w-3.5 h-3.5" /> : <ImagePlus className="w-3.5 h-3.5" />}
