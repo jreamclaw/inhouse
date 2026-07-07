@@ -20,7 +20,8 @@ import {
   CheckCircle,
   ShieldCheck,
   Play,
-  Pin } from
+  Pin,
+  MoreHorizontal } from
 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +38,7 @@ import FollowListSheet, { type FollowListMode } from '@/components/social/Follow
 import { calculateTrustScore } from '@/lib/trust/score';
 import { getChefPublicLocationLabel } from '@/lib/location/display';
 import type { TrustCredentialShape } from '@/lib/trust/types';
+import ModerationActionsModal from '@/components/moderation/ModerationActionsModal';
 
 interface DbMeal {
   id: string;
@@ -507,6 +509,7 @@ function VendorProfileContent() {
   const [followLoading, setFollowLoading] = useState(false);
   const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
   const [hoursSheetOpen, setHoursSheetOpen] = useState(false);
+  const [showModerationModal, setShowModerationModal] = useState(false);
   const [activePublicTab, setActivePublicTab] = useState<'menu' | 'posts' | 'reviews' | 'about'>('menu');
   const [contentTab, setContentTab] = useState<'posts' | 'kitchen'>('posts');
   const [debugInfo, setDebugInfo] = useState({
@@ -1048,6 +1051,17 @@ function VendorProfileContent() {
                 </>
               }
             </button>
+            {!isOwnVendorProfile && vendor?.id ? (
+              <button
+                type="button"
+                onClick={() => setShowModerationModal(true)}
+                className="h-[42px] w-[42px] shrink-0 rounded-xl border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Safety actions"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
           </div>
         </div>
 
@@ -1404,9 +1418,8 @@ function VendorProfileContent() {
             </section>
           )}
         </div>
-      </div>
 
-      {vendor?.id && sheetMode && (
+        {vendor?.id && sheetMode && (
         <FollowListSheet
           open={!!sheetMode}
           onOpenChange={(open) => !open && setSheetMode(null)}
@@ -1472,44 +1485,56 @@ function VendorProfileContent() {
           </div>
         </div>
 
-      {customizingItem &&
-      <CustomizationModal
-        item={customizingItem}
-        modifierGroups={customizingItem.modifierGroups ?? []}
-        chefName={vendor.name}
-        chefAvatar={vendor.avatar}
-        existingCartItem={editingCartItem}
-        onConfirm={handleCustomizationConfirm}
-        onClose={() => {
-          setCustomizingItem(null);
-          setEditingCartItem(null);
-        }} />
+      {vendor?.id ? (
+        <ModerationActionsModal
+          isOpen={showModerationModal}
+          onClose={() => setShowModerationModal(false)}
+          targetUserId={vendor.id}
+          targetDisplayName={vendor.name}
+          targetUsername={vendor.username}
+        />
+      ) : null}
 
-      }
+      {customizingItem ? (
+        <CustomizationModal
+          item={customizingItem}
+          modifierGroups={customizingItem.modifierGroups ?? []}
+          chefName={vendor.name}
+          chefAvatar={vendor.avatar}
+          existingCartItem={editingCartItem}
+          onConfirm={handleCustomizationConfirm}
+          onClose={() => {
+            setCustomizingItem(null);
+            setEditingCartItem(null);
+          }}
+        />
+      ) : null}
 
-      {showCart &&
-      <CartDrawer
-        cart={cart}
-        modifierGroupsMap={modifierGroupsMap}
-        onEdit={handleEditCartItem}
-        onRemove={handleRemoveFromCart}
-        onClose={() => setShowCart(false)} />
-
-      }
-    </AppLayout>);
-
+      {showCart ? (
+        <CartDrawer
+          cart={cart}
+          modifierGroupsMap={modifierGroupsMap}
+          onEdit={handleEditCartItem}
+          onRemove={handleRemoveFromCart}
+          onClose={() => setShowCart(false)}
+        />
+      ) : null}
+    </AppLayout>
+  );
 }
 
 export default function VendorProfilePage() {
   return (
-    <Suspense fallback={
-    <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      </AppLayout>
-    }>
+    <Suspense
+      fallback={
+        <AppLayout>
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        </AppLayout>
+      }
+    >
       <VendorProfileContent />
-    </Suspense>);
-
+    </Suspense>
+  );
 }

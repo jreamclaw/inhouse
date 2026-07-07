@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ChefHat, Heart, Loader2, MapPin, Share2, ShoppingBag, Star, Clock, UserRound } from 'lucide-react';
+import { ArrowLeft, ChefHat, Heart, Loader2, MapPin, Share2, ShoppingBag, Star, Clock, UserRound, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '@/lib/supabase/client';
@@ -15,6 +15,7 @@ import ProfileStoryAvatar from '@/components/stories/ProfileStoryAvatar';
 import { calculateTrustScore } from '@/lib/trust/score';
 import type { TrustCredentialShape } from '@/lib/trust/types';
 import { getPublicLocationLabel } from '@/lib/location/display';
+import ModerationActionsModal from '@/components/moderation/ModerationActionsModal';
 
 interface PublicProfile {
   id: string;
@@ -129,6 +130,7 @@ export default function PublicProfilePage() {
   const [followLoading, setFollowLoading] = useState(false);
   const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
   const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
+  const [showModerationModal, setShowModerationModal] = useState(false);
 
   const isOwnProfile = !!user?.id && !!profileId && user.id === profileId;
 
@@ -432,13 +434,24 @@ export default function PublicProfilePage() {
           <Link href="/search" className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <button
-            onClick={() => toast.success('Profile link copied!')}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
-            aria-label="Share profile"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {!isOwnProfile ? (
+              <button
+                onClick={() => setShowModerationModal(true)}
+                className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+                aria-label="Safety actions"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            ) : null}
+            <button
+              onClick={() => toast.success('Profile link copied!')}
+              className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+              aria-label="Share profile"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="px-4">
@@ -652,7 +665,17 @@ export default function PublicProfilePage() {
             )}
           </div>
         </div>
-        {profile?.id && sheetMode && (
+        {profile ? (
+          <ModerationActionsModal
+            isOpen={showModerationModal}
+            onClose={() => setShowModerationModal(false)}
+            targetUserId={profile.id}
+            targetDisplayName={displayName}
+            targetUsername={profile.username}
+          />
+        ) : null}
+
+        {profile?.id && sheetMode ? (
           <FollowListSheet
             open={!!sheetMode}
             onOpenChange={(open) => !open && setSheetMode(null)}
@@ -667,7 +690,7 @@ export default function PublicProfilePage() {
               } : prev);
             }}
           />
-        )}
+        ) : null}
       </div>
     </AppLayout>
   );
