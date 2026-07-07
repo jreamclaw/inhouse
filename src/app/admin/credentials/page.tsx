@@ -43,7 +43,7 @@ export default function AdminCredentialReviewPage() {
     try {
       const userResult = await supabase.auth.getUser();
       const email = userResult.data.user?.email || '';
-      if (!['support@inhouseapp.net', 'admin@inhouseapp.net'].includes(email)) {
+      if (!['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes(email)) {
         setAccessDenied('Admin access only.');
         setLoading(false);
         return;

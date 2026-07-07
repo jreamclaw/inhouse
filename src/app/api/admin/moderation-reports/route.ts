@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 function isAdminEmail(email?: string | null) {
-  return ['support@inhouseapp.net', 'admin@inhouseapp.net'].includes(email || '');
+  return ['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes(email || '');
 }
 
 async function getSupabase() {
