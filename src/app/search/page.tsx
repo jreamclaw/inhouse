@@ -74,10 +74,7 @@ export default function SearchPage() {
         .or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
         .limit(20);
 
-      const filtered = ((data || []) as SearchUser[]).filter((person) => {
-        if (person.id === user?.id || blockedUserIds.has(person.id)) return false;
-        return true;
-      });
+      const filtered = ((data || []) as SearchUser[]).filter((person) => person.id !== user?.id && !blockedUserIds.has(person.id));
 
       if (error) throw error;
       setResults(filtered);
