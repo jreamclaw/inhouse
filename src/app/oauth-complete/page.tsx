@@ -38,7 +38,7 @@ export default function OAuthCompletePage() {
 
       let { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('role, onboarding_complete, vendor_onboarding_complete')
+        .select('role, onboarding_complete, vendor_onboarding_complete, terms_accepted_at, privacy_accepted_at')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -61,7 +61,7 @@ export default function OAuthCompletePage() {
             vendor_onboarding_complete: false,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' })
-          .select('role, onboarding_complete, vendor_onboarding_complete')
+          .select('role, onboarding_complete, vendor_onboarding_complete, terms_accepted_at, privacy_accepted_at')
           .maybeSingle();
 
         if (bootstrapResult.error) {
@@ -73,7 +73,16 @@ export default function OAuthCompletePage() {
           role: null,
           onboarding_complete: false,
           vendor_onboarding_complete: false,
+          terms_accepted_at: null,
+          privacy_accepted_at: null,
         };
+      }
+
+      const needsLegalAcceptance = !profile?.terms_accepted_at || !profile?.privacy_accepted_at;
+
+      if (needsLegalAcceptance) {
+        window.location.assign('/oauth-legal');
+        return;
       }
 
       const { destination, reason } = resolvePostLoginRoute(profile);
