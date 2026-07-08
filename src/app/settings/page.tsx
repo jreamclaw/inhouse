@@ -32,10 +32,7 @@ interface UserSettings {
   notif_post_likes: boolean;
   notif_comments: boolean;
   notif_order_updates: boolean;
-  notif_promotions: boolean;
-  privacy_public_profile: boolean;
   privacy_show_location: boolean;
-  privacy_show_activity: boolean;
 }
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -43,10 +40,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   notif_post_likes: true,
   notif_comments: true,
   notif_order_updates: true,
-  notif_promotions: false,
-  privacy_public_profile: true,
   privacy_show_location: true,
-  privacy_show_activity: true,
 };
 
 function ToggleSwitch({
@@ -114,10 +108,7 @@ export default function SettingsPage() {
           notif_post_likes: data.notif_post_likes ?? true,
           notif_comments: data.notif_comments ?? true,
           notif_order_updates: data.notif_order_updates ?? true,
-          notif_promotions: data.notif_promotions ?? false,
-          privacy_public_profile: data.privacy_public_profile ?? true,
           privacy_show_location: data.privacy_show_location ?? true,
-          privacy_show_activity: data.privacy_show_activity ?? true,
         });
       }
     } catch {
@@ -270,13 +261,6 @@ export default function SettingsPage() {
                   checked={settings.notif_order_updates}
                   onChange={(v) => updateSetting('notif_order_updates', v)}
                 />
-                <SettingRow
-                  icon={<Tag className="w-4 h-4 text-purple-500" />}
-                  label="Promotions & Deals"
-                  description="Special offers from chefs you follow"
-                  checked={settings.notif_promotions}
-                  onChange={(v) => updateSetting('notif_promotions', v)}
-                />
               </div>
             </div>
 
@@ -288,25 +272,11 @@ export default function SettingsPage() {
               </div>
               <div className="bg-muted/40 rounded-2xl border border-border/60 overflow-hidden divide-y divide-border/60">
                 <SettingRow
-                  icon={<Eye className="w-4 h-4 text-blue-500" />}
-                  label="Public Profile"
-                  description="Anyone can view your profile"
-                  checked={settings.privacy_public_profile}
-                  onChange={(v) => updateSetting('privacy_public_profile', v)}
-                />
-                <SettingRow
                   icon={<MapPin className="w-4 h-4 text-green-500" />}
                   label="Show Location"
-                  description="Display your location on your profile"
+                  description="Display your city and state on your profile"
                   checked={settings.privacy_show_location}
                   onChange={(v) => updateSetting('privacy_show_location', v)}
-                />
-                <SettingRow
-                  icon={<Activity className="w-4 h-4 text-orange-500" />}
-                  label="Activity Status"
-                  description="Show when you were last active"
-                  checked={settings.privacy_show_activity}
-                  onChange={(v) => updateSetting('privacy_show_activity', v)}
                 />
               </div>
             </div>
