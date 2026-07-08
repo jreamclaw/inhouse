@@ -788,7 +788,7 @@ export default function ProfileTabs() {
                 <button
                   key={post.id}
                   onClick={() => openPostViewer(post)}
-                  className="relative aspect-square overflow-hidden bg-black group"
+                  className="relative aspect-square overflow-hidden bg-muted group"
                   aria-label={`View post: ${post.caption || 'Post'}`}
                 >
                   {coverMedia.media_type === 'video' ? (
