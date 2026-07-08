@@ -76,8 +76,7 @@ export default function SearchPage() {
 
       const filtered = ((data || []) as SearchUser[]).filter((person) => {
         if (person.id === user?.id || blockedUserIds.has(person.id)) return false;
-        if (person.role === 'chef' && person.vendor_onboarding_complete) return true;
-        return person.privacy_public_profile !== false;
+        return true;
       });
 
       if (error) throw error;
