@@ -139,7 +139,7 @@ export default function SearchPage() {
                     </div>
                     {person.username && <p className="text-xs text-muted-foreground mt-0.5">@{person.username}</p>}
                     {person.bio && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{person.bio}</p>}
-                    {(person.role !== 'chef' || !person.vendor_onboarding_complete) && <p className="text-[11px] text-muted-foreground mt-2">Public customer profiles are coming next.</p>}
+                    {(person.role !== 'chef' || !person.vendor_onboarding_complete) && <p className="text-[11px] text-muted-foreground mt-2">Customer profile</p>}
                   </div>
                 </div>
               );
@@ -148,7 +148,12 @@ export default function SearchPage() {
               const href = isRealChef ? `/vendor-profile?id=${person.id}` : `/profile/${person.id}`;
 
               return (
-                <Link key={person.id} href={href} className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all">
+                <Link
+                  key={person.id}
+                  href={href}
+                  prefetch={false}
+                  className="block rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all"
+                >
                   {cardInner}
                 </Link>
               );
