@@ -23,7 +23,7 @@ const BASE_NAV_ITEMS = [
   { href: '/profile-screen', icon: 'UserCircleIcon', label: 'Profile' },
 ] as const;
 
-const PUBLIC_LAYOUT_ROUTES = ['/nearby', '/search', '/vendor-profile'];
+const PUBLIC_LAYOUT_ROUTES = ['/nearby', '/search', '/vendor-profile', '/profile'];
 
 export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   const pathname = usePathname();
