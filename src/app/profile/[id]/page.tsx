@@ -119,6 +119,8 @@ function getChefOpenState(hoursText?: string | null, availabilityOverride?: 'ope
   return { label: 'Closed now', isOpen: false };
 }
 
+const ALWAYS_PUBLIC_PROFILE_EMAILS = ['inhouseappadmin@gmail.com'];
+
 export default function PublicProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -161,7 +163,7 @@ export default function PublicProfilePage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, privacy_public_profile, followers_count, following_count')
+        .select('id, email, full_name, username, avatar_url, cover_url, bio, location, role, privacy_public_profile, followers_count, following_count')
         .eq('id', profileId)
         .maybeSingle();
 
@@ -175,8 +177,9 @@ export default function PublicProfilePage() {
         return;
       }
 
-      const nextProfile = data as PublicProfile;
-      const isPrivateCustomerProfile = nextProfile.role !== 'chef' && nextProfile.privacy_public_profile === false;
+      const nextProfile = data as PublicProfile & { email?: string | null };
+      const isAlwaysPublicProfile = ALWAYS_PUBLIC_PROFILE_EMAILS.includes((nextProfile.email || '').toLowerCase());
+      const isPrivateCustomerProfile = nextProfile.role !== 'chef' && nextProfile.privacy_public_profile === false && !isAlwaysPublicProfile;
 
       if (nextProfile.role === 'chef') {
         const { data: chefExtras } = await supabase
