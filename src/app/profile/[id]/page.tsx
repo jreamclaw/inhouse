@@ -3,19 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ChefHat, Heart, Loader2, MapPin, Share2, ShoppingBag, Star, Clock, UserRound, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, ChefHat, Heart, Loader2, MapPin, Share2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import TrustBadgeRow from '@/components/trust/TrustBadgeRow';
-import TrustVerificationSection from '@/components/trust/TrustVerificationSection';
-import FollowListSheet, { type FollowListMode } from '@/components/social/FollowListSheet';
-import ProfileStoryAvatar from '@/components/stories/ProfileStoryAvatar';
-import { calculateTrustScore } from '@/lib/trust/score';
-import type { TrustCredentialShape } from '@/lib/trust/types';
-import { getPublicLocationLabel } from '@/lib/location/display';
-import ModerationActionsModal from '@/components/moderation/ModerationActionsModal';
 
 interface PublicProfile {
   id: string;
@@ -26,25 +18,11 @@ interface PublicProfile {
   bio: string | null;
   location: string | null;
   role: 'chef' | 'customer' | null;
-  privacy_public_profile?: boolean | null;
   followers_count: number | null;
   following_count: number | null;
-  business_hours?: string | null;
-  availability_override?: 'open' | 'closed' | null;
-  email_verified?: boolean | null;
-  phone_verified?: boolean | null;
-  identity_verified?: boolean | null;
-  is_verified?: boolean | null;
-  is_certified?: boolean | null;
-  is_licensed?: boolean | null;
-  is_top_rated?: boolean | null;
-  is_pro_chef?: boolean | null;
-  trust_score?: number | null;
-  trust_label?: string | null;
-  rating_avg?: number | null;
-  rating_count?: number | null;
-  completed_orders?: number | null;
-  complaints_count?: number | null;
+  privacy_show_location?: boolean | null;
+  privacy_public_profile?: boolean | null;
+  privacy_show_activity?: boolean | null;
 }
 
 interface PublicPost {
@@ -55,27 +33,6 @@ interface PublicPost {
   created_at: string;
   likes_count?: number | null;
   comments_count?: number | null;
-  post_media?: Array<{
-    media_url: string | null;
-    media_type: string | null;
-    sort_order?: number | null;
-  }>;
-  tagged_users?: Array<{
-    id: string;
-    full_name: string | null;
-    username: string | null;
-    role?: 'chef' | 'customer' | null;
-  }>;
-}
-
-interface PublicMeal {
-  id: string;
-  title: string;
-  description: string | null;
-  price: number;
-  image_url: string | null;
-  category: string | null;
-  available: boolean;
 }
 
 async function syncFollowerCounts(supabase: ReturnType<typeof createClient>, followerId: string, followingId: string) {
@@ -90,37 +47,6 @@ async function syncFollowerCounts(supabase: ReturnType<typeof createClient>, fol
   ]);
 }
 
-function getChefOpenState(hoursText?: string | null, availabilityOverride?: 'open' | 'closed' | null) {
-  if (availabilityOverride === 'open') return { label: 'Open now', isOpen: true };
-  if (availabilityOverride === 'closed') return { label: 'Closed manually', isOpen: false };
-  if (!hoursText || hoursText.toLowerCase().includes('closed all week')) return { label: 'Closed now', isOpen: false };
-
-  const [daysPart = '', timePart = ''] = hoursText.split('•').map((part) => part.trim());
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-  const openDays = daysPart.split(',').map((part) => part.trim()).filter(Boolean);
-
-  if (!openDays.includes(today)) return { label: 'Closed today', isOpen: false };
-
-  const timeMatch = timePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
-  if (!timeMatch) return { label: 'Open today', isOpen: true };
-
-  const toMinutes = (value: string) => {
-    const [hours, minutes] = value.split(':').map(Number);
-    return hours * 60 + minutes;
-  };
-
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const openMinutes = toMinutes(timeMatch[1]);
-  const closeMinutes = toMinutes(timeMatch[2]);
-
-  if (nowMinutes >= openMinutes && nowMinutes < closeMinutes) return { label: 'Open now', isOpen: true };
-  if (nowMinutes < openMinutes) return { label: `Opens at ${timeMatch[1]}`, isOpen: false };
-  return { label: 'Closed now', isOpen: false };
-}
-
-const ALWAYS_PUBLIC_PROFILE_USERNAMES = ['inhouseadmin'];
-
 export default function PublicProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -130,16 +56,10 @@ export default function PublicProfilePage() {
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<PublicPost[]>([]);
-  const [meals, setMeals] = useState<PublicMeal[]>([]);
-  const [credentials, setCredentials] = useState<TrustCredentialShape[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  const [canViewPrivateContent, setCanViewPrivateContent] = useState(false);
-  const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
-  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
-  const [showModerationModal, setShowModerationModal] = useState(false);
 
   const isOwnProfile = !!user?.id && !!profileId && user.id === profileId;
 
@@ -148,22 +68,16 @@ export default function PublicProfilePage() {
     void loadProfile();
   }, [profileId, user?.id]);
 
-  useEffect(() => {
-    if (!redirectTarget) return;
-    router.replace(redirectTarget);
-  }, [redirectTarget, router]);
-
   const loadProfile = async () => {
     if (!profileId) return;
 
     setLoading(true);
     setNotFound(false);
-    setRedirectTarget(null);
 
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, privacy_public_profile, followers_count, following_count')
+        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count, privacy_show_location, privacy_public_profile, privacy_show_activity')
         .eq('id', profileId)
         .maybeSingle();
 
@@ -172,166 +86,66 @@ export default function PublicProfilePage() {
         setProfile(null);
         setNotFound(true);
         setPosts([]);
-        setMeals([]);
-        setCredentials([]);
         return;
       }
 
       const nextProfile = data as PublicProfile;
-      const isAlwaysPublicProfile = ALWAYS_PUBLIC_PROFILE_USERNAMES.includes((nextProfile.username || '').toLowerCase());
-      const isPrivateCustomerProfile = nextProfile.role !== 'chef' && nextProfile.privacy_public_profile === false && !isAlwaysPublicProfile;
-
-      if (nextProfile.role === 'chef') {
-        const { data: chefExtras } = await supabase
-          .from('user_profiles')
-          .select('business_hours, availability_override, email_verified, phone_verified, identity_verified, is_verified, is_certified, is_licensed, is_top_rated, is_pro_chef, trust_score, trust_label, rating_avg, rating_count, completed_orders, complaints_count')
-          .eq('id', profileId)
-          .maybeSingle();
-
-        if (chefExtras) {
-          Object.assign(nextProfile, chefExtras);
-        }
-      }
 
       if (isOwnProfile) {
-        setRedirectTarget('/profile-screen');
+        router.replace('/profile-screen');
+        return;
+      }
+
+      if (nextProfile.role === 'chef') {
+        router.replace(`/vendor-profile?id=${nextProfile.id}`);
         return;
       }
 
       setProfile(nextProfile);
 
-      let viewerIsFollowing = false;
+      if (nextProfile.privacy_public_profile === false) {
+        setPosts([]);
+      } else {
+        await loadPosts(nextProfile.id, nextProfile.privacy_show_activity !== false);
+      }
+
       if (user?.id) {
-        viewerIsFollowing = await loadFollowState(nextProfile.id);
+        await loadFollowState(nextProfile.id);
       } else {
         setIsFollowing(false);
       }
-
-      const allowPrivateContent = !isPrivateCustomerProfile || isOwnProfile || viewerIsFollowing;
-      setCanViewPrivateContent(allowPrivateContent);
-
-      await Promise.all([
-        allowPrivateContent ? loadPosts(nextProfile.id) : Promise.resolve(setPosts([])),
-        nextProfile.role === 'chef' ? loadMeals(nextProfile.id) : Promise.resolve(),
-        nextProfile.role === 'chef' ? loadCredentials(nextProfile.id) : Promise.resolve(),
-      ]);
     } catch {
       setProfile(null);
       setPosts([]);
-      setMeals([]);
-      setCredentials([]);
       setNotFound(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPosts = async (targetId: string) => {
+  const loadPosts = async (targetId: string, canShowPosts: boolean) => {
+    if (!canShowPosts) {
+      setPosts([]);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select(`
-          id,
-          caption,
-          media_url,
-          media_type,
-          created_at,
-          likes_count,
-          comments_count,
-          post_media (
-            media_url,
-            media_type,
-            sort_order
-          )
-        `)
+        .select('id, caption, media_url, media_type, created_at, likes_count, comments_count')
         .eq('user_id', targetId)
         .order('created_at', { ascending: false })
         .limit(12);
 
       if (error) throw error;
-
-      const posts = (data || []) as PublicPost[];
-      if (!posts.length) {
-        setPosts([]);
-        return;
-      }
-
-      let tagsByPostId = new Map<string, Array<{ id: string; full_name: string | null; username: string | null; role?: 'chef' | 'customer' | null }>>();
-      try {
-        const { data: tagRows } = await supabase
-          .from('post_tags')
-          .select(`
-            post_id,
-            tagged_profile:tagged_user_id (
-              id,
-              full_name,
-              username,
-              role
-            )
-          `)
-          .in('post_id', posts.map((post) => post.id));
-
-        if (Array.isArray(tagRows)) {
-          tagsByPostId = tagRows.reduce((map, row: any) => {
-            const tagged = Array.isArray(row.tagged_profile) ? row.tagged_profile[0] : row.tagged_profile;
-            if (!tagged?.id) return map;
-            const existing = map.get(row.post_id) || [];
-            existing.push({ id: tagged.id, full_name: tagged.full_name || null, username: tagged.username || null, role: tagged.role || null });
-            map.set(row.post_id, existing);
-            return map;
-          }, new Map<string, Array<{ id: string; full_name: string | null; username: string | null; role?: 'chef' | 'customer' | null }>>());
-        }
-      } catch {
-        // keep posts visible if tag lookup fails
-      }
-
-      setPosts(posts.map((post: any) => ({
-        ...post,
-        media_url: post.media_url || post.post_media?.[0]?.media_url || null,
-        media_type: post.media_type || post.post_media?.[0]?.media_type || null,
-        tagged_users: tagsByPostId.get(post.id) || [],
-      })));
+      setPosts((data || []) as PublicPost[]);
     } catch {
       setPosts([]);
     }
   };
 
-  const loadMeals = async (targetId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('meals')
-        .select('id, title, description, price, image_url, category, available')
-        .eq('chef_id', targetId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setMeals((data || []) as PublicMeal[]);
-    } catch {
-      setMeals([]);
-    }
-  };
-
-  const loadCredentials = async (targetId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('chef_credentials')
-        .select('id, credential_type, title, issued_by, expiration_date, status')
-        .eq('chef_id', targetId)
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCredentials((data || []) as TrustCredentialShape[]);
-    } catch {
-      setCredentials([]);
-    }
-  };
-
   const loadFollowState = async (targetId: string) => {
-    if (!user?.id) {
-      setIsFollowing(false);
-      return false;
-    }
+    if (!user?.id) return;
     try {
       const { data } = await supabase
         .from('user_follows')
@@ -340,12 +154,9 @@ export default function PublicProfilePage() {
         .eq('following_id', targetId)
         .maybeSingle();
 
-      const following = !!data;
-      setIsFollowing(following);
-      return following;
+      setIsFollowing(!!data);
     } catch {
       setIsFollowing(false);
-      return false;
     }
   };
 
@@ -369,10 +180,6 @@ export default function PublicProfilePage() {
 
         if (error) throw error;
         setIsFollowing(false);
-        if (profile.privacy_public_profile === false && profile.role !== 'chef') {
-          setCanViewPrivateContent(false);
-          setPosts([]);
-        }
         toast(`Unfollowed ${profile.full_name || profile.username || 'user'}`, { duration: 2000 });
       } else {
         const { error } = await supabase
@@ -400,10 +207,6 @@ export default function PublicProfilePage() {
         }
 
         setIsFollowing(true);
-        if (profile.privacy_public_profile === false && profile.role !== 'chef') {
-          setCanViewPrivateContent(true);
-          await loadPosts(profile.id);
-        }
         toast.success(`Following ${profile.full_name || profile.username || 'user'}!`);
       }
 
@@ -418,7 +221,7 @@ export default function PublicProfilePage() {
 
   const initials = useMemo(() => (profile?.full_name || profile?.username || 'U').charAt(0).toUpperCase(), [profile?.full_name, profile?.username]);
 
-  if (loading || redirectTarget) {
+  if (loading) {
     return (
       <AppLayout>
         <div className="min-h-screen flex items-center justify-center">
@@ -447,26 +250,8 @@ export default function PublicProfilePage() {
   }
 
   const displayName = profile.full_name || profile.username || 'User';
-  const isChef = profile.role === 'chef';
-  const locationLabel = isChef ? (profile.location || 'Location unavailable') : (getPublicLocationLabel(profile.location) || 'Location unavailable');
-  const chefOpenState = getChefOpenState(profile.business_hours, profile.availability_override);
-  const trustScore = isChef
-    ? calculateTrustScore(
-        {
-          avatar_url: profile.avatar_url,
-          bio: profile.bio,
-          email_verified: profile.email_verified ?? false,
-          phone_verified: profile.phone_verified ?? false,
-          identity_verified: profile.identity_verified ?? false,
-          completed_orders: profile.completed_orders ?? 0,
-          complaints_count: profile.complaints_count ?? 0,
-          rating_avg: profile.rating_avg ?? 0,
-          rating_count: profile.rating_count ?? 0,
-        },
-        credentials,
-        meals.filter((meal) => !!meal.image_url).length,
-      )
-    : null;
+  const locationLabel = profile.privacy_show_location === false ? 'Location private' : (profile.location || 'Location unavailable');
+  const canShowPosts = profile.privacy_public_profile !== false && profile.privacy_show_activity !== false;
 
   return (
     <AppLayout>
@@ -481,55 +266,33 @@ export default function PublicProfilePage() {
           <Link href="/search" className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="absolute top-4 right-4 flex items-center gap-2">
-            {!isOwnProfile ? (
-              <button
-                onClick={() => setShowModerationModal(true)}
-                className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
-                aria-label="Safety actions"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            ) : null}
-            <button
-              onClick={() => toast.success('Profile link copied!')}
-              className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
-              aria-label="Share profile"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={() => toast.success('Profile link copied!')}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
+            aria-label="Share profile"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="px-4">
           <div className="-mt-10 relative z-10 mb-4 flex items-end gap-4">
-            <ProfileStoryAvatar
-              userId={profile.id}
-              displayName={displayName}
-              avatarUrl={profile.avatar_url || null}
-              sizeClassName="w-20 h-20"
-              ringClassName="p-[3px]"
-              innerClassName="ring-[2px] ring-card"
-              roundedClassName="rounded-3xl"
-              borderClassName="border-4 border-card bg-card shadow-lg overflow-hidden"
-              fallbackClassName="bg-card"
-              fallbackTextClassName="text-2xl font-700 text-foreground"
-            />
-            <div className={`grid gap-3 flex-1 ${isChef ? 'grid-cols-3' : 'grid-cols-2'}`}>
-              <button onClick={() => setSheetMode('followers')} className="rounded-2xl bg-card border border-border px-4 py-3 text-center hover:bg-muted/40 transition-colors">
+            <div className="w-20 h-20 rounded-3xl overflow-hidden border-4 border-card bg-card shadow-lg flex items-center justify-center">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-700 text-foreground">{initials}</span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3 flex-1">
+              <div className="rounded-2xl bg-card border border-border px-4 py-3 text-center">
                 <p className="text-lg font-700 text-foreground">{profile.followers_count ?? 0}</p>
                 <p className="text-[11px] text-muted-foreground">Followers</p>
-              </button>
-              <button onClick={() => setSheetMode('following')} className="rounded-2xl bg-card border border-border px-4 py-3 text-center hover:bg-muted/40 transition-colors">
+              </div>
+              <div className="rounded-2xl bg-card border border-border px-4 py-3 text-center">
                 <p className="text-lg font-700 text-foreground">{profile.following_count ?? 0}</p>
                 <p className="text-[11px] text-muted-foreground">Following</p>
-              </button>
-              {isChef && (
-                <div className="rounded-2xl bg-card border border-border px-4 py-3 text-center">
-                  <p className="text-lg font-700 text-foreground">{meals.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Menu</p>
-                </div>
-              )}
+              </div>
             </div>
           </div>
 
@@ -537,41 +300,12 @@ export default function PublicProfilePage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-700 text-foreground">{displayName}</h1>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${isChef ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground'}`}>
-                  {isChef ? <ChefHat className="w-3 h-3" /> : <UserRound className="w-3 h-3" />}
-                  {isChef ? 'Chef' : 'User'}
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${profile.role === 'chef' ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground'}`}>
+                  {profile.role === 'chef' ? <ChefHat className="w-3 h-3" /> : <UserRound className="w-3 h-3" />}
+                  {profile.role === 'chef' ? 'Chef' : 'User'}
                 </span>
               </div>
               {profile.username && <p className="text-sm text-muted-foreground mt-1">@{profile.username}</p>}
-              {isChef && trustScore ? (
-                <div className="mt-3 space-y-3">
-                  <TrustBadgeRow badges={trustScore.badges} compact showLocked profile={{
-                    avatar_url: profile.avatar_url,
-                    bio: profile.bio,
-                    email_verified: profile.email_verified ?? false,
-                    phone_verified: profile.phone_verified ?? false,
-                    identity_verified: profile.identity_verified ?? false,
-                    completed_orders: profile.completed_orders ?? 0,
-                    complaints_count: profile.complaints_count ?? 0,
-                    rating_avg: profile.rating_avg ?? 0,
-                    rating_count: profile.rating_count ?? 0,
-                  }} credentials={credentials} limit={3} />
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 ${chefOpenState.isOpen ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
-                      <Clock className="w-3.5 h-3.5" />
-                      {chefOpenState.label}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 bg-muted text-muted-foreground">
-                      <Star className="w-3.5 h-3.5" />
-                      {(profile.rating_avg ?? 0).toFixed(1)} · {profile.rating_count ?? 0} reviews
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 bg-muted text-muted-foreground">
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      {meals.length} menu items
-                    </span>
-                  </div>
-                </div>
-              ) : null}
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -593,87 +327,17 @@ export default function PublicProfilePage() {
             )}
           </div>
 
-          {isChef && trustScore ? (
-            <div className="mt-4">
-              <TrustVerificationSection
-                score={trustScore}
-                credentials={credentials}
-                canManage={false}
-                profile={{
-                  avatar_url: profile.avatar_url,
-                  bio: profile.bio,
-                  email_verified: profile.email_verified ?? false,
-                  phone_verified: profile.phone_verified ?? false,
-                  identity_verified: profile.identity_verified ?? false,
-                  completed_orders: profile.completed_orders ?? 0,
-                  complaints_count: profile.complaints_count ?? 0,
-                  rating_avg: profile.rating_avg ?? 0,
-                  rating_count: profile.rating_count ?? 0,
-                }}
-              />
-            </div>
-          ) : null}
-
-          {isChef && (
-            <div className="mt-4 rounded-3xl border border-border bg-card p-5">
-              <div className="mb-4">
-                <h2 className="text-base font-700 text-foreground">Menu</h2>
-                <p className="text-sm text-muted-foreground mt-1">Browse this chef&apos;s live menu and tap their business profile to order.</p>
-              </div>
-
-              {meals.length === 0 ? (
-                <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
-                  No menu items yet.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {meals.map((meal) => (
-                    <div key={meal.id} className="rounded-2xl border border-border p-3 flex gap-3">
-                      <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted shrink-0">
-                        {meal.image_url ? (
-                          <img src={meal.image_url} alt={meal.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">No image</div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-700 text-foreground">{meal.title}</p>
-                            {meal.category && <p className="text-xs text-muted-foreground mt-0.5">{meal.category}</p>}
-                          </div>
-                          <p className="text-sm font-700 text-foreground">${Number(meal.price).toFixed(2)}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{meal.description || 'No description yet.'}</p>
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <span className={`text-[11px] font-semibold ${meal.available ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                            {meal.available ? 'Available' : 'Sold out'}
-                          </span>
-                          <span className="text-xs font-semibold text-primary">
-                            {meal.available ? 'View menu' : 'View details'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="mt-4 rounded-3xl border border-border bg-card p-5">
             <div className="mb-4">
               <h2 className="text-base font-700 text-foreground">Posts</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                {profile.privacy_public_profile === false && !isChef && !canViewPrivateContent
-                  ? 'This account is private. Follow to view posts.'
-                  : `Recent public posts from this ${isChef ? 'chef' : 'user'}.`}
+                {canShowPosts ? 'Recent public posts from this user.' : 'This user keeps activity private.'}
               </p>
             </div>
 
-            {profile.privacy_public_profile === false && !isChef && !canViewPrivateContent ? (
+            {!canShowPosts ? (
               <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
-                This account is private. Follow to view posts.
+                Activity is private for this profile.
               </div>
             ) : posts.length === 0 ? (
               <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
@@ -693,18 +357,6 @@ export default function PublicProfilePage() {
                       </div>
                     ) : null}
                     <div className="p-4 space-y-2">
-                      {post.tagged_users && post.tagged_users.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {post.tagged_users.map((taggedUser: any) => {
-                            const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
-                            return (
-                              <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-600 text-primary hover:bg-primary/15 transition-colors">
-                                @{taggedUser.username || taggedUser.full_name || 'user'}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      ) : null}
                       <p className="text-sm text-foreground whitespace-pre-wrap">{post.caption || 'No caption'}</p>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>{new Date(post.created_at).toLocaleDateString()}</span>
@@ -718,32 +370,6 @@ export default function PublicProfilePage() {
             )}
           </div>
         </div>
-        {profile ? (
-          <ModerationActionsModal
-            isOpen={showModerationModal}
-            onClose={() => setShowModerationModal(false)}
-            targetUserId={profile.id}
-            targetDisplayName={displayName}
-            targetUsername={profile.username}
-          />
-        ) : null}
-
-        {profile?.id && sheetMode ? (
-          <FollowListSheet
-            open={!!sheetMode}
-            onOpenChange={(open) => !open && setSheetMode(null)}
-            targetUserId={profile.id}
-            mode={sheetMode}
-            title={sheetMode === 'followers' ? 'Followers' : 'Following'}
-            onCountsChange={(counts) => {
-              setProfile((prev) => prev ? {
-                ...prev,
-                followers_count: typeof counts.followers === 'number' ? counts.followers : prev.followers_count,
-                following_count: typeof counts.following === 'number' ? counts.following : prev.following_count,
-              } : prev);
-            }}
-          />
-        ) : null}
       </div>
     </AppLayout>
   );
