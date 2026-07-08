@@ -345,6 +345,19 @@ export default function SettingsPage() {
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button
+                  onClick={() => router.push('/blocked-users')}
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted/60 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <UserX className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-600 text-foreground">Blocked Users</p>
+                      <p className="text-xs text-muted-foreground">Review who you blocked and unblock anytime</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button
                   onClick={() => router.push('/support')}
                   className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted/60 transition-colors text-left"
                 >
