@@ -134,6 +134,7 @@ export default function PublicProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [canViewPrivateContent, setCanViewPrivateContent] = useState(false);
   const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
   const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
   const [showModerationModal, setShowModerationModal] = useState(false);
@@ -175,15 +176,7 @@ export default function PublicProfilePage() {
       }
 
       const nextProfile = data as PublicProfile;
-
-      if (nextProfile.role !== 'chef' && nextProfile.privacy_public_profile === false) {
-        setProfile(null);
-        setPosts([]);
-        setMeals([]);
-        setCredentials([]);
-        setNotFound(true);
-        return;
-      }
+      const isPrivateCustomerProfile = nextProfile.role !== 'chef' && nextProfile.privacy_public_profile === false;
 
       if (nextProfile.role === 'chef') {
         const { data: chefExtras } = await supabase
@@ -204,17 +197,21 @@ export default function PublicProfilePage() {
 
       setProfile(nextProfile);
 
-      await Promise.all([
-        loadPosts(nextProfile.id),
-        nextProfile.role === 'chef' ? loadMeals(nextProfile.id) : Promise.resolve(),
-        nextProfile.role === 'chef' ? loadCredentials(nextProfile.id) : Promise.resolve(),
-      ]);
-
+      let viewerIsFollowing = false;
       if (user?.id) {
-        await loadFollowState(nextProfile.id);
+        viewerIsFollowing = await loadFollowState(nextProfile.id);
       } else {
         setIsFollowing(false);
       }
+
+      const allowPrivateContent = !isPrivateCustomerProfile || isOwnProfile || viewerIsFollowing;
+      setCanViewPrivateContent(allowPrivateContent);
+
+      await Promise.all([
+        allowPrivateContent ? loadPosts(nextProfile.id) : Promise.resolve(setPosts([])),
+        nextProfile.role === 'chef' ? loadMeals(nextProfile.id) : Promise.resolve(),
+        nextProfile.role === 'chef' ? loadCredentials(nextProfile.id) : Promise.resolve(),
+      ]);
     } catch {
       setProfile(null);
       setPosts([]);
@@ -328,7 +325,10 @@ export default function PublicProfilePage() {
   };
 
   const loadFollowState = async (targetId: string) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setIsFollowing(false);
+      return false;
+    }
     try {
       const { data } = await supabase
         .from('user_follows')
@@ -337,9 +337,12 @@ export default function PublicProfilePage() {
         .eq('following_id', targetId)
         .maybeSingle();
 
-      setIsFollowing(!!data);
+      const following = !!data;
+      setIsFollowing(following);
+      return following;
     } catch {
       setIsFollowing(false);
+      return false;
     }
   };
 
@@ -363,6 +366,10 @@ export default function PublicProfilePage() {
 
         if (error) throw error;
         setIsFollowing(false);
+        if (profile.privacy_public_profile === false && profile.role !== 'chef') {
+          setCanViewPrivateContent(false);
+          setPosts([]);
+        }
         toast(`Unfollowed ${profile.full_name || profile.username || 'user'}`, { duration: 2000 });
       } else {
         const { error } = await supabase
@@ -390,6 +397,10 @@ export default function PublicProfilePage() {
         }
 
         setIsFollowing(true);
+        if (profile.privacy_public_profile === false && profile.role !== 'chef') {
+          setCanViewPrivateContent(true);
+          await loadPosts(profile.id);
+        }
         toast.success(`Following ${profile.full_name || profile.username || 'user'}!`);
       }
 
@@ -651,11 +662,17 @@ export default function PublicProfilePage() {
             <div className="mb-4">
               <h2 className="text-base font-700 text-foreground">Posts</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Recent public posts from this {isChef ? 'chef' : 'user'}.
+                {profile.privacy_public_profile === false && !isChef && !canViewPrivateContent
+                  ? 'This account is private. Follow to view posts.'
+                  : `Recent public posts from this ${isChef ? 'chef' : 'user'}.`}
               </p>
             </div>
 
-            {posts.length === 0 ? (
+            {profile.privacy_public_profile === false && !isChef && !canViewPrivateContent ? (
+              <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
+                This account is private. Follow to view posts.
+              </div>
+            ) : posts.length === 0 ? (
               <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
                 No public posts yet.
               </div>
