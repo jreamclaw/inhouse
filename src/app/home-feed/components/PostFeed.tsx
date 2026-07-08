@@ -326,6 +326,13 @@ function timeAgoFromDate(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function getUserProfileHref(userLike: { id?: string | null; role?: 'chef' | 'customer' | null; username?: string | null }) {
+  const username = (userLike.username || '').toLowerCase();
+  const shouldForceCustomerProfile = username === 'inhouseadmin';
+  const isChefProfile = userLike.role === 'chef' && !shouldForceCustomerProfile;
+  return isChefProfile ? `/vendor-profile?id=${userLike.id}` : `/profile/${userLike.id}`;
+}
+
 function dbPostToMockShape(p: DbPost): MockPost {
   const orderedMedia = (p.post_media || []).slice().sort((a, b) => a.sort_order - b.sort_order);
   return {
@@ -801,7 +808,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
         {Array.isArray((post as any).taggedUsers) && (post as any).taggedUsers.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {(post as any).taggedUsers.map((taggedUser: any) => {
-              const tagHref = taggedUser.role === 'chef' ? `/vendor-profile?id=${taggedUser.id}` : `/profile/${taggedUser.id}`;
+              const tagHref = getUserProfileHref(taggedUser);
               return (
                 <Link key={taggedUser.id} href={tagHref} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-600 text-primary hover:bg-primary/15 transition-colors">
                   @{taggedUser.username || taggedUser.full_name || 'user'}
@@ -812,7 +819,7 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
         )}
         <div className="mb-2 rounded-2xl bg-muted/45 px-3 py-2.5">
           <p className="text-[13px] text-foreground leading-relaxed font-medium">
-            <Link href={post.user.role === 'chef' ? `/vendor-profile?id=${post.user.id}` : `/profile/${post.user.id}`} className="font-extrabold hover:underline mr-1 tracking-snug">
+            <Link href={getUserProfileHref(post.user)} className="font-extrabold hover:underline mr-1 tracking-snug">
               {post.user.username}
             </Link>
             <span className="text-foreground font-semibold">{post.caption}</span>
@@ -863,7 +870,11 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
               <div className="space-y-3">
                 {comments.map((entry) => {
                   const commentProfileId = entry.user_profiles?.id || entry.user_id;
-                  const commentHref = entry.user_profiles?.role === 'chef' ? `/vendor-profile?id=${commentProfileId}` : `/profile/${commentProfileId}`;
+                  const commentHref = getUserProfileHref({
+                    id: commentProfileId,
+                    role: entry.user_profiles?.role || 'customer',
+                    username: entry.user_profiles?.username || null,
+                  });
                   return (
                     <div key={entry.id} className="flex items-start gap-2.5">
                       <Link href={commentHref} className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-border bg-muted flex items-center justify-center">
