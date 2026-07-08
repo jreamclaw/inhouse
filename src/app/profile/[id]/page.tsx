@@ -55,6 +55,11 @@ interface PublicPost {
   created_at: string;
   likes_count?: number | null;
   comments_count?: number | null;
+  post_media?: Array<{
+    media_url: string | null;
+    media_type: string | null;
+    sort_order?: number | null;
+  }>;
   tagged_users?: Array<{
     id: string;
     full_name: string | null;
@@ -225,7 +230,20 @@ export default function PublicProfilePage() {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('id, caption, media_url, media_type, created_at, likes_count, comments_count')
+        .select(`
+          id,
+          caption,
+          media_url,
+          media_type,
+          created_at,
+          likes_count,
+          comments_count,
+          post_media (
+            media_url,
+            media_type,
+            sort_order
+          )
+        `)
         .eq('user_id', targetId)
         .order('created_at', { ascending: false })
         .limit(12);
@@ -267,7 +285,12 @@ export default function PublicProfilePage() {
         // keep posts visible if tag lookup fails
       }
 
-      setPosts(posts.map((post) => ({ ...post, tagged_users: tagsByPostId.get(post.id) || [] })));
+      setPosts(posts.map((post: any) => ({
+        ...post,
+        media_url: post.media_url || post.post_media?.[0]?.media_url || null,
+        media_type: post.media_type || post.post_media?.[0]?.media_type || null,
+        tagged_users: tagsByPostId.get(post.id) || [],
+      })));
     } catch {
       setPosts([]);
     }
