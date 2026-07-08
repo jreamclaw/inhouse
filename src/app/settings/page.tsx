@@ -32,6 +32,7 @@ interface UserSettings {
   notif_post_likes: boolean;
   notif_comments: boolean;
   notif_order_updates: boolean;
+  privacy_public_profile: boolean;
   privacy_show_location: boolean;
 }
 
@@ -40,6 +41,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   notif_post_likes: true,
   notif_comments: true,
   notif_order_updates: true,
+  privacy_public_profile: true,
   privacy_show_location: true,
 };
 
@@ -108,6 +110,7 @@ export default function SettingsPage() {
           notif_post_likes: data.notif_post_likes ?? true,
           notif_comments: data.notif_comments ?? true,
           notif_order_updates: data.notif_order_updates ?? true,
+          privacy_public_profile: data.privacy_public_profile ?? true,
           privacy_show_location: data.privacy_show_location ?? true,
         });
       }
@@ -271,6 +274,13 @@ export default function SettingsPage() {
                 <h2 className="text-sm font-700 text-foreground">Privacy</h2>
               </div>
               <div className="bg-muted/40 rounded-2xl border border-border/60 overflow-hidden divide-y divide-border/60">
+                <SettingRow
+                  icon={<Eye className="w-4 h-4 text-blue-500" />}
+                  label="Public Profile"
+                  description="Let other users open your customer profile"
+                  checked={settings.privacy_public_profile}
+                  onChange={(v) => updateSetting('privacy_public_profile', v)}
+                />
                 <SettingRow
                   icon={<MapPin className="w-4 h-4 text-green-500" />}
                   label="Show Location"

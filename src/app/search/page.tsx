@@ -14,6 +14,7 @@ interface SearchUser {
   avatar_url: string | null;
   bio: string | null;
   role: 'chef' | 'customer' | null;
+  privacy_public_profile?: boolean | null;
   business_type?: 'personal_chef' | 'food_truck' | null;
   vendor_onboarding_complete?: boolean | null;
 }
@@ -69,11 +70,15 @@ export default function SearchPage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, bio, role, business_type, vendor_onboarding_complete')
+        .select('id, full_name, username, avatar_url, bio, role, privacy_public_profile, business_type, vendor_onboarding_complete')
         .or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
         .limit(20);
 
-      const filtered = ((data || []) as SearchUser[]).filter((person) => person.id !== user?.id && !blockedUserIds.has(person.id));
+      const filtered = ((data || []) as SearchUser[]).filter((person) => {
+        if (person.id === user?.id || blockedUserIds.has(person.id)) return false;
+        if (person.role === 'chef' && person.vendor_onboarding_complete) return true;
+        return person.privacy_public_profile !== false;
+      });
 
       if (error) throw error;
       setResults(filtered);
@@ -139,7 +144,7 @@ export default function SearchPage() {
                     </div>
                     {person.username && <p className="text-xs text-muted-foreground mt-0.5">@{person.username}</p>}
                     {person.bio && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{person.bio}</p>}
-                    {(person.role !== 'chef' || !person.vendor_onboarding_complete) && <p className="text-[11px] text-muted-foreground mt-2">Public customer profiles are coming next.</p>}
+                    {(person.role !== 'chef' || !person.vendor_onboarding_complete) && <p className="text-[11px] text-muted-foreground mt-2">Customer profile</p>}
                   </div>
                 </div>
               );

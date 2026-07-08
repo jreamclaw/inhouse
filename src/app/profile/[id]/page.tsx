@@ -26,6 +26,7 @@ interface PublicProfile {
   bio: string | null;
   location: string | null;
   role: 'chef' | 'customer' | null;
+  privacy_public_profile?: boolean | null;
   followers_count: number | null;
   following_count: number | null;
   business_hours?: string | null;
@@ -154,7 +155,7 @@ export default function PublicProfilePage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count')
+        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, privacy_public_profile, followers_count, following_count')
         .eq('id', profileId)
         .maybeSingle();
 
@@ -169,6 +170,15 @@ export default function PublicProfilePage() {
       }
 
       const nextProfile = data as PublicProfile;
+
+      if (nextProfile.role !== 'chef' && nextProfile.privacy_public_profile === false) {
+        setProfile(null);
+        setPosts([]);
+        setMeals([]);
+        setCredentials([]);
+        setNotFound(true);
+        return;
+      }
 
       if (nextProfile.role === 'chef') {
         const { data: chefExtras } = await supabase
