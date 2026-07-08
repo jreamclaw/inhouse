@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Icon from '@/components/ui/AppIcon';
-import { Bell, Sun, Moon, Search } from 'lucide-react';
+import { Bell, Sun, Moon, Search, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProfileCompletionBanner from '@/components/ProfileCompletionBanner';
 
@@ -105,6 +105,7 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || '';
   const roleLabel = profile?.role === 'chef' ? 'Chef' : profile?.role === 'customer' ? 'Customer' : '';
   const ordersHref = profile?.role === 'chef' ? '/chef-menu?section=orders' : '/profile-screen?tab=orders';
+  const isAdminUser = ['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes((user?.email || '').toLowerCase());
   const navItems = user ? [
     BASE_NAV_ITEMS[0],
     BASE_NAV_ITEMS[1],
@@ -130,13 +131,18 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
             <Link href="/search" className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Search people">
               <Search className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />
             </Link>
+            {isAdminUser ? (
+              <Link href="/admin/moderation" className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F7F7] dark:bg-white/5 transition-colors" aria-label="Admin moderation">
+                <Shield className="w-[18px] h-[18px] text-[#666666] dark:text-[#D1D5DB]" />
+              </Link>
+            ) : null}
           </div>
         </div>
       </header>
       <div className="flex flex-1 max-w-screen-2xl mx-auto w-full">
         <aside className="hidden lg:flex flex-col w-56 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] border-r border-[#E5E5E5] dark:border-white/15 py-5 px-3">
           <nav className="flex flex-col gap-0.5 flex-1">{navItems.map((item) => { const isActive = item.label === 'Orders' ? pathname === '/order-checkout-screen' || pathname === '/chef-menu' || pathname === '/profile-screen' : pathname === item.href; return <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] transition-all duration-200 group border border-transparent ${isActive ? 'bg-[#FFF4ED] text-[#F97316] font-semibold dark:bg-orange-500/15 dark:text-[#F97316]' : 'text-[#666666] dark:text-[#D1D5DB] font-medium hover:bg-[#F7F7F7] dark:bg-white/5 hover:text-[#111111] dark:text-white'}`}><Icon name={item.icon as any} size={18} variant={isActive ? 'solid' : 'outline'} className={isActive ? 'text-[#F97316]' : 'text-[#666666] dark:text-[#D1D5DB] group-hover:text-[#111111] dark:text-white'} /><span className="tracking-snug">{item.label}</span></Link>; })}</nav>
-          {user ? <div className="mt-auto pt-4 border-t border-[#E5E5E5] dark:border-white/15"><Link href="/profile-screen" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#F7F7F7] dark:bg-white/5 transition-all duration-200 group border border-[#E5E5E5] dark:border-white/15"><div className="w-7 h-7 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-white/15 group-hover:border-[#F97316] transition-colors bg-[#F7F7F7] dark:bg-white/5 flex items-center justify-center shrink-0">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-[10px] font-700 text-[#555555] dark:text-[#E5E7EB]">{displayName.charAt(0).toUpperCase()}</span>}</div><div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-[#111111] dark:text-white truncate tracking-snug">{displayName}</p>{roleLabel ? <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] truncate">{roleLabel}</p> : null}</div></Link></div> : null}
+          {user ? <div className="mt-auto pt-4 border-t border-[#E5E5E5] dark:border-white/15 space-y-2">{isAdminUser ? <Link href="/admin/moderation" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all duration-200 border border-primary/15"><Shield className="w-[18px] h-[18px]" /><div className="min-w-0"><p className="text-[13px] font-semibold truncate tracking-snug">Admin moderation</p><p className="text-[11px] text-primary/80 truncate">Review reports and safety actions</p></div></Link> : null}<Link href="/profile-screen" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#F7F7F7] dark:bg-white/5 transition-all duration-200 group border border-[#E5E5E5] dark:border-white/15"><div className="w-7 h-7 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-white/15 group-hover:border-[#F97316] transition-colors bg-[#F7F7F7] dark:bg-white/5 flex items-center justify-center shrink-0">{avatarUrl ? <img src={avatarUrl} alt={`${displayName} profile avatar`} className="w-full h-full object-cover" /> : <span className="text-[10px] font-700 text-[#555555] dark:text-[#E5E7EB]">{displayName.charAt(0).toUpperCase()}</span>}</div><div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-[#111111] dark:text-white truncate tracking-snug">{displayName}</p>{roleLabel ? <p className="text-[11px] text-[#777777] dark:text-[#CBD5E1] truncate">{roleLabel}</p> : null}</div></Link></div> : null}
         </aside>
         <main className="flex-1 min-w-0 pb-20 lg:pb-6"><ProfileCompletionBanner />{children}</main>
       </div>

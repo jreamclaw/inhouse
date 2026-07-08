@@ -632,6 +632,28 @@ export default function NearbyPage() {
           })}
         </div>
 
+        {!user ? (
+          <div className="mb-4 rounded-3xl border border-primary/15 bg-primary/5 px-4 py-4 sm:px-5 sm:py-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Browsing as guest</p>
+                <p className="text-sm text-muted-foreground">You can explore chefs now, search people, or sign in to post, order, report, and block.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link href="/search" className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-4 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
+                  Search people
+                </Link>
+                <Link href="/login" className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-4 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
+                  Sign in
+                </Link>
+                <Link href="/signup" className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 transition-colors">
+                  Create account
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="relative mb-3 mt-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
