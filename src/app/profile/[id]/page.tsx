@@ -77,7 +77,7 @@ export default function PublicProfilePage() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count, privacy_show_location, privacy_public_profile, privacy_show_activity')
+        .select('id, full_name, username, avatar_url, cover_url, bio, location, role, followers_count, following_count')
         .eq('id', profileId)
         .maybeSingle();
 
@@ -90,6 +90,28 @@ export default function PublicProfilePage() {
       }
 
       const nextProfile = data as PublicProfile;
+
+      try {
+        const { data: settingsData } = await supabase
+          .from('user_settings')
+          .select('privacy_show_location, privacy_public_profile, privacy_show_activity')
+          .eq('user_id', profileId)
+          .maybeSingle();
+
+        if (settingsData) {
+          nextProfile.privacy_show_location = settingsData.privacy_show_location ?? true;
+          nextProfile.privacy_public_profile = settingsData.privacy_public_profile ?? true;
+          nextProfile.privacy_show_activity = settingsData.privacy_show_activity ?? true;
+        } else {
+          nextProfile.privacy_show_location = true;
+          nextProfile.privacy_public_profile = true;
+          nextProfile.privacy_show_activity = true;
+        }
+      } catch {
+        nextProfile.privacy_show_location = true;
+        nextProfile.privacy_public_profile = true;
+        nextProfile.privacy_show_activity = true;
+      }
 
       if (isOwnProfile) {
         router.replace('/profile-screen');
