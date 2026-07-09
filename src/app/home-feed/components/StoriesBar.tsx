@@ -2,10 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, X, Heart, MessageCircle, Eye } from 'lucide-react';
+import { Plus, X, Heart, MessageCircle, Eye, MoreHorizontal, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import ReportContentModal from '@/components/moderation/ReportContentModal';
 
 type StoryRow = {
   id: string;
@@ -81,6 +82,7 @@ export default function StoriesBar() {
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [showStoryActions, setShowStoryActions] = useState(false);
   const [showStoryReportModal, setShowStoryReportModal] = useState(false);
+  const [isStoryVideoMuted, setIsStoryVideoMuted] = useState(true);
 
   const userAvatarUrl = profile?.avatar_url || null;
   const displayName = profile?.full_name || user?.email?.split('@')?.[0] || 'You';
@@ -252,6 +254,7 @@ export default function StoriesBar() {
     setShowRepliesSheet(false);
     setShowStoryActions(false);
     setShowStoryReportModal(false);
+    setIsStoryVideoMuted(true);
   };
 
   const currentStory = activeGroup?.stories?.[activeIndex] || null;
@@ -438,14 +441,25 @@ export default function StoriesBar() {
         <div className="fixed inset-0 z-[80] bg-black">
           <div className="absolute inset-0">
             {currentStory.media_type === 'video' ? (
-              <video
-                key={currentStory.id}
-                src={currentStory.media_url}
-                className="w-full h-full object-cover bg-black"
-                autoPlay
-                muted
-                playsInline
-              />
+              <>
+                <video
+                  key={currentStory.id}
+                  src={currentStory.media_url}
+                  className="w-full h-full object-cover bg-black"
+                  autoPlay
+                  muted={isStoryVideoMuted}
+                  playsInline
+                  controls={!isStoryVideoMuted}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsStoryVideoMuted((prev) => !prev)}
+                  className="absolute right-4 bottom-32 z-30 w-11 h-11 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center text-white"
+                  aria-label={isStoryVideoMuted ? 'Enable story sound' : 'Mute story sound'}
+                >
+                  {isStoryVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+              </>
             ) : (
               <img
                 src={currentStory.media_url}

@@ -17,7 +17,9 @@ import {
   Zap,
   Users,
   UserPlus,
-  X
+  X,
+  Volume2,
+  VolumeX
 } from
 'lucide-react';
 import { toast } from 'sonner';
@@ -405,9 +407,11 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
   const [isCartAnimating, setIsCartAnimating] = useState(false);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
 
   useEffect(() => {
     setMediaIndex(0);
+    setIsVideoMuted(true);
   }, [post.id]);
 
   useEffect(() => {
@@ -718,7 +722,17 @@ function PostCard({ post, mode, isFollowed, onFollowToggle, onDeletePost }: Post
       {/* Post Image */}
       <div className={`relative overflow-hidden mx-0 ${((post as any).mediaItems?.[mediaIndex]?.media_type === 'video') || (((post as any).mediaItems?.length || 0) > 1) ? 'aspect-square bg-muted' : 'bg-[#0f0f10]'}`}>
         {((post as any).mediaItems?.[mediaIndex]?.media_type === 'video') ?
-        <video src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} className="w-full h-full object-cover" autoPlay muted loop playsInline /> :
+        <>
+            <video src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} className="w-full h-full object-cover" autoPlay muted={isVideoMuted} loop playsInline controls={!isVideoMuted} />
+            <button
+              type="button"
+              onClick={() => setIsVideoMuted((prev) => !prev)}
+              className="absolute bottom-3 right-3 z-10 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm"
+              aria-label={isVideoMuted ? 'Enable video sound' : 'Mute video sound'}
+            >
+              {isVideoMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          </> :
         <div className={`${(((post as any).mediaItems?.length || 0) > 1) ? 'aspect-square' : 'max-h-[84vh] min-h-[340px] flex items-center justify-center bg-[#0f0f10]'}`}>
             <img src={(post as any).mediaItems?.[mediaIndex]?.media_url || post.image} alt={post.imageAlt} className={`${(((post as any).mediaItems?.length || 0) > 1) ? 'w-full h-full object-cover' : 'w-full h-auto max-h-[84vh] object-contain'}`} loading="lazy" />
           </div>
