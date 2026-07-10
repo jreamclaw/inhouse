@@ -1100,8 +1100,8 @@ function VendorProfileContent() {
           </div>
         </div>
 
-        <div className="px-4 -mt-14 pt-0 space-y-4">
-          <section className="rounded-3xl border border-border bg-card p-2">
+        <div className="px-4 -mt-20 pt-0 space-y-4 relative z-10">
+          <section className="rounded-3xl border border-border bg-card p-2 shadow-sm">
             <div className="grid grid-cols-4 gap-2">
               {[
                 { id: 'menu', label: 'Menu' },
