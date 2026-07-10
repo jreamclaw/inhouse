@@ -60,6 +60,7 @@ export default function PublicProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const isOwnProfile = !!user?.id && !!profileId && user.id === profileId;
 
@@ -73,6 +74,7 @@ export default function PublicProfilePage() {
 
     setLoading(true);
     setNotFound(false);
+    setIsBlocked(false);
 
     try {
       const { data, error } = await supabase
@@ -90,6 +92,24 @@ export default function PublicProfilePage() {
       }
 
       const nextProfile = data as PublicProfile;
+
+      if (user?.id) {
+        const { data: blockedRow, error: blockedError } = await supabase
+          .from('user_blocks')
+          .select('blocked_id')
+          .eq('blocker_id', user.id)
+          .eq('blocked_id', nextProfile.id)
+          .maybeSingle();
+
+        if (blockedError) throw blockedError;
+        if (blockedRow) {
+          setProfile(null);
+          setPosts([]);
+          setIsBlocked(true);
+          setNotFound(false);
+          return;
+        }
+      }
 
       try {
         const { data: settingsData } = await supabase
@@ -249,6 +269,22 @@ export default function PublicProfilePage() {
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading profile...
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isBlocked) {
+    return (
+      <AppLayout>
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          <Link href="/search" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline mb-6">
+            <ArrowLeft className="w-4 h-4" /> Back to search
+          </Link>
+          <div className="rounded-3xl border border-border bg-card p-6 text-center">
+            <p className="text-base font-700 text-foreground">User blocked</p>
+            <p className="text-sm text-muted-foreground mt-2">You blocked this user, so their profile is hidden.</p>
           </div>
         </div>
       </AppLayout>

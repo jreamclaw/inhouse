@@ -510,6 +510,7 @@ function VendorProfileContent() {
   const [sheetMode, setSheetMode] = useState<FollowListMode | null>(null);
   const [hoursSheetOpen, setHoursSheetOpen] = useState(false);
   const [showModerationModal, setShowModerationModal] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [activePublicTab, setActivePublicTab] = useState<'menu' | 'posts' | 'reviews' | 'about'>('menu');
   const [contentTab, setContentTab] = useState<'posts' | 'kitchen'>('posts');
   const [debugInfo, setDebugInfo] = useState({
@@ -558,6 +559,7 @@ function VendorProfileContent() {
   const loadVendor = async () => {
     setVendorLoading(true);
     setVendorNotFound(false);
+    setIsBlocked(false);
     try {
       const isUuid = /^[0-9a-fA-F-]{36}$/.test(vendorId);
       if (!isUuid) {
@@ -629,6 +631,23 @@ function VendorProfileContent() {
         setVendorOverride(null);
         setVendorNotFound(true);
         return;
+      }
+
+      if (user?.id && profile?.id) {
+        const { data: blockedRow, error: blockedError } = await supabase
+          .from('user_blocks')
+          .select('blocked_id')
+          .eq('blocker_id', user.id)
+          .eq('blocked_id', profile.id)
+          .maybeSingle();
+
+        if (blockedError) throw blockedError;
+        if (blockedRow) {
+          setVendorOverride(null);
+          setVendorNotFound(false);
+          setIsBlocked(true);
+          return;
+        }
       }
 
       const profileRole = (profile as DbVendorProfile & { role?: string | null }).role;
@@ -896,6 +915,22 @@ function VendorProfileContent() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isBlocked) {
+    return (
+      <AppLayout>
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          <Link href="/search" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline mb-6">
+            <ChevronLeft className="w-4 h-4" /> Back to search
+          </Link>
+          <div className="rounded-3xl border border-border bg-card p-6 text-center">
+            <p className="text-base font-700 text-foreground">User blocked</p>
+            <p className="text-sm text-muted-foreground mt-2">You blocked this user, so their profile is hidden.</p>
+          </div>
         </div>
       </AppLayout>
     );
