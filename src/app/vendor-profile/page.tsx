@@ -1100,7 +1100,7 @@ function VendorProfileContent() {
           </div>
         </div>
 
-        <div className="px-4 -mt-10 pt-0 space-y-4">
+        <div className="px-4 -mt-14 pt-0 space-y-4">
           <section className="rounded-3xl border border-border bg-card p-2">
             <div className="grid grid-cols-4 gap-2">
               {[
