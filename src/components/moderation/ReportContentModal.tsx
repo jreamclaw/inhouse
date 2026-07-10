@@ -66,6 +66,17 @@ export default function ReportContentModal({
       });
 
       if (error) throw error;
+
+      await fetch('/api/admin/moderation-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetType,
+          targetId,
+          reason: selectedReason,
+        }),
+      }).catch(() => null);
+
       toast.success(`${targetLabel} reported.`);
       setDetails('');
       onClose();

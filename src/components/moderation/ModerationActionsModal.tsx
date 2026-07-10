@@ -65,6 +65,16 @@ export default function ModerationActionsModal({
 
       if (error) throw error;
 
+      await fetch('/api/admin/moderation-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetType: 'user',
+          targetId: targetUserId,
+          reason: selectedReason,
+        }),
+      }).catch(() => null);
+
       toast.success(`Report submitted for ${targetLabel}.`);
       setDetails('');
       onClose();

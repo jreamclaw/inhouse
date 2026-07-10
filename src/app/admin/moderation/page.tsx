@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Loader2, ShieldAlert, XCircle } from 'luci
 import AppLayout from '@/components/AppLayout';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { isAdminEmail } from '@/lib/admin';
 
 interface ModerationReportRow {
   id: string;
@@ -56,7 +57,7 @@ export default function AdminModerationPage() {
     try {
       const userResult = await supabase.auth.getUser();
       const email = userResult.data.user?.email || '';
-      if (!['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes(email)) {
+      if (!isAdminEmail(email)) {
         setAccessDenied('Admin access only.');
         setLoading(false);
         return;

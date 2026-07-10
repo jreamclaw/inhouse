@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
-
-function isAdminEmail(email?: string | null) {
-  return ['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes(email || '');
-}
+import { isAdminEmail } from '@/lib/admin';
 
 async function getSupabase() {
   const cookieStore = await cookies();

@@ -9,6 +9,7 @@ import Icon from '@/components/ui/AppIcon';
 import { Bell, Sun, Moon, Search, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProfileCompletionBanner from '@/components/ProfileCompletionBanner';
+import { isAdminEmail } from '@/lib/admin';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -105,7 +106,7 @@ export default function AppLayout({ children, headerCenter }: AppLayoutProps) {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || '';
   const roleLabel = profile?.role === 'chef' ? 'Chef' : profile?.role === 'customer' ? 'Customer' : '';
   const ordersHref = profile?.role === 'chef' ? '/chef-menu?section=orders' : '/profile-screen?tab=orders';
-  const isAdminUser = ['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes((user?.email || '').toLowerCase());
+  const isAdminUser = isAdminEmail(user?.email);
   const navItems = user ? [
     BASE_NAV_ITEMS[0],
     BASE_NAV_ITEMS[1],
