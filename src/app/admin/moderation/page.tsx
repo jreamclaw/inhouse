@@ -28,6 +28,15 @@ interface ModerationReportRow {
 }
 
 const STATUS_OPTIONS: ModerationReportRow['status'][] = ['open', 'reviewing', 'resolved', 'dismissed'];
+type ModerationFilter = 'active' | 'open' | 'reviewing' | 'resolved' | 'dismissed' | 'all';
+const FILTER_OPTIONS: { value: ModerationFilter; label: string }[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'open', label: 'Open' },
+  { value: 'reviewing', label: 'Reviewing' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'dismissed', label: 'Dismissed' },
+  { value: 'all', label: 'All' },
+];
 
 export default function AdminModerationPage() {
   const supabase = createClient();
@@ -36,6 +45,7 @@ export default function AdminModerationPage() {
   const [accessDenied, setAccessDenied] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState('');
+  const [filter, setFilter] = useState<ModerationFilter>('active');
 
   useEffect(() => {
     void loadReports();
@@ -72,6 +82,12 @@ export default function AdminModerationPage() {
     }
   };
 
+  const filteredReports = reports.filter((report) => {
+    if (filter === 'all') return true;
+    if (filter === 'active') return report.status === 'open' || report.status === 'reviewing';
+    return report.status === filter;
+  });
+
   const updateStatus = async (reportId: string, status: ModerationReportRow['status']) => {
     setSavingId(reportId);
     try {
@@ -100,8 +116,22 @@ export default function AdminModerationPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
           <h1 className="text-2xl font-bold text-foreground mt-1">Moderation Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">Review user, post, story, and comment reports submitted in the app.</p>
-          {adminEmail ? <p className="text-xs text-muted-foreground mt-2">Signed in as {adminEmail} · {reports.length} report{reports.length === 1 ? '' : 's'}</p> : null}
+          {adminEmail ? <p className="text-xs text-muted-foreground mt-2">Signed in as {adminEmail} · {filteredReports.length} shown · {reports.length} total</p> : null}
         </div>
+
+        {!loading && !accessDenied ? (
+          <div className="flex flex-wrap gap-2">
+            {FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setFilter(option.value)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${filter === option.value ? 'bg-primary text-white' : 'bg-muted text-foreground hover:bg-border'}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="rounded-3xl border border-border bg-card p-8 flex items-center gap-3 text-sm text-muted-foreground">
@@ -111,13 +141,13 @@ export default function AdminModerationPage() {
           <div className="rounded-3xl border border-destructive/20 bg-destructive/10 p-6 text-sm text-destructive">
             {accessDenied}
           </div>
-        ) : reports.length === 0 ? (
+        ) : filteredReports.length === 0 ? (
           <div className="rounded-3xl border border-border bg-card p-8 text-sm text-muted-foreground flex items-center gap-3">
-            <ShieldAlert className="w-4 h-4" /> No moderation reports yet.
+            <ShieldAlert className="w-4 h-4" /> {reports.length === 0 ? 'No moderation reports yet.' : 'No reports in this filter.'}
           </div>
         ) : (
           <div className="space-y-4">
-            {reports.map((report) => (
+            {filteredReports.map((report) => (
               <div key={report.id} className="rounded-3xl border border-border bg-card p-5 space-y-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
