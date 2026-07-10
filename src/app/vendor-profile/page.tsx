@@ -983,7 +983,7 @@ function VendorProfileContent() {
           </button>
         </div>
 
-        <div className="px-4 pb-2 pt-3 bg-card border-b border-border/50">
+        <div className="px-4 pb-1 pt-3 bg-card">
           <div className="flex items-start gap-3 -mt-7 sm:-mt-8 mb-1.5">
             <div className="relative shrink-0">
               <ProfileStoryAvatar
@@ -1100,7 +1100,7 @@ function VendorProfileContent() {
           </div>
         </div>
 
-        <div className="px-4 -mt-6 pt-1 space-y-4">
+        <div className="px-4 -mt-10 pt-0 space-y-4">
           <section className="rounded-3xl border border-border bg-card p-2">
             <div className="grid grid-cols-4 gap-2">
               {[
