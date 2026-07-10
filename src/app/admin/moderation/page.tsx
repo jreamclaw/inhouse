@@ -35,6 +35,7 @@ export default function AdminModerationPage() {
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState('');
 
   useEffect(() => {
     void loadReports();
@@ -51,39 +52,19 @@ export default function AdminModerationPage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('content_reports')
-        .select(`
-          id,
-          reporter_id,
-          target_user_id,
-          target_type,
-          target_id,
-          reason,
-          details,
-          status,
-          created_at,
-          reporter:reporter_id (
-            full_name,
-            username,
-            email
-          ),
-          target_user:target_user_id (
-            full_name,
-            username
-          )
-        `)
-        .order('created_at', { ascending: false });
+      setAdminEmail(email);
 
-      if (error) throw error;
+      const response = await fetch('/api/admin/moderation-reports/list', {
+        method: 'GET',
+        cache: 'no-store',
+      });
 
-      const rows = ((data || []) as any[]).map((row) => ({
-        ...row,
-        reporter: Array.isArray(row.reporter) ? row.reporter[0] : row.reporter,
-        target_user: Array.isArray(row.target_user) ? row.target_user[0] : row.target_user,
-      }));
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Unable to load moderation reports.');
+      }
 
-      setReports(rows as ModerationReportRow[]);
+      setReports(((payload?.reports || []) as ModerationReportRow[]));
     } catch (error: any) {
       setAccessDenied(error?.message || 'Unable to load moderation reports.');
     } finally {
@@ -119,6 +100,7 @@ export default function AdminModerationPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
           <h1 className="text-2xl font-bold text-foreground mt-1">Moderation Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">Review user, post, story, and comment reports submitted in the app.</p>
+          {adminEmail ? <p className="text-xs text-muted-foreground mt-2">Signed in as {adminEmail} · {reports.length} report{reports.length === 1 ? '' : 's'}</p> : null}
         </div>
 
         {loading ? (
