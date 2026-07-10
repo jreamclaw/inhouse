@@ -1016,17 +1016,26 @@ export default function PostFeed({ mode }: PostFeedProps) {
   const supabase = createClient();
 
   useEffect(() => {
-    void loadBlockedUsers();
-    loadDbPosts();
-    if (user?.id) {
-      loadFollowedUsers();
-    }
+    const initializeFeed = async () => {
+      await loadBlockedUsers();
+      await loadDbPosts();
+      if (user?.id) {
+        await loadFollowedUsers();
+      }
+    };
+
+    void initializeFeed();
   }, [user?.id]);
+
+  useEffect(() => {
+    setDbPosts((prev) => prev.filter((post) => !blockedUserIds.has(post.user.id)));
+  }, [blockedUserIds]);
 
   const loadBlockedUsers = async () => {
     if (!user?.id) {
-      setBlockedUserIds(new Set());
-      return;
+      const empty = new Set<string>();
+      setBlockedUserIds(empty);
+      return empty;
     }
 
     try {
@@ -1034,13 +1043,19 @@ export default function PostFeed({ mode }: PostFeedProps) {
         .from('user_blocks')
         .select('blocked_id')
         .eq('blocker_id', user.id);
-      setBlockedUserIds(new Set(((data as { blocked_id: string }[] | null) || []).map((row) => row.blocked_id)));
+      const nextBlocked = new Set(((data as { blocked_id: string }[] | null) || []).map((row) => row.blocked_id));
+      setBlockedUserIds(nextBlocked);
+      return nextBlocked;
     } catch {
-      setBlockedUserIds(new Set());
+      const empty = new Set<string>();
+      setBlockedUserIds(empty);
+      return empty;
     }
   };
 
   const loadDbPosts = async () => {
+    const activeBlockedUserIds = user?.id ? await loadBlockedUsers() : new Set<string>();
+
     try {
       const { data, error } = await supabase.
       from('posts').
@@ -1109,7 +1124,7 @@ export default function PostFeed({ mode }: PostFeedProps) {
         }
 
         setDbPosts((data as DbPost[])
-          .filter((post) => !blockedUserIds.has(post.user_profiles?.id || post.user_id))
+          .filter((post) => !activeBlockedUserIds.has(post.user_profiles?.id || post.user_id))
           .map((post) => dbPostToMockShape({
             ...post,
             tagged_users: tagsByPostId.get(post.id) || [],
