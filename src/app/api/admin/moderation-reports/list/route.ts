@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 function isAdminEmail(email?: string | null) {
   return ['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes(email || '');
@@ -31,7 +32,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    const adminSupabase = createAdminClient();
+
+    const { data, error } = await adminSupabase
       .from('content_reports')
       .select(`
         id,

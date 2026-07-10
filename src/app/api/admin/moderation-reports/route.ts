@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 function isAdminEmail(email?: string | null) {
   return ['support@inhouseapp.net', 'admin@inhouseapp.net', 'inhouseappadmin@gmail.com'].includes(email || '');
@@ -39,7 +40,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const adminSupabase = createAdminClient();
+
+    const { error } = await adminSupabase
       .from('content_reports')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', reportId);
