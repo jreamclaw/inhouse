@@ -568,6 +568,8 @@ export default function NearbyPage() {
       });
     } finally {
       setManualSearchLoading(false);
+      setShowLocationSheet(false);
+      setCustomInput('');
     }
   };
 
