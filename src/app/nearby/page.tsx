@@ -124,6 +124,27 @@ const DEFAULT_LOCATION = 'Set your location';
 const VENDOR_AVATAR_FALLBACK = '/assets/images/no_image.png';
 const QUICK_FILTERS = ['Open now', 'Nearest', 'Top rated', 'Soul food', 'Healthy', 'Seafood', 'BBQ', 'Vegan'];
 
+function hasRealVendorImage(image?: string | null) {
+  if (!image) return false;
+  return image !== VENDOR_AVATAR_FALLBACK;
+}
+
+function VendorImageFallback({ vendor, compact = false }: { vendor: Vendor; compact?: boolean }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-[#2B1608] via-[#5B2C0B] to-[#C2410C]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(251,146,60,0.22),transparent_38%)]" />
+      <div className="absolute right-3 top-3 rounded-full border border-white/15 bg-white/10 p-2 text-white/80 backdrop-blur-sm">
+        <ShoppingBag className={compact ? 'w-4 h-4' : 'w-5 h-5'} />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+        <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-white/80`}>{vendor.businessType === 'food_truck' ? 'Food Truck' : 'Personal Chef'}</p>
+        <p className={`${compact ? 'text-lg' : 'text-2xl'} font-700 leading-tight tracking-snug line-clamp-2`}>{vendor.name}</p>
+        <p className={`${compact ? 'text-[11px]' : 'text-xs'} mt-1 text-white/80 line-clamp-1`}>{vendor.knownFor}</p>
+      </div>
+    </div>
+  );
+}
+
 function PriceRange({ range }: { range: '$' | '$$' | '$$$' }) {
   return (
     <span className="text-xs text-muted-foreground font-500">
@@ -184,12 +205,13 @@ function getVendorOpenState(hoursText?: string | null, availabilityOverride?: 'o
 
 function FeaturedVendorCard({ vendor }: { vendor: Vendor }) {
   const featuredBadge = vendor.badges.includes('top_rated') ? 'Top Rated' : vendor.badges.includes('verified_identity') ? 'Verified' : 'Popular';
+  const hasImage = hasRealVendorImage(vendor.image);
 
   return (
     <Link href={`/vendor-profile?id=${vendor.id}`} className="block min-w-[280px] max-w-[280px] shrink-0">
       <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-subtle hover:shadow-card-hover transition-all">
         <div className="relative h-36 bg-muted overflow-hidden">
-          <img src={vendor.image} alt={vendor.imageAlt} className="w-full h-full object-cover" />
+          {hasImage ? <img src={vendor.image} alt={vendor.imageAlt} className="w-full h-full object-cover" /> : <VendorImageFallback vendor={vendor} compact />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-700 text-white backdrop-blur-sm">
             <Flame className="w-3 h-3 text-orange-300" />
@@ -218,11 +240,13 @@ function FeaturedVendorCard({ vendor }: { vendor: Vendor }) {
 }
 
 function VendorCard({ vendor }: { vendor: Vendor }) {
+  const hasImage = hasRealVendorImage(vendor.image);
+
   return (
     <div className="bg-card rounded-2xl overflow-hidden border border-border/50 hover:border-primary/25 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-250 active:scale-[0.99] group shadow-subtle">
       <Link href={`/vendor-profile?id=${vendor.id}`} className="block">
         <div className="relative h-44 overflow-hidden bg-muted">
-          <img src={vendor.image} alt={vendor.imageAlt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400" />
+          {hasImage ? <img src={vendor.image} alt={vendor.imageAlt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400" /> : <VendorImageFallback vendor={vendor} />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
           <div className="absolute top-3 right-3 bg-black/45 backdrop-blur-sm text-white text-[11px] font-700 px-2.5 py-1 rounded-full shrink-0">
             {formatDistance(vendor.distance)}
