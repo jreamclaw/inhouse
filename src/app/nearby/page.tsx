@@ -789,8 +789,14 @@ export default function NearbyPage() {
       </div>
 
       {showLocationSheet && (
-        <div className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-end sm:items-center sm:justify-center">
-          <div className="w-full sm:max-w-lg bg-card rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-end sm:items-center sm:justify-center"
+          onClick={() => setShowLocationSheet(false)}
+        >
+          <div
+            className="w-full sm:max-w-lg bg-card rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl p-4 sm:p-5 max-h-[88vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-700 text-foreground">Addresses</h2>
               <button onClick={() => setShowLocationSheet(false)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors">
