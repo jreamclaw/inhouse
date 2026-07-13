@@ -562,14 +562,17 @@ export default function NearbyPage() {
         return;
       }
 
-      await handleLocationChange(match.fullAddress, {
-        persistToProfile: false,
-        coords: { latitude: match.latitude, longitude: match.longitude },
+      setShowLocationSheet(false);
+      setCustomInput('');
+
+      requestAnimationFrame(() => {
+        void handleLocationChange(match.fullAddress, {
+          persistToProfile: false,
+          coords: { latitude: match.latitude, longitude: match.longitude },
+        });
       });
     } finally {
       setManualSearchLoading(false);
-      setShowLocationSheet(false);
-      setCustomInput('');
     }
   };
 
