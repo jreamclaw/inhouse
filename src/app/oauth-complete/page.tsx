@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
 import { authDebug } from '@/lib/auth/debug';
 import { isCapacitorLikeRuntime } from '@/lib/auth/redirects';
+import { generateDefaultUsername } from '@/lib/usernames';
 import { Loader2 } from 'lucide-react';
 
 export default function OAuthCompletePage() {
@@ -48,6 +49,13 @@ export default function OAuthCompletePage() {
       }
 
       if (!profile) {
+        const generatedUsername = generateDefaultUsername({
+          username: user.user_metadata?.username,
+          fullName: user.user_metadata?.full_name,
+          name: user.user_metadata?.name,
+          email: user.email,
+          userId: user.id,
+        });
         const bootstrapResult = await supabase
           .from('user_profiles')
           .upsert({
@@ -55,7 +63,7 @@ export default function OAuthCompletePage() {
             email: user.email ?? '',
             full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
             avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-            username: user.user_metadata?.username || user.email?.split('@')[0] || '',
+            username: generatedUsername,
             role: null,
             onboarding_complete: false,
             vendor_onboarding_complete: false,

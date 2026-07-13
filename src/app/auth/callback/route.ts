@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { authDebug } from '@/lib/auth/debug';
 import { resolvePostLoginRoute } from '@/lib/auth/routeResolver';
+import { generateDefaultUsername } from '@/lib/usernames';
 import { NextResponse } from 'next/server';
 import { type NextRequest } from 'next/server';
 
@@ -171,6 +172,13 @@ export async function GET(request: NextRequest) {
   if (!profile) {
     const userEmail = exchangedUser.email ?? '';
     const userMeta = exchangedUser.user_metadata ?? {};
+    const generatedUsername = generateDefaultUsername({
+      username: userMeta.username,
+      fullName: userMeta.full_name,
+      name: userMeta.name,
+      email: userEmail,
+      userId,
+    });
     const { data: newProfile, error: profileUpsertError } = await supabase
       .from('user_profiles')
       .upsert({
@@ -178,7 +186,7 @@ export async function GET(request: NextRequest) {
         email: userEmail,
         full_name: userMeta.full_name || userMeta.name || userEmail.split('@')[0],
         avatar_url: userMeta.avatar_url || userMeta.picture || '',
-        username: userMeta.username || userEmail.split('@')[0],
+        username: generatedUsername,
         role: null,
         onboarding_complete: false,
         vendor_onboarding_complete: false,

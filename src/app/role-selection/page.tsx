@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { authDebug } from '@/lib/auth/debug';
+import { generateDefaultUsername } from '@/lib/usernames';
 import AppLogo from '@/components/ui/AppLogo';
 import { Loader2, ChefHat, ShoppingBag, ArrowRight } from 'lucide-react';
 
@@ -184,6 +185,14 @@ export default function RoleSelectionPage() {
           redirectTarget: null,
         });
 
+        const generatedUsername = generateDefaultUsername({
+          username: activeUser.user_metadata?.username,
+          fullName: activeUser.user_metadata?.full_name,
+          name: activeUser.user_metadata?.name,
+          email: activeUser.email,
+          userId: activeUser.id,
+        });
+
         const bootstrapResponse = await supabase
           .from('user_profiles')
           .upsert({
@@ -191,7 +200,7 @@ export default function RoleSelectionPage() {
             email: activeUser.email ?? '',
             full_name: activeUser.user_metadata?.full_name || activeUser.user_metadata?.name || activeUser.email?.split('@')[0] || '',
             avatar_url: activeUser.user_metadata?.avatar_url || activeUser.user_metadata?.picture || '',
-            username: activeUser.user_metadata?.username || activeUser.email?.split('@')[0] || '',
+            username: generatedUsername,
             role: null,
             onboarding_complete: false,
             vendor_onboarding_complete: false,

@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { authDebug } from '@/lib/auth/debug';
 import { getOAuthCallbackRedirect, isCapacitorLikeRuntime } from '@/lib/auth/redirects';
+import { generateDefaultUsername } from '@/lib/usernames';
 import Image from 'next/image';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -85,13 +86,20 @@ export default function LoginPage() {
       });
 
       if (!profileData) {
+        const generatedUsername = generateDefaultUsername({
+          username: signedInUser.user_metadata?.username,
+          fullName: signedInUser.user_metadata?.full_name,
+          name: signedInUser.user_metadata?.name,
+          email: signedInUser.email,
+          userId,
+        });
         const { data: newProfile } = await supabase
           .from('user_profiles')
           .insert({
             id: userId,
             email: signedInUser.email ?? '',
             full_name: signedInUser.user_metadata?.full_name || signedInUser.email?.split('@')[0] || '',
-            username: signedInUser.user_metadata?.username || signedInUser.email?.split('@')[0] || '',
+            username: generatedUsername,
             avatar_url: signedInUser.user_metadata?.avatar_url || '',
             role: null,
             onboarding_complete: false,
