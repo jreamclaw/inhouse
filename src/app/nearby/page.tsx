@@ -332,6 +332,15 @@ export default function NearbyPage() {
   }, [profile, locationSource]);
 
   useEffect(() => {
+    if (locationSource === 'manual') {
+      if (watchIdRef.current != null && typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setLocationLoading(false);
+      return;
+    }
+
     startWatchingLocation();
 
     return () => {
@@ -339,7 +348,7 @@ export default function NearbyPage() {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, [user?.id, profile?.id, manualLocationLabel]);
+  }, [locationSource, user?.id, profile?.id, manualLocationLabel]);
 
   useEffect(() => {
     loadVendors();
@@ -510,6 +519,8 @@ export default function NearbyPage() {
   };
 
   const requestBrowserLocation = async () => {
+    setLocationSource('browser');
+    setManualSearchContext(null);
     setShowLocationSheet(false);
     await startWatchingLocation();
   };
