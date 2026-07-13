@@ -525,19 +525,25 @@ export default function NearbyPage() {
     await startWatchingLocation();
   };
 
-  const handleLocationChange = async (loc: string) => {
+  const handleLocationChange = async (loc: string, options?: { persistToProfile?: boolean; coords?: { latitude: number; longitude: number } | null }) => {
     const nextLabel = loc.trim();
+    const nextCoords = options?.coords ?? null;
     setManualLocationLabel(nextLabel);
     setManualSearchContext(nextLabel ? { locationLabel: nextLabel, radiusMiles: customerRadiusMiles } : null);
     setDisplayLocation({ shortLabel: shortAddress(nextLabel || DEFAULT_LOCATION), fullAddress: nextLabel || DEFAULT_LOCATION });
     setLocationSource(nextLabel ? 'manual' : 'none');
-    setLocationCoords(null);
+    setLocationCoords(nextCoords);
     setShowLocationSheet(false);
     setCustomInput('');
 
-    if (user?.id && nextLabel) {
+    if (user?.id && nextLabel && options?.persistToProfile) {
       try {
-        await supabase.from('user_profiles').update({ location: nextLabel, updated_at: new Date().toISOString() }).eq('id', user.id);
+        await supabase.from('user_profiles').update({
+          location: nextLabel,
+          latitude: nextCoords?.latitude ?? null,
+          longitude: nextCoords?.longitude ?? null,
+          updated_at: new Date().toISOString(),
+        }).eq('id', user.id);
       } catch {}
     }
   };
@@ -556,24 +562,10 @@ export default function NearbyPage() {
         return;
       }
 
-      setManualLocationLabel(match.fullAddress);
-      setManualSearchContext({ locationLabel: match.fullAddress, radiusMiles: customerRadiusMiles });
-      setDisplayLocation({ shortLabel: match.shortLabel, fullAddress: match.fullAddress });
-      setLocationSource('manual');
-      setLocationCoords({ latitude: match.latitude, longitude: match.longitude });
-      setShowLocationSheet(false);
-      setCustomInput('');
-
-      if (user?.id) {
-        try {
-          await supabase.from('user_profiles').update({
-            location: match.fullAddress,
-            latitude: match.latitude,
-            longitude: match.longitude,
-            updated_at: new Date().toISOString(),
-          }).eq('id', user.id);
-        } catch {}
-      }
+      await handleLocationChange(match.fullAddress, {
+        persistToProfile: false,
+        coords: { latitude: match.latitude, longitude: match.longitude },
+      });
     } finally {
       setManualSearchLoading(false);
     }
@@ -830,10 +822,10 @@ export default function NearbyPage() {
               <button type="button" onClick={requestBrowserLocation} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-primary/10 hover:bg-primary/15 transition-colors text-sm font-700 text-primary">
                 <LocateFixed className="w-4 h-4" /> Current location
               </button>
-              <button type="button" onClick={() => profile?.location && handleLocationChange(profile.location)} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
+              <button type="button" onClick={() => profile?.location && handleLocationChange(profile.location, { persistToProfile: false, coords: typeof profile?.latitude === 'number' && typeof profile?.longitude === 'number' ? { latitude: profile.latitude, longitude: profile.longitude } : null })} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
                 <Home className="w-4 h-4" /> Home
               </button>
-              <button type="button" onClick={() => manualLocationLabel && handleLocationChange(manualLocationLabel)} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
+              <button type="button" onClick={() => manualLocationLabel && handleLocationChange(manualLocationLabel, { persistToProfile: false, coords: locationCoords })} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
                 <Briefcase className="w-4 h-4" /> Work
               </button>
               <button type="button" onClick={() => void handleCustomLocationSearch()} disabled={!customInput.trim() || manualSearchLoading} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground disabled:opacity-60">
