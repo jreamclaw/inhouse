@@ -300,7 +300,6 @@ export default function NearbyPage() {
   const [locationSource, setLocationSource] = useState<LocationSource>('none');
   const [locationError, setLocationError] = useState('');
   const [locationLoading, setLocationLoading] = useState(true);
-  const watchIdRef = useRef<number | null>(null);
   const lastSavedLocationRef = useRef<{ latitude: number; longitude: number; fullAddress: string } | null>(null);
 
   const { user, profile } = useAuth();
@@ -330,14 +329,8 @@ export default function NearbyPage() {
   }, [profile, locationSource]);
 
   useEffect(() => {
-    startWatchingLocation();
-
-    return () => {
-      if (watchIdRef.current != null && typeof navigator !== 'undefined' && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, [user?.id, profile?.id, manualLocationLabel]);
+    requestBrowserLocation();
+  }, [user?.id, profile?.id]);
 
   useEffect(() => {
     loadVendors();
@@ -403,7 +396,7 @@ export default function NearbyPage() {
     }
   };
 
-  const startWatchingLocation = () => {
+  const requestSingleLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       setLocationLoading(false);
       setLocationError('Browser location is unavailable. Using saved profile location if available.');
@@ -412,14 +405,10 @@ export default function NearbyPage() {
 
     setLocationLoading(true);
 
-    if (watchIdRef.current != null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
+    navigator.geolocation.getCurrentPosition(
       handleBrowserLocationSuccess,
       handleBrowserLocationFailure,
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     );
   };
 
@@ -502,9 +491,9 @@ export default function NearbyPage() {
     }
   };
 
-  const requestBrowserLocation = async () => {
+  const requestBrowserLocation = () => {
     setShowLocationSheet(false);
-    await startWatchingLocation();
+    requestSingleLocation();
   };
 
   const handleLocationChange = async (loc: string) => {
