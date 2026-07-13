@@ -24,7 +24,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { milesBetween } from '@/lib/location/distance';
-import { reverseGeocode } from '@/lib/location/geocode';
+import { forwardGeocode, reverseGeocode } from '@/lib/location/geocode';
 
 type SortOption = 'distance' | 'rating' | 'delivery' | 'fee';
 type LocationSource = 'browser' | 'saved-profile' | 'manual' | 'none';
@@ -292,6 +292,8 @@ export default function NearbyPage() {
   const [customerRadiusMiles, setCustomerRadiusMiles] = useState<number>(10);
   const [customInput, setCustomInput] = useState('');
   const [manualLocationLabel, setManualLocationLabel] = useState('');
+  const [manualSearchLoading, setManualSearchLoading] = useState(false);
+  const [manualSearchContext, setManualSearchContext] = useState<{ locationLabel: string; radiusMiles: number } | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
   const [displayLocation, setDisplayLocation] = useState<DisplayLocation>({ shortLabel: DEFAULT_LOCATION, fullAddress: DEFAULT_LOCATION });
@@ -342,6 +344,11 @@ export default function NearbyPage() {
   useEffect(() => {
     loadVendors();
   }, [profile?.id, locationCoords?.latitude, locationCoords?.longitude, customerRadiusMiles, manualLocationLabel]);
+
+  useEffect(() => {
+    if (!manualSearchContext) return;
+    setManualSearchContext((prev) => prev ? { ...prev, radiusMiles: customerRadiusMiles } : prev);
+  }, [customerRadiusMiles, manualSearchContext]);
 
   const persistLiveLocation = async (nextCoords: { latitude: number; longitude: number }, fullAddress: string) => {
     if (!user?.id) return;
@@ -510,6 +517,7 @@ export default function NearbyPage() {
   const handleLocationChange = async (loc: string) => {
     const nextLabel = loc.trim();
     setManualLocationLabel(nextLabel);
+    setManualSearchContext(nextLabel ? { locationLabel: nextLabel, radiusMiles: customerRadiusMiles } : null);
     setDisplayLocation({ shortLabel: shortAddress(nextLabel || DEFAULT_LOCATION), fullAddress: nextLabel || DEFAULT_LOCATION });
     setLocationSource(nextLabel ? 'manual' : 'none');
     setLocationCoords(null);
@@ -523,9 +531,46 @@ export default function NearbyPage() {
     }
   };
 
-  const handleCustomSubmit = (e: React.FormEvent) => {
+  const handleCustomLocationSearch = async () => {
+    const nextQuery = customInput.trim();
+    if (!nextQuery) return;
+
+    setManualSearchLoading(true);
+    setLocationError('');
+
+    try {
+      const match = await forwardGeocode(nextQuery);
+      if (!match) {
+        setLocationError(`We couldn't find “${nextQuery}”. Try a city, state, or full address.`);
+        return;
+      }
+
+      setManualLocationLabel(match.fullAddress);
+      setManualSearchContext({ locationLabel: match.fullAddress, radiusMiles: customerRadiusMiles });
+      setDisplayLocation({ shortLabel: match.shortLabel, fullAddress: match.fullAddress });
+      setLocationSource('manual');
+      setLocationCoords({ latitude: match.latitude, longitude: match.longitude });
+      setShowLocationSheet(false);
+      setCustomInput('');
+
+      if (user?.id) {
+        try {
+          await supabase.from('user_profiles').update({
+            location: match.fullAddress,
+            latitude: match.latitude,
+            longitude: match.longitude,
+            updated_at: new Date().toISOString(),
+          }).eq('id', user.id);
+        } catch {}
+      }
+    } finally {
+      setManualSearchLoading(false);
+    }
+  };
+
+  const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (customInput.trim()) handleLocationChange(customInput.trim());
+    await handleCustomLocationSearch();
   };
 
   const filteredVendors = useMemo(() => {
@@ -728,8 +773,12 @@ export default function NearbyPage() {
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
               <Truck className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="font-700 text-foreground mb-1">No chefs found nearby</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">Try updating your location or widening your radius from the location sheet. You can still browse popular chefs when they become available.</p>
+            <h3 className="font-700 text-foreground mb-1">{manualSearchContext ? `No chefs found near ${manualSearchContext.locationLabel}` : 'No chefs found nearby'}</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              {manualSearchContext
+                ? `No chefs were found within ${manualSearchContext.radiusMiles} miles of ${manualSearchContext.locationLabel}. Try a bigger radius or search a closer area.`
+                : 'Try updating your location or widening your radius from the location sheet. You can still browse popular chefs when they become available.'}
+            </p>
           </div>
         )}
       </div>
@@ -744,7 +793,7 @@ export default function NearbyPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCustomSubmit} className="mb-4">
+            <form onSubmit={handleCustomSubmit} className="mb-4 space-y-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
@@ -756,6 +805,14 @@ export default function NearbyPage() {
                   autoFocus
                 />
               </div>
+              <button
+                type="submit"
+                disabled={!customInput.trim() || manualSearchLoading}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-700 text-white hover:bg-primary/90 transition-colors disabled:opacity-60"
+              >
+                <Search className="w-4 h-4" />
+                {manualSearchLoading ? 'Searching...' : 'Search this location'}
+              </button>
             </form>
 
             <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
@@ -768,8 +825,8 @@ export default function NearbyPage() {
               <button type="button" onClick={() => manualLocationLabel && handleLocationChange(manualLocationLabel)} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
                 <Briefcase className="w-4 h-4" /> Work
               </button>
-              <button type="button" onClick={() => customInput.trim() && handleLocationChange(customInput.trim())} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground">
-                <Plus className="w-4 h-4" /> Use typed address
+              <button type="button" onClick={() => void handleCustomLocationSearch()} disabled={!customInput.trim() || manualSearchLoading} className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted hover:bg-border transition-colors text-sm font-600 text-foreground disabled:opacity-60">
+                <Plus className="w-4 h-4" /> Search typed address
               </button>
             </div>
 
